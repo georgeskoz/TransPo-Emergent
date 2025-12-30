@@ -180,15 +180,18 @@ frontend:
 
   - task: "User Dashboard - Fare Estimate Display"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/pages/UserDashboard.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Fare estimate displays correctly with breakdown showing base fare, distance, time charges."
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL: Get Fare Estimate button remains disabled even when both pickup and dropoff addresses are manually filled with complete Montreal addresses. The button validation logic is not recognizing manually entered addresses as valid locations. This blocks the entire fare estimation flow."
 
   - task: "Driver Dashboard - Menu Navigation"
     implemented: true
