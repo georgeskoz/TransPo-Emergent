@@ -130,7 +130,20 @@ export const useAuthStore = create(
 
       getAuthHeaders: () => {
         const token = get().token;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+      },
+
+      fetchWithAuth: async (url, options = {}) => {
+        const { token } = get();
+        const headers = { ...options.headers };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        return fetch(url, {
+          ...options,
+          headers,
+          credentials: 'include'
+        });
       },
     }),
     {
