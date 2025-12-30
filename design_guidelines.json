@@ -1,0 +1,156 @@
+{
+  "identity": {
+    "persona": "E1: The Anti-AI Designer",
+    "mission": "Create a 'Neon Noir Logistics' aesthetic that fuses cyberpunk urban vibes with Swiss functionalism. Break the 'SaaS Blue' monotony with electric accents and void-black backgrounds.",
+    "principles": [
+      "Fusion over Imitation: Mix Urban Nightlife + Swiss Precision.",
+      "Emotion First: Speed, Trust, and Hunger.",
+      "Content is King: Data is beautiful, but motion makes it alive.",
+      "Negative Space: Let the neon breathe.",
+      "Contrast: Void Black vs. Laser Neon."
+    ]
+  },
+  "typography": {
+    "headings": {
+      "family": "Unbounded",
+      "weights": ["400", "700", "900"],
+      "usage": "Use for all H1-H3. Tight tracking (-0.02em). Uppercase for labels.",
+      "fallback": "sans-serif"
+    },
+    "body": {
+      "family": "Manrope",
+      "weights": ["300", "400", "600"],
+      "usage": "Use for paragraphs, UI text, and data tables.",
+      "fallback": "sans-serif"
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "usage": "Use for order IDs, timestamps, and code snippets."
+    },
+    "import_url": "https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&family=Unbounded:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap"
+  },
+  "colors": {
+    "palette_name": "Neon Noir City",
+    "mode": "dark",
+    "backgrounds": {
+      "app_bg": "#050505",
+      "card_bg": "#0A0A0A",
+      "sidebar_bg": "#000000",
+      "glass_bg": "rgba(10, 10, 10, 0.7)"
+    },
+    "primary": {
+      "taxi_cyan": "#00F0FF",
+      "food_pink": "#FF0099",
+      "courier_yellow": "#FAFF00"
+    },
+    "neutrals": {
+      "text_main": "#EDEDED",
+      "text_muted": "#A1A1AA",
+      "border_subtle": "#27272A",
+      "border_active": "#52525B"
+    },
+    "status": {
+      "success": "#00FF94",
+      "warning": "#FFB800",
+      "error": "#FF2E2E",
+      "info": "#00F0FF"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": {
+      "className": "backdrop-blur-xl bg-black/70 border border-white/10 shadow-2xl",
+      "usage": "Sticky headers, floating action panels, modal overlays."
+    },
+    "tracing_beam": {
+      "concept": "A glowing gradient border that animates on hover or active state.",
+      "implementation": "Use a relative parent with overflow-hidden and an absolute child with a conic-gradient spinning."
+    },
+    "gradients": {
+      "hero_glow": "radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.15) 0%, rgba(5, 5, 5, 0) 70%)",
+      "text_gradient": "linear-gradient(to right, #FFFFFF, #A1A1AA)"
+    },
+    "borders": {
+      "default": "1px solid rgba(255, 255, 255, 0.08)",
+      "active": "1px solid rgba(0, 240, 255, 0.5)"
+    }
+  },
+  "layout": {
+    "grid_system": {
+      "marketing": "Bento Grid (Tetris Mode). Asymmetric cols-12. Mix 2x2, 4x2, and 4x4 blocks.",
+      "dashboard": "Control Room Grid. Dense cols-4. Gap-4. 100% height utilization."
+    },
+    "spacing": {
+      "container_padding": "p-6 md:p-12 lg:p-24",
+      "section_gap": "gap-16 md:gap-32",
+      "internal_padding": "p-6 or p-8 for cards"
+    },
+    "alignment": {
+      "rule": "Optical alignment over geometric. Left align text. Center align only for specific hero moments."
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-white text-black hover:bg-cyan-400 hover:text-black font-bold rounded-none uppercase tracking-wider transition-all duration-300",
+      "secondary": "bg-transparent border border-white/20 text-white hover:border-white hover:bg-white/5 rounded-none uppercase tracking-wider",
+      "ghost": "text-zinc-400 hover:text-white hover:bg-white/5"
+    },
+    "cards": {
+      "style": "bg-zinc-950/50 border border-white/5 hover:border-white/20 transition-colors duration-300 rounded-xl overflow-hidden",
+      "content_padding": "p-6"
+    },
+    "inputs": {
+      "style": "bg-zinc-900/50 border-white/10 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-lg h-12"
+    },
+    "navigation": {
+      "style": "Floating glass bar. backdrop-blur-md border border-white/10 rounded-full px-6 py-3"
+    }
+  },
+  "images": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1679294176201-f9b302961f42?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHx1cmJhbiUyMGNpdHklMjBuaWdodCUyMHRyYWZmaWMlMjBuZW9ufGVufDB8fHx8MTc2NzA1NjE2MHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Neon city night traffic",
+      "usage": "Hero section background with heavy overlay (bg-black/80)."
+    },
+    "taxi_service": {
+      "url": "https://images.unsplash.com/photo-1642331395578-62fc20996c2a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHx0YXhpJTIwZHJpdmVyJTIwcHJvZmVzc2lvbmFsJTIwcG9ydHJhaXQlMjBuaWdodHxlbnwwfHx8fDE3NjcwNTYxNjR8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Taxi cab with light",
+      "usage": "Ride booking feature card."
+    },
+    "food_service": {
+      "url": "https://images.unsplash.com/photo-1603508102983-99b101395d1a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHw0fHxnb3VybWV0JTIwYnVyZ2VyJTIwZnJpZXMlMjBkYXJrJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NjcwNTYxNjZ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Gourmet burger dark background",
+      "usage": "Food delivery feature card."
+    },
+    "courier_service": {
+      "url": "https://images.unsplash.com/photo-1762185225299-fc4f3db82372?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxjb3VyaWVyJTIwZGVsaXZlcnklMjBwYWNrYWdlJTIwYmlrZSUyMHVyYmFufGVufDB8fHx8MTc2NzA1NjE2OHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Cyclist courier motion blur",
+      "usage": "Courier service feature card."
+    }
+  },
+  "motion": {
+    "libraries": ["framer-motion"],
+    "transitions": {
+      "default": "transition-all duration-300 ease-out",
+      "hover": "scale-[1.02] brightness-110"
+    },
+    "animations": {
+      "fade_in_up": {
+        "initial": { "opacity": 0, "y": 20 },
+        "animate": { "opacity": 1, "y": 0 },
+        "transition": { "duration": 0.5 }
+      }
+    }
+  },
+  "universal_guidelines": [
+    "DO NOT use 'Inter' for headings. Use 'Unbounded'.",
+    "DO NOT use gradients for text unless it's a very subtle shine.",
+    "DO NOT use pure black (#000000) for cards; use #0A0A0A or #121212.",
+    "ALWAYS add 'data-testid' to interactive elements.",
+    "ALWAYS use 'sonner' for toasts.",
+    "ALWAYS use 'lucide-react' for icons.",
+    "Ensure all text has sufficient contrast (APCA standards).",
+    "Use 'p-8' or 'p-12' for section padding to create breathing room.",
+    "Avoid 'center-everything'. Use asymmetric layouts."
+  ],
+  "instructions_to_main_agent": "You are building a high-performance mobility platform. The design must feel 'fast' and 'premium'. Use the provided image URLs for the landing page. Implement the 'Neon Noir' color palette in tailwind.config.js first. Use Shadcn components but override their default styles to match the 'visual_enhancers' section (glassmorphism, sharp borders). For the map integration, use 'react-map-gl' with a custom dark style."
+}
