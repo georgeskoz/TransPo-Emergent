@@ -86,9 +86,7 @@ export default function AuthPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-noir-700 flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-hero-glow opacity-50" />
-      
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -97,7 +95,7 @@ export default function AuthPage() {
         <Button 
           variant="ghost" 
           onClick={() => navigate('/')}
-          className="mb-6 text-noir-100 hover:text-white"
+          className="mb-6 text-gray-600 hover:text-gray-900"
           data-testid="back-to-home-btn"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -105,15 +103,15 @@ export default function AuthPage() {
         </Button>
 
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-10 h-10 rounded-lg bg-cyan flex items-center justify-center">
-            <Zap className="w-6 h-6 text-black" />
+          <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center">
+            <Zap className="w-6 h-6 text-white" />
           </div>
-          <span className="font-heading text-xl font-bold text-white">Transpo</span>
+          <span className="text-xl font-bold text-gray-900">Transpo</span>
         </div>
 
-        <Card className="bg-noir-600 border-noir-300">
+        <Card className="bg-white border-gray-200 shadow-lg">
           <CardHeader>
-            <CardTitle className="font-heading text-2xl text-white">
+            <CardTitle className="text-2xl text-gray-900">
               {activeTab === 'login' ? 'Welcome Back' : 'Create Account'}
             </CardTitle>
           </CardHeader>
@@ -123,7 +121,7 @@ export default function AuthPage() {
               <Button 
                 variant="outline" 
                 onClick={handleGoogleLogin}
-                className="w-full btn-secondary flex items-center gap-3"
+                className="w-full bg-white border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center gap-3"
                 data-testid="google-login-btn"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -138,7 +136,7 @@ export default function AuthPage() {
               <Button 
                 variant="outline" 
                 onClick={handleFacebookLogin}
-                className="w-full btn-secondary flex items-center gap-3"
+                className="w-full bg-white border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center gap-3"
                 data-testid="facebook-login-btn"
               >
                 <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
@@ -150,10 +148,10 @@ export default function AuthPage() {
               <Button 
                 variant="outline" 
                 onClick={handleAppleLogin}
-                className="w-full btn-secondary flex items-center gap-3"
+                className="w-full bg-white border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center gap-3"
                 data-testid="apple-login-btn"
               >
-                <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
                 Continue with Apple
@@ -162,25 +160,25 @@ export default function AuthPage() {
 
             <div className="relative mb-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-noir-300"></div>
+                <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-noir-600 px-2 text-noir-100">Or continue with email</span>
+                <span className="bg-white px-2 text-gray-500">Or continue with email</span>
               </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 bg-noir-500 mb-6">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-100 mb-6">
                 <TabsTrigger 
                   value="login" 
-                  className="data-[state=active]:bg-cyan data-[state=active]:text-black"
+                  className="data-[state=active]:bg-gray-900 data-[state=active]:text-white"
                   data-testid="login-tab"
                 >
                   Sign In
                 </TabsTrigger>
                 <TabsTrigger 
                   value="register"
-                  className="data-[state=active]:bg-cyan data-[state=active]:text-black"
+                  className="data-[state=active]:bg-gray-900 data-[state=active]:text-white"
                   data-testid="register-tab"
                 >
                   Sign Up
@@ -189,7 +187,7 @@ export default function AuthPage() {
 
               {activeTab === 'register' && (
                 <div className="mb-6">
-                  <Label className="text-noir-100 mb-3 block">I want to...</Label>
+                  <Label className="text-gray-700 mb-3 block">I want to...</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {roles.map((r) => (
                       <button
@@ -198,13 +196,13 @@ export default function AuthPage() {
                         onClick={() => setRole(r.id)}
                         className={`p-3 rounded-lg border text-center transition-all ${
                           role === r.id 
-                            ? 'border-cyan bg-cyan/10' 
-                            : 'border-noir-300 hover:border-noir-200'
+                            ? 'border-gray-900 bg-gray-900 text-white' 
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
                         }`}
                         data-testid={`role-${r.id}-btn`}
                       >
-                        <r.icon className={`w-5 h-5 mx-auto mb-1 ${role === r.id ? 'text-cyan' : 'text-noir-100'}`} />
-                        <div className={`text-sm font-medium ${role === r.id ? 'text-white' : 'text-noir-100'}`}>
+                        <r.icon className={`w-5 h-5 mx-auto mb-1 ${role === r.id ? 'text-white' : 'text-gray-500'}`} />
+                        <div className={`text-sm font-medium ${role === r.id ? 'text-white' : 'text-gray-700'}`}>
                           {r.label}
                         </div>
                       </button>
@@ -216,34 +214,34 @@ export default function AuthPage() {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email" className="text-noir-100">Email</Label>
+                    <Label htmlFor="login-email" className="text-gray-700">Email</Label>
                     <Input
                       id="login-email"
                       type="email"
                       placeholder="you@example.com"
                       value={loginForm.email}
                       onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                      className="bg-noir-500 border-noir-300 text-white"
+                      className="bg-white border-gray-300 text-gray-900"
                       data-testid="login-email-input"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-noir-100">Password</Label>
+                    <Label htmlFor="login-password" className="text-gray-700">Password</Label>
                     <Input
                       id="login-password"
                       type="password"
                       placeholder="••••••••"
                       value={loginForm.password}
                       onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                      className="bg-noir-500 border-noir-300 text-white"
+                      className="bg-white border-gray-300 text-gray-900"
                       data-testid="login-password-input"
                       required
                     />
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full btn-primary rounded-lg"
+                    className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg"
                     disabled={isLoading}
                     data-testid="login-submit-btn"
                   >
@@ -257,13 +255,13 @@ export default function AuthPage() {
                   {/* Profile Photo Upload */}
                   <div className="flex justify-center mb-4">
                     <div 
-                      className="relative w-24 h-24 rounded-full bg-noir-500 border-2 border-dashed border-noir-300 flex items-center justify-center cursor-pointer hover:border-cyan transition-colors overflow-hidden"
+                      className="relative w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors overflow-hidden"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       {photoPreview ? (
                         <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" />
                       ) : (
-                        <Camera className="w-8 h-8 text-noir-100" />
+                        <Camera className="w-8 h-8 text-gray-400" />
                       )}
                       <input
                         ref={fileInputRef}
@@ -274,70 +272,70 @@ export default function AuthPage() {
                       />
                     </div>
                   </div>
-                  <p className="text-center text-xs text-noir-100 -mt-2 mb-4">Add profile photo (optional)</p>
+                  <p className="text-center text-xs text-gray-500 -mt-2 mb-4">Add profile photo (optional)</p>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="register-firstName" className="text-noir-100">First Name</Label>
+                      <Label htmlFor="register-firstName" className="text-gray-700">First Name</Label>
                       <Input
                         id="register-firstName"
                         type="text"
                         placeholder="John"
                         value={registerForm.firstName}
                         onChange={(e) => setRegisterForm({ ...registerForm, firstName: e.target.value })}
-                        className="bg-noir-500 border-noir-300 text-white"
+                        className="bg-white border-gray-300 text-gray-900"
                         data-testid="register-firstname-input"
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="register-lastName" className="text-noir-100">Last Name</Label>
+                      <Label htmlFor="register-lastName" className="text-gray-700">Last Name</Label>
                       <Input
                         id="register-lastName"
                         type="text"
                         placeholder="Doe"
                         value={registerForm.lastName}
                         onChange={(e) => setRegisterForm({ ...registerForm, lastName: e.target.value })}
-                        className="bg-noir-500 border-noir-300 text-white"
+                        className="bg-white border-gray-300 text-gray-900"
                         data-testid="register-lastname-input"
                         required
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-email" className="text-noir-100">Email</Label>
+                    <Label htmlFor="register-email" className="text-gray-700">Email</Label>
                     <Input
                       id="register-email"
                       type="email"
                       placeholder="you@example.com"
                       value={registerForm.email}
                       onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                      className="bg-noir-500 border-noir-300 text-white"
+                      className="bg-white border-gray-300 text-gray-900"
                       data-testid="register-email-input"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-phone" className="text-noir-100">Phone</Label>
+                    <Label htmlFor="register-phone" className="text-gray-700">Phone</Label>
                     <Input
                       id="register-phone"
                       type="tel"
                       placeholder="+1 514 555 0123"
                       value={registerForm.phone}
                       onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
-                      className="bg-noir-500 border-noir-300 text-white"
+                      className="bg-white border-gray-300 text-gray-900"
                       data-testid="register-phone-input"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-password" className="text-noir-100">Password</Label>
+                    <Label htmlFor="register-password" className="text-gray-700">Password</Label>
                     <Input
                       id="register-password"
                       type="password"
                       placeholder="••••••••"
                       value={registerForm.password}
                       onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                      className="bg-noir-500 border-noir-300 text-white"
+                      className="bg-white border-gray-300 text-gray-900"
                       data-testid="register-password-input"
                       required
                       minLength={6}
@@ -345,7 +343,7 @@ export default function AuthPage() {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full btn-primary rounded-lg"
+                    className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg"
                     disabled={isLoading}
                     data-testid="register-submit-btn"
                   >
@@ -355,9 +353,9 @@ export default function AuthPage() {
               </TabsContent>
             </Tabs>
 
-            <div className="mt-6 p-4 rounded-lg bg-noir-500 border border-noir-300">
-              <div className="text-xs text-noir-100 mb-2">Demo Accounts:</div>
-              <div className="space-y-1 text-xs font-mono text-noir-100">
+            <div className="mt-6 p-4 rounded-lg bg-gray-50 border border-gray-200">
+              <div className="text-xs text-gray-600 font-medium mb-2">Demo Accounts:</div>
+              <div className="space-y-1 text-xs font-mono text-gray-600">
                 <div>User: user@demo.com / demo123</div>
                 <div>Driver: driver@demo.com / demo123</div>
                 <div>Admin: admin@demo.com / demo123</div>
