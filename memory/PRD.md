@@ -13,7 +13,7 @@ Combining Taxi, Courier, and Food Delivery services in one ecosystem.
 - Dark mode (Neon Noir theme)
 - Google Maps (mocked with placeholder for MVP)
 - Stripe payments (test keys)
-- JWT-based custom auth
+- JWT-based custom auth + Social login (Google via Emergent Auth)
 - Mock fare comparison data
 
 ## Core Requirements (Static)
@@ -38,9 +38,9 @@ Score = (1/distance_km) * 0.6 + (rating/5) * 0.3 + acceptance_rate * 0.1
 - Return top 5-10 matches
 ```
 
-## What's Been Implemented (v1 MVP)
+## What's Been Implemented
 
-### Completed on 2025-12-30
+### Completed on 2025-12-30 (v1 MVP)
 
 **Backend (FastAPI)**
 - ✅ JWT Authentication (register, login, protected routes)
@@ -53,60 +53,99 @@ Score = (1/distance_km) * 0.6 + (rating/5) * 0.3 + acceptance_rate * 0.1
 - ✅ Stripe payment integration (checkout session)
 - ✅ Demo driver seeding
 
+### Completed on 2025-12-30 (v1.1 Profile Update)
+
+**User Profile Features**
+- ✅ Profile photo upload (server storage)
+- ✅ First name / Last name fields
+- ✅ Phone number
+- ✅ Address with Country, State/Province, City
+- ✅ Payment methods UI (Credit Card, Debit Card, Apple Pay, Google Pay)
+- ✅ Google social login via Emergent Auth
+
+**Driver Profile Features**
+- ✅ All user profile fields
+- ✅ Vehicle information (type, make, model, color, plate)
+- ✅ Driver's license upload with verification workflow
+- ✅ Taxi license upload with verification workflow
+- ✅ Document verification status tracking
+
+**Admin Features**
+- ✅ View pending driver verifications
+- ✅ Approve/Reject driver documents
+- ✅ Document status management
+
 **Frontend (React)**
 - ✅ Landing page with services overview
-- ✅ Auth page (login/register with role selection)
-- ✅ User Dashboard (book taxi, fare estimate, competitor comparison)
-- ✅ Driver Dashboard (go online, accept jobs, complete rides, earnings)
-- ✅ Admin Dashboard (stats, users, drivers, bookings tabs)
-- ✅ Mock map with driver markers
+- ✅ Auth page with social login buttons (Google functional)
+- ✅ User Profile page with all fields and payment methods
+- ✅ Driver Profile page with document uploads
+- ✅ User Dashboard (book taxi, fare estimate)
+- ✅ Driver Dashboard (go online, accept jobs, earnings)
+- ✅ Admin Dashboard (stats, users, drivers, bookings)
 - ✅ Neon Noir dark theme (Unbounded + Manrope fonts)
 
-**Mocked Components**
-- Google Maps (placeholder with animated driver dots)
-- Competitor pricing (UberX, Lyft, TaxiCoop estimates)
+**MOCKED Components**
+- Google Maps → Mock map placeholder with animated driver dots
+- Competitor pricing → Simulated market estimates
+- Payment methods → UI only (no real Stripe card saving)
+- Facebook/Apple login → Show "coming soon" toast
 
 ## Prioritized Backlog
 
 ### P0 (Critical for Launch)
 - [ ] Real Google Maps integration (when API key provided)
-- [ ] Push notifications for new jobs
-- [ ] Complete payment flow with webhooks
+- [ ] Complete Stripe payment flow with webhooks
+- [ ] Facebook and Apple OAuth integration
 
 ### P1 (High Priority)
 - [ ] Courier service module
 - [ ] Food delivery module (restaurants, menus)
 - [ ] Rating & review system
 - [ ] In-app chat/call between driver and rider
+- [ ] Push notifications for new jobs
 
 ### P2 (Medium Priority)
 - [ ] Scheduled rides
-- [ ] Driver document verification
 - [ ] Surge pricing based on demand
 - [ ] Admin pricing controls
 
 ### P3 (Nice to Have)
 - [ ] Shared delivery discounts
-- [ ] Multiple packages in one courier request
 - [ ] Restaurant onboarding portal
 - [ ] Driver leaderboards
+
+## Tech Stack
+- Backend: FastAPI + Python
+- Frontend: React + Tailwind + shadcn/ui + Framer Motion
+- Database: MongoDB
+- Auth: JWT + Emergent OAuth (Google)
+- Payments: Stripe
+- State: Zustand
+- File Storage: Local server (/app/backend/uploads/)
 
 ## API Endpoints
 
 ### Auth
-- POST /api/auth/register
+- POST /api/auth/register (form-data with first_name, last_name)
 - POST /api/auth/login
+- POST /api/auth/social/session
+- POST /api/auth/logout
 - GET /api/auth/me
 
-### User
-- POST /api/fare/estimate
-- POST /api/taxi/book
-- GET /api/taxi/booking/{id}
-- GET /api/bookings/user
+### User Profile
+- GET /api/user/profile
+- PUT /api/user/profile
+- POST /api/user/profile/photo
+- GET /api/user/payment-methods
+- POST /api/user/payment-methods
+- DELETE /api/user/payment-methods/{id}
 
-### Driver
+### Driver Profile & Documents
 - GET /api/driver/profile
 - PUT /api/driver/profile
+- POST /api/driver/documents/license
+- POST /api/driver/documents/taxi-license
 - POST /api/driver/status
 - POST /api/driver/location
 - GET /api/driver/jobs
@@ -118,25 +157,15 @@ Score = (1/distance_km) * 0.6 + (rating/5) * 0.3 + acceptance_rate * 0.1
 - GET /api/admin/stats
 - GET /api/admin/users
 - GET /api/admin/drivers
+- GET /api/admin/drivers/pending-verification
+- POST /api/admin/verify-document
 - GET /api/admin/bookings
+
+### Taxi
+- POST /api/fare/estimate
+- POST /api/taxi/book
+- GET /api/taxi/booking/{id}
+- GET /api/bookings/user
 
 ### Map
 - GET /api/map/drivers?lat=&lng=&radius=
-
-### Payments
-- POST /api/payments/create-checkout
-- GET /api/payments/status/{session_id}
-
-## Tech Stack
-- Backend: FastAPI + Python
-- Frontend: React + Tailwind + shadcn/ui
-- Database: MongoDB
-- Auth: JWT (python-jose)
-- Payments: Stripe
-- State: Zustand
-
-## Next Tasks
-1. Add Google Maps API key and implement real maps
-2. Implement Stripe webhook handler
-3. Add courier booking flow
-4. Add food delivery with restaurants
