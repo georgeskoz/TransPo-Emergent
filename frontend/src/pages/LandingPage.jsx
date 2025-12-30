@@ -395,12 +395,12 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
               >
-                <Card className="bg-white border-gray-200 p-6 h-full card-hover">
+                <Card className="bg-white border-gray-200 p-6 h-full card-hover shadow-sm">
                   <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center mb-4">
                     <feature.icon className="w-6 h-6 text-gray-700" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="text-gray-600 text-sm">{feature.desc}</p>
+                  <h3 className="text-lg font-semibold mb-2" style={{ color: '#111827' }}>{feature.title}</h3>
+                  <p className="text-sm" style={{ color: '#4B5563' }}>{feature.desc}</p>
                 </Card>
               </motion.div>
             ))}
