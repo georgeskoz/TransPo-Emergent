@@ -95,7 +95,14 @@ export default function DriverProfilePage() {
           drivers_license_number: data.drivers_license_number || "",
           drivers_license_expiry: data.drivers_license_expiry || "",
           taxi_license_number: data.taxi_license_number || "",
-          taxi_license_expiry: data.taxi_license_expiry || ""
+          taxi_license_expiry: data.taxi_license_expiry || "",
+          // Tax Info
+          gst_number: data.gst_number || "",
+          qst_number: data.qst_number || "",
+          srs_code: data.srs_code || "",
+          billing_number: data.billing_number || "",
+          srs_available: data.srs_available || false,
+          tax_disclaimer_accepted: data.tax_disclaimer_accepted || false
         });
         setPhotoPreview(data.profile_photo);
         setDriversLicensePhoto(data.drivers_license_photo);
