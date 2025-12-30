@@ -560,6 +560,17 @@ async def accept_booking(booking_id: str, current_user: dict = Depends(get_curre
     
     driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
     
+    # Handle case when driver profile doesn't exist
+    if not driver:
+        driver = {
+            "name": current_user["name"],
+            "vehicle_color": "",
+            "vehicle_make": "",
+            "vehicle_model": "",
+            "license_plate": "",
+            "rating": 5.0
+        }
+    
     result = await db.bookings.update_one(
         {"id": booking_id, "status": "pending"},
         {"$set": {
@@ -576,11 +587,12 @@ async def accept_booking(booking_id: str, current_user: dict = Depends(get_curre
     if result.modified_count == 0:
         raise HTTPException(status_code=400, detail="Booking no longer available")
     
-    # Mark driver as unavailable
-    await db.drivers.update_one(
-        {"user_id": current_user["id"]},
-        {"$set": {"is_available": False}}
-    )
+    # Mark driver as unavailable (only if driver profile exists)
+    if await db.drivers.find_one({"user_id": current_user["id"]}):
+        await db.drivers.update_one(
+            {"user_id": current_user["id"]},
+            {"$set": {"is_available": False}}
+        )
     
     return {"message": "Booking accepted", "booking_id": booking_id}
 
