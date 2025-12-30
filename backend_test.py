@@ -791,6 +791,9 @@ class SwiftMoveAPITester:
         try:
             self.test_health_check()
             self.test_authentication()
+            self.test_user_profile_features()
+            self.test_driver_profile_features()
+            self.test_admin_verification_features()
             self.test_fare_estimation()
             self.test_taxi_booking()
             self.test_driver_functionality()
