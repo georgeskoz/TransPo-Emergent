@@ -929,8 +929,8 @@ class TranspoAPITester:
 
 def main():
     """Main test runner"""
-    tester = SwiftMoveAPITester()
-    success = tester.run_all_tests()
+    tester = TranspoAPITester()
+    success = tester.run_focused_tests()
     return 0 if success else 1
 
 if __name__ == "__main__":
