@@ -165,15 +165,18 @@ frontend:
 
   - task: "User Dashboard - Pickup/Dropoff Inputs"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/pages/UserDashboard.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Inputs are active, autocomplete works with Montreal addresses, use current location button present."
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL: Autocomplete not working. Input fields are active and clickable, but no suggestion dropdown appears when typing Montreal addresses like '1000 Rue' or '300 Rue Saint-Paul'. The MONTREAL_ADDRESSES array exists in code but autocomplete functionality is broken. Users can manually type full addresses but get no assistance."
 
   - task: "User Dashboard - Fare Estimate Display"
     implemented: true
