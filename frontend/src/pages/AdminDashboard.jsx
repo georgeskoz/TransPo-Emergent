@@ -86,7 +86,7 @@ export default function AdminDashboard() {
               <Zap className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="font-heading text-lg font-bold text-white">SwiftMove Admin</span>
+              <span className="font-heading text-lg font-bold text-white">Transpo Admin</span>
               <div className="text-xs text-noir-100">{user?.name}</div>
             </div>
           </div>

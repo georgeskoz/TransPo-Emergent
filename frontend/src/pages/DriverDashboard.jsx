@@ -169,7 +169,7 @@ export default function DriverDashboard() {
               <Zap className="w-6 h-6 text-black" />
             </div>
             <div>
-              <span className="font-heading text-lg font-bold text-white">SwiftMove Driver</span>
+              <span className="font-heading text-lg font-bold text-white">Transpo Driver</span>
               <div className="text-xs text-noir-100">{user?.name}</div>
             </div>
           </div>

@@ -84,7 +84,7 @@ export default function AuthPage() {
           <div className="w-10 h-10 rounded-lg bg-cyan flex items-center justify-center">
             <Zap className="w-6 h-6 text-black" />
           </div>
-          <span className="font-heading text-xl font-bold text-white">SwiftMove</span>
+          <span className="font-heading text-xl font-bold text-white">Transpo</span>
         </div>
 
         <Card className="bg-noir-600 border-noir-300">

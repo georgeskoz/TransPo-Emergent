@@ -146,7 +146,7 @@ export default function UserDashboard() {
               <Zap className="w-6 h-6 text-black" />
             </div>
             <div>
-              <span className="font-heading text-lg font-bold text-white">SwiftMove</span>
+              <span className="font-heading text-lg font-bold text-white">Transpo</span>
               <div className="text-xs text-noir-100">Welcome, {user?.name}</div>
             </div>
           </div>

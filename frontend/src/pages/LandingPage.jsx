@@ -551,7 +551,7 @@ export default function LandingPage() {
             <span className="font-heading text-lg font-bold text-white">Transpo</span>
           </div>
           <p className="text-noir-100 text-sm">
-            © 2024 SwiftMove. All rights reserved.
+            © 2024 Transpo. All rights reserved.
           </p>
         </div>
       </footer>
