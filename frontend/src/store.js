@@ -22,7 +22,16 @@ export const useAuthStore = create(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
           });
-          const data = await res.json();
+          
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            console.error('JSON parse error:', text);
+            throw new Error('Server error. Please try again.');
+          }
+          
           if (!res.ok) throw new Error(data.detail || 'Login failed');
           set({ user: data.user, token: data.access_token, isAuthenticated: true, isLoading: false });
           return data;
@@ -40,7 +49,16 @@ export const useAuthStore = create(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email, password, phone, role }),
           });
-          const data = await res.json();
+          
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            console.error('JSON parse error:', text);
+            throw new Error('Server error. Please try again.');
+          }
+          
           if (!res.ok) throw new Error(data.detail || 'Registration failed');
           set({ user: data.user, token: data.access_token, isAuthenticated: true, isLoading: false });
           return data;
