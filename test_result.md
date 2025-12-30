@@ -123,11 +123,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Fare estimate returns correct breakdown with Quebec taxes."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Fare estimation API working correctly. Montreal route (Downtown to Old Port) returns proper breakdown: Base $3.50, Distance $2.30 (1.32km), Time $1.71 (2.6min), Gov fee $0.90, GST $0.42, QST $0.84, Total $9.67. Quebec taxes calculated correctly. Multiple vehicle types (sedan, SUV, van, bike) working. Competitor estimates included."
 
   - task: "Driver Profile API"
     implemented: true
