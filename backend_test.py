@@ -181,22 +181,23 @@ class TranspoAPITester:
                 print(f"   Driver profile: {response.get('name', 'N/A')} ({response.get('email', 'N/A')})")
 
     def test_fare_estimation(self):
-        """Test fare estimation with Quebec taxes"""
+        """Test fare estimation with Quebec taxes - Montreal locations"""
         print("\n" + "="*50)
         print("💰 FARE ESTIMATION TESTS")
         print("="*50)
         
-        # Montreal coordinates (Downtown to Old Port)
+        # Test coordinates from review request - Montreal locations
+        # "1000 Rue" to "300 Rue Saint-Paul" (approximate coordinates)
         fare_request = {
-            "pickup_lat": 45.5017,
+            "pickup_lat": 45.5017,   # Downtown Montreal area
             "pickup_lng": -73.5673,
-            "dropoff_lat": 45.5088,
+            "dropoff_lat": 45.5088,  # Old Port area (Rue Saint-Paul)
             "dropoff_lng": -73.5538,
             "vehicle_type": "sedan"
         }
         
         success, response = self.run_test(
-            "Fare Estimation", 
+            "Fare Estimation (Montreal Route)", 
             "POST", 
             "fare/estimate", 
             200,
@@ -205,30 +206,200 @@ class TranspoAPITester:
         
         if success and 'our_fare' in response:
             fare = response['our_fare']
-            print(f"   Base fare: ${fare.get('base_fare', 0)}")
-            print(f"   Distance charge: ${fare.get('distance_charge', 0)}")
-            print(f"   Time charge: ${fare.get('time_charge', 0)}")
-            print(f"   Government fee: ${fare.get('government_fee', 0)}")
-            print(f"   GST (5%): ${fare.get('gst', 0)}")
-            print(f"   QST (9.975%): ${fare.get('qst', 0)}")
-            print(f"   Total: ${fare.get('total', 0)}")
+            print(f"   📍 Route: Downtown Montreal to Old Port")
+            print(f"   💵 Base fare: ${fare.get('base_fare', 0)}")
+            print(f"   📏 Distance charge: ${fare.get('distance_charge', 0)} ({fare.get('distance_km', 0)} km)")
+            print(f"   ⏱️  Time charge: ${fare.get('time_charge', 0)} ({fare.get('duration_min', 0)} min)")
+            print(f"   🏛️  Government fee: ${fare.get('government_fee', 0)}")
+            print(f"   📊 GST (5%): ${fare.get('gst', 0)}")
+            print(f"   📊 QST (9.975%): ${fare.get('qst', 0)}")
+            print(f"   💰 TOTAL: ${fare.get('total', 0)}")
             
             # Verify Quebec tax calculation
             if fare.get('gst', 0) > 0 and fare.get('qst', 0) > 0:
                 print("✅ Quebec taxes (GST + QST) calculated correctly")
             else:
                 print("❌ Quebec taxes missing or incorrect")
+                
+            # Verify fare breakdown makes sense
+            expected_subtotal = fare.get('base_fare', 0) + fare.get('distance_charge', 0) + fare.get('time_charge', 0)
+            actual_subtotal = fare.get('subtotal', 0)
+            if abs(expected_subtotal - actual_subtotal) < 0.01:
+                print("✅ Fare breakdown calculation is correct")
+            else:
+                print(f"❌ Fare breakdown mismatch: expected {expected_subtotal}, got {actual_subtotal}")
         
         # Test different vehicle types
         for vehicle_type in ["suv", "van", "bike"]:
             fare_request["vehicle_type"] = vehicle_type
-            self.run_test(
+            success, response = self.run_test(
                 f"Fare Estimation - {vehicle_type.upper()}", 
                 "POST", 
                 "fare/estimate", 
                 200,
                 fare_request
             )
+            if success and 'our_fare' in response:
+                total = response['our_fare'].get('total', 0)
+                print(f"   {vehicle_type.upper()} total: ${total}")
+        
+        # Test with longer distance
+        long_distance_request = {
+            "pickup_lat": 45.5017,   # Downtown Montreal
+            "pickup_lng": -73.5673,
+            "dropoff_lat": 45.4215,  # South Shore (longer trip)
+            "dropoff_lng": -73.4951,
+            "vehicle_type": "sedan"
+        }
+        
+        success, response = self.run_test(
+            "Fare Estimation (Long Distance)", 
+            "POST", 
+            "fare/estimate", 
+            200,
+            long_distance_request
+        )
+        
+        if success and 'our_fare' in response:
+            fare = response['our_fare']
+            print(f"   📍 Long distance: ${fare.get('total', 0)} ({fare.get('distance_km', 0)} km)")
+
+    def test_driver_profile_api(self):
+        """Test driver profile API endpoints"""
+        print("\n" + "="*50)
+        print("🚗 DRIVER PROFILE API TESTS")
+        print("="*50)
+        
+        if not self.driver_token:
+            print("❌ Skipping driver profile tests - no driver token")
+            return
+        
+        # Test get driver profile
+        success, response = self.run_test(
+            "Get Driver Profile", 
+            "GET", 
+            "driver/profile", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            print(f"   Driver ID: {response.get('id', 'N/A')}")
+            print(f"   Name: {response.get('name', 'N/A')}")
+            print(f"   Vehicle: {response.get('vehicle_color', '')} {response.get('vehicle_make', '')} {response.get('vehicle_model', '')}")
+            print(f"   License Plate: {response.get('license_plate', 'N/A')}")
+            print(f"   Status: {response.get('status', 'N/A')}")
+            print(f"   Rating: {response.get('rating', 'N/A')}")
+            print(f"   Total Rides: {response.get('total_rides', 'N/A')}")
+            print(f"   Verification Status: {response.get('verification_status', 'N/A')}")
+        
+        # Test update driver profile
+        profile_update = {
+            "vehicle_type": "sedan",
+            "vehicle_make": "Toyota",
+            "vehicle_model": "Camry",
+            "vehicle_color": "White",
+            "license_plate": "TEST123"
+        }
+        
+        self.run_test(
+            "Update Driver Profile", 
+            "PUT", 
+            "driver/profile", 
+            200,
+            profile_update,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test update driver status
+        self.run_test(
+            "Update Driver Status - Online", 
+            "POST", 
+            "driver/status?status=online", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test update driver location
+        location_data = {
+            "latitude": 45.5017,
+            "longitude": -73.5673
+        }
+        self.run_test(
+            "Update Driver Location", 
+            "POST", 
+            "driver/location", 
+            200,
+            location_data,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test get driver jobs
+        self.run_test(
+            "Get Driver Jobs", 
+            "GET", 
+            "driver/jobs", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test get driver earnings
+        success, response = self.run_test(
+            "Get Driver Earnings", 
+            "GET", 
+            "driver/earnings", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            print(f"   Today's Earnings: ${response.get('today', 0)}")
+            print(f"   Weekly Earnings: ${response.get('weekly', 0)}")
+            print(f"   Total Earnings: ${response.get('total', 0)}")
+            print(f"   Total Rides: {response.get('total_rides', 0)}")
+            print(f"   Rating: {response.get('rating', 0)}")
+
+    def run_focused_tests(self):
+        """Run focused tests based on test_result.md requirements"""
+        print("🚀 Starting Transpo Backend API Focused Test Suite")
+        print(f"🎯 Testing against: {self.base_url}")
+        print("📋 Focus: Authentication, Fare Estimation, Driver Profile APIs")
+        
+        start_time = datetime.now()
+        
+        try:
+            self.test_health_check()
+            self.test_authentication()
+            self.test_fare_estimation()
+            self.test_driver_profile_api()
+        except KeyboardInterrupt:
+            print("\n⚠️ Tests interrupted by user")
+        except Exception as e:
+            print(f"\n💥 Unexpected error: {e}")
+        
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        # Print summary
+        print("\n" + "="*60)
+        print("📊 TEST SUMMARY")
+        print("="*60)
+        print(f"Tests run: {self.tests_run}")
+        print(f"Tests passed: {self.tests_passed}")
+        print(f"Tests failed: {self.tests_run - self.tests_passed}")
+        print(f"Success rate: {(self.tests_passed/self.tests_run*100):.1f}%" if self.tests_run > 0 else "0%")
+        print(f"Duration: {duration:.2f}s")
+        
+        if self.failed_tests:
+            print(f"\n❌ FAILED TESTS ({len(self.failed_tests)}):")
+            for i, test in enumerate(self.failed_tests, 1):
+                print(f"{i}. {test['test']} - {test.get('error', 'Status code mismatch')}")
+                if 'endpoint' in test:
+                    print(f"   Endpoint: {test['endpoint']}")
+                if 'expected' in test and 'actual' in test:
+                    print(f"   Expected: {test['expected']}, Got: {test['actual']}")
+        
+        return self.tests_passed == self.tests_run
 
     def test_taxi_booking(self):
         """Test taxi booking functionality"""
