@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-SwiftMove Backend API Testing Suite
-Tests all core functionality including auth, fare estimation, booking, and admin features
-Updated to test new profile features: photo upload, payment methods, driver documents, admin verification
+Transpo Backend API Testing Suite
+Tests core functionality focusing on authentication, fare estimation, and driver profile APIs
+Based on test_result.md requirements and review request
 """
 
 import requests
@@ -12,7 +12,7 @@ import io
 from datetime import datetime
 from typing import Dict, List, Optional
 
-class SwiftMoveAPITester:
+class TranspoAPITester:
     def __init__(self, base_url="https://transpo-connect-1.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.user_token = None
