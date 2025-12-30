@@ -432,57 +432,293 @@ class SwiftMoveAPITester:
             headers=self.get_auth_headers(self.driver_token)
         )
 
-    def test_admin_functionality(self):
-        """Test admin dashboard functionality"""
+    def test_user_profile_features(self):
+        """Test user profile functionality including photo upload and payment methods"""
         print("\n" + "="*50)
-        print("👑 ADMIN FUNCTIONALITY TESTS")
+        print("👤 USER PROFILE FEATURES TESTS")
+        print("="*50)
+        
+        if not self.user_token:
+            print("❌ Skipping user profile tests - no user token")
+            return
+        
+        # Test get user profile
+        success, response = self.run_test(
+            "Get User Profile", 
+            "GET", 
+            "user/profile", 
+            200,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        # Test update user profile
+        profile_data = {
+            "first_name": "Updated",
+            "last_name": "User",
+            "phone": "+15145551111",
+            "address": "123 Test Street",
+            "country": "Canada",
+            "state": "Quebec",
+            "city": "Montreal"
+        }
+        
+        self.run_test(
+            "Update User Profile", 
+            "PUT", 
+            "user/profile", 
+            200,
+            profile_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        # Test profile photo upload
+        fake_image = io.BytesIO(b"fake image data")
+        fake_image.name = "test.jpg"
+        
+        success, response = self.run_test(
+            "Upload Profile Photo", 
+            "POST", 
+            "user/profile/photo", 
+            200,
+            data={},
+            files={'photo': fake_image},
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        # Test add payment method - Credit Card
+        payment_data = {
+            "type": "credit_card",
+            "card_last_four": "1234",
+            "card_brand": "Visa",
+            "expiry_month": 12,
+            "expiry_year": 2025,
+            "is_default": True
+        }
+        
+        self.run_test(
+            "Add Credit Card Payment Method", 
+            "POST", 
+            "user/payment-methods", 
+            200,
+            payment_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        # Test add payment method - Apple Pay
+        apple_pay_data = {
+            "type": "apple_pay",
+            "is_default": False
+        }
+        
+        self.run_test(
+            "Add Apple Pay Payment Method", 
+            "POST", 
+            "user/payment-methods", 
+            200,
+            apple_pay_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        # Test add payment method - Google Pay
+        google_pay_data = {
+            "type": "google_pay",
+            "is_default": False
+        }
+        
+        self.run_test(
+            "Add Google Pay Payment Method", 
+            "POST", 
+            "user/payment-methods", 
+            200,
+            google_pay_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        # Test get payment methods
+        success, response = self.run_test(
+            "Get Payment Methods", 
+            "GET", 
+            "user/payment-methods", 
+            200,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if success and 'payment_methods' in response:
+            methods = response['payment_methods']
+            print(f"   Found {len(methods)} payment methods")
+            
+            # Test delete payment method if we have any
+            if methods:
+                method_id = methods[0]['id']
+                self.run_test(
+                    "Delete Payment Method", 
+                    "DELETE", 
+                    f"user/payment-methods/{method_id}", 
+                    200,
+                    headers=self.get_auth_headers(self.user_token)
+                )
+
+    def test_driver_profile_features(self):
+        """Test driver profile functionality including document uploads"""
+        print("\n" + "="*50)
+        print("🚗 DRIVER PROFILE FEATURES TESTS")
+        print("="*50)
+        
+        if not self.driver_token:
+            print("❌ Skipping driver profile tests - no driver token")
+            return
+        
+        # Test get driver profile
+        success, response = self.run_test(
+            "Get Driver Profile", 
+            "GET", 
+            "driver/profile", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test update driver profile
+        driver_profile_data = {
+            "first_name": "Updated",
+            "last_name": "Driver",
+            "phone": "+15145552222",
+            "address": "456 Driver Street",
+            "country": "Canada",
+            "state": "Quebec",
+            "city": "Montreal",
+            "vehicle_type": "sedan",
+            "vehicle_make": "Toyota",
+            "vehicle_model": "Camry",
+            "vehicle_color": "White",
+            "license_plate": "ABC123",
+            "drivers_license_number": "DL123456789",
+            "drivers_license_expiry": "2025-12-31",
+            "taxi_license_number": "TX987654321",
+            "taxi_license_expiry": "2025-12-31"
+        }
+        
+        self.run_test(
+            "Update Driver Profile", 
+            "PUT", 
+            "driver/profile", 
+            200,
+            driver_profile_data,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test upload driver's license photo
+        fake_license = io.BytesIO(b"fake license image data")
+        fake_license.name = "license.jpg"
+        
+        license_data = {
+            'license_number': 'DL123456789',
+            'expiry_date': '2025-12-31'
+        }
+        
+        success, response = self.run_test(
+            "Upload Driver's License Photo", 
+            "POST", 
+            "driver/documents/license", 
+            200,
+            data=license_data,
+            files={'photo': fake_license},
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test upload taxi license photo
+        fake_taxi_license = io.BytesIO(b"fake taxi license image data")
+        fake_taxi_license.name = "taxi_license.jpg"
+        
+        taxi_license_data = {
+            'license_number': 'TX987654321',
+            'expiry_date': '2025-12-31'
+        }
+        
+        success, response = self.run_test(
+            "Upload Taxi License Photo", 
+            "POST", 
+            "driver/documents/taxi-license", 
+            200,
+            data=taxi_license_data,
+            files={'photo': fake_taxi_license},
+            headers=self.get_auth_headers(self.driver_token)
+        )
+
+    def test_admin_verification_features(self):
+        """Test admin verification workflow for driver documents"""
+        print("\n" + "="*50)
+        print("👑 ADMIN VERIFICATION FEATURES TESTS")
         print("="*50)
         
         if not self.admin_token:
-            print("❌ Skipping admin tests - no admin token")
+            print("❌ Skipping admin verification tests - no admin token")
             return
         
-        # Test get admin stats
+        # Test get pending verifications
         success, response = self.run_test(
-            "Get Admin Stats", 
+            "Get Pending Verifications", 
             "GET", 
-            "admin/stats", 
+            "admin/drivers/pending-verification", 
             200,
             headers=self.get_auth_headers(self.admin_token)
         )
         
-        if success:
-            print(f"   Users: {response.get('users', {}).get('total', 0)}")
-            print(f"   Drivers: {response.get('drivers', {}).get('total', 0)} (Online: {response.get('drivers', {}).get('online', 0)})")
-            print(f"   Bookings: {response.get('bookings', {}).get('total', 0)}")
-            print(f"   Revenue: ${response.get('revenue', {}).get('platform', 0)}")
-        
-        # Test get all users
-        self.run_test(
-            "Get All Users", 
-            "GET", 
-            "admin/users", 
-            200,
-            headers=self.get_auth_headers(self.admin_token)
-        )
-        
-        # Test get all drivers
-        self.run_test(
-            "Get All Drivers", 
-            "GET", 
-            "admin/drivers", 
-            200,
-            headers=self.get_auth_headers(self.admin_token)
-        )
-        
-        # Test get all bookings
-        self.run_test(
-            "Get All Bookings", 
-            "GET", 
-            "admin/bookings", 
-            200,
-            headers=self.get_auth_headers(self.admin_token)
-        )
+        if success and 'drivers' in response:
+            drivers = response['drivers']
+            print(f"   Found {len(drivers)} drivers with pending verifications")
+            
+            # Test document verification if we have drivers
+            if drivers:
+                driver_id = drivers[0]['id']
+                
+                # Test approve driver's license
+                verification_data = {
+                    "driver_id": driver_id,
+                    "document_type": "drivers_license",
+                    "status": "approved"
+                }
+                
+                self.run_test(
+                    "Approve Driver's License", 
+                    "POST", 
+                    "admin/verify-document", 
+                    200,
+                    verification_data,
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                # Test reject taxi license with reason
+                rejection_data = {
+                    "driver_id": driver_id,
+                    "document_type": "taxi_license",
+                    "status": "rejected",
+                    "rejection_reason": "Document not clear enough"
+                }
+                
+                self.run_test(
+                    "Reject Taxi License", 
+                    "POST", 
+                    "admin/verify-document", 
+                    200,
+                    rejection_data,
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                # Test approve profile photo
+                photo_approval_data = {
+                    "driver_id": driver_id,
+                    "document_type": "profile_photo",
+                    "status": "approved"
+                }
+                
+                self.run_test(
+                    "Approve Profile Photo", 
+                    "POST", 
+                    "admin/verify-document", 
+                    200,
+                    photo_approval_data,
+                    headers=self.get_auth_headers(self.admin_token)
+                )
 
     def test_map_functionality(self):
         """Test map and driver location functionality"""
