@@ -767,12 +767,17 @@ async def add_payment_method(method: PaymentMethodAdd, current_user: dict = Depe
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # If this is default, unset other defaults
+    # If this is default, unset other defaults first
     if method.is_default:
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$set": {"payment_methods.$[].is_default": False}}
-        )
+        user = await db.users.find_one({"id": current_user["id"]})
+        if user and user.get("payment_methods"):
+            updated_methods = [
+                {**m, "is_default": False} for m in user["payment_methods"]
+            ]
+            await db.users.update_one(
+                {"id": current_user["id"]},
+                {"$set": {"payment_methods": updated_methods}}
+            )
     
     await db.users.update_one(
         {"id": current_user["id"]},
