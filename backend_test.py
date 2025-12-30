@@ -132,37 +132,64 @@ class SwiftMoveAPITester:
         print("🔐 AUTHENTICATION TESTS")
         print("="*50)
         
-        # Test user registration
+        # Test user registration with form data
+        form_data = {
+            'email': self.test_user["email"],
+            'password': self.test_user["password"],
+            'first_name': 'Test',
+            'last_name': 'User',
+            'phone': self.test_user["phone"],
+            'role': self.test_user["role"]
+        }
+        
         success, response = self.run_test(
-            "User Registration", 
+            "User Registration (Form)", 
             "POST", 
             "auth/register", 
             200,
-            self.test_user
+            data=form_data
         )
         if success and 'access_token' in response:
             self.user_token = response['access_token']
             print(f"   User token obtained: {self.user_token[:20]}...")
         
-        # Test driver registration
+        # Test driver registration with form data
+        driver_form_data = {
+            'email': self.test_driver["email"],
+            'password': self.test_driver["password"],
+            'first_name': 'Test',
+            'last_name': 'Driver',
+            'phone': self.test_driver["phone"],
+            'role': self.test_driver["role"]
+        }
+        
         success, response = self.run_test(
-            "Driver Registration", 
+            "Driver Registration (Form)", 
             "POST", 
             "auth/register", 
             200,
-            self.test_driver
+            data=driver_form_data
         )
         if success and 'access_token' in response:
             self.driver_token = response['access_token']
             print(f"   Driver token obtained: {self.driver_token[:20]}...")
         
-        # Test admin registration
+        # Test admin registration with form data
+        admin_form_data = {
+            'email': self.test_admin["email"],
+            'password': self.test_admin["password"],
+            'first_name': 'Test',
+            'last_name': 'Admin',
+            'phone': self.test_admin["phone"],
+            'role': self.test_admin["role"]
+        }
+        
         success, response = self.run_test(
-            "Admin Registration", 
+            "Admin Registration (Form)", 
             "POST", 
             "auth/register", 
             200,
-            self.test_admin
+            data=admin_form_data
         )
         if success and 'access_token' in response:
             self.admin_token = response['access_token']
@@ -175,6 +202,31 @@ class SwiftMoveAPITester:
             "auth/login", 
             200,
             {"email": self.test_user["email"], "password": self.test_user["password"]}
+        )
+        
+        # Test demo credentials
+        success, response = self.run_test(
+            "Demo User Login", 
+            "POST", 
+            "auth/login", 
+            200,
+            {"email": "user@demo.com", "password": "demo123"}
+        )
+        
+        success, response = self.run_test(
+            "Demo Driver Login", 
+            "POST", 
+            "auth/login", 
+            200,
+            {"email": "driver@demo.com", "password": "demo123"}
+        )
+        
+        success, response = self.run_test(
+            "Demo Admin Login", 
+            "POST", 
+            "auth/login", 
+            200,
+            {"email": "admin@demo.com", "password": "demo123"}
         )
         
         # Test invalid login
