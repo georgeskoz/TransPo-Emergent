@@ -30,6 +30,7 @@ export default function DriverDashboard() {
   const [showBottomSheet, setShowBottomSheet] = useState(true);
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     loadDriverData();
