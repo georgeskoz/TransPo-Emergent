@@ -11,7 +11,7 @@ import { useAuthStore } from "../store";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Camera, User, MapPin, Car, FileText, Upload,
-  CheckCircle, XCircle, Clock, AlertCircle
+  CheckCircle, XCircle, Clock, AlertCircle, Receipt, Check
 } from "lucide-react";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
