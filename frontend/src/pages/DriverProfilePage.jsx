@@ -45,7 +45,14 @@ export default function DriverProfilePage() {
     drivers_license_number: "",
     drivers_license_expiry: "",
     taxi_license_number: "",
-    taxi_license_expiry: ""
+    taxi_license_expiry: "",
+    // Tax Info
+    gst_number: "",
+    qst_number: "",
+    srs_code: "",
+    billing_number: "",
+    srs_available: false,
+    tax_disclaimer_accepted: false
   });
   const [photoPreview, setPhotoPreview] = useState(null);
   const [driversLicensePhoto, setDriversLicensePhoto] = useState(null);
