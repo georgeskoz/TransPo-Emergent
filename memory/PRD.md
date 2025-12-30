@@ -1,4 +1,4 @@
-# SwiftMove - Multi-Service Mobility Platform PRD
+# Transpo - Multi-Service Mobility Platform PRD
 
 ## Original Problem Statement
 Build a multi-service mobility platform with:
