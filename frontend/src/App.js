@@ -1,13 +1,16 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuthStore } from "./store";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
+import AuthCallback from "./pages/AuthCallback";
 import UserDashboard from "./pages/UserDashboard";
+import UserProfile from "./pages/UserProfile";
 import DriverDashboard from "./pages/DriverDashboard";
+import DriverProfilePage from "./pages/DriverProfilePage";
 import AdminDashboard from "./pages/AdminDashboard";
 import BookingPage from "./pages/BookingPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -27,59 +30,72 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   return children;
 };
 
-function App() {
+// App Router with session_id detection
+function AppRouter() {
+  const location = useLocation();
   const { isAuthenticated, user } = useAuthStore();
 
+  // Check URL fragment for session_id (social auth callback)
+  if (location.hash?.includes('session_id=')) {
+    return <AuthCallback />;
+  }
+
   return (
-    <div className="min-h-screen bg-noir-700">
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={isAuthenticated ? <Navigate to={getDashboardPath(user?.role)} replace /> : <AuthPage />} />
-          
-          {/* User Routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <UserDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/book" element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <BookingPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/payment/success" element={
-            <ProtectedRoute>
-              <PaymentSuccess />
-            </ProtectedRoute>
-          } />
-          <Route path="/payment/cancel" element={
-            <ProtectedRoute>
-              <Navigate to="/dashboard" replace />
-            </ProtectedRoute>
-          } />
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/auth" element={isAuthenticated ? <Navigate to={getDashboardPath(user?.role)} replace /> : <AuthPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      
+      {/* User Routes */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute allowedRoles={['user']}>
+          <UserDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <UserProfile />
+        </ProtectedRoute>
+      } />
+      <Route path="/book" element={
+        <ProtectedRoute allowedRoles={['user']}>
+          <BookingPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/payment/success" element={
+        <ProtectedRoute>
+          <PaymentSuccess />
+        </ProtectedRoute>
+      } />
+      <Route path="/payment/cancel" element={
+        <ProtectedRoute>
+          <Navigate to="/dashboard" replace />
+        </ProtectedRoute>
+      } />
 
-          {/* Driver Routes */}
-          <Route path="/driver" element={
-            <ProtectedRoute allowedRoles={['driver']}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          } />
+      {/* Driver Routes */}
+      <Route path="/driver" element={
+        <ProtectedRoute allowedRoles={['driver']}>
+          <DriverDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/driver/profile" element={
+        <ProtectedRoute allowedRoles={['driver']}>
+          <DriverProfilePage />
+        </ProtectedRoute>
+      } />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+      {/* Admin Routes */}
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-      <Toaster position="top-right" richColors />
-    </div>
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
@@ -89,6 +105,17 @@ function getDashboardPath(role) {
     case 'admin': return '/admin';
     default: return '/dashboard';
   }
+}
+
+function App() {
+  return (
+    <div className="min-h-screen bg-noir-700">
+      <BrowserRouter>
+        <AppRouter />
+      </BrowserRouter>
+      <Toaster position="top-right" richColors />
+    </div>
+  );
 }
 
 export default App;
