@@ -101,3 +101,122 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Multi-service mobility platform (Transpo) with User App, Driver App, Admin Panel. Need to fix blank screen after theme change, inactive pickup/dropoff inputs, and missing driver dashboard menu."
+
+backend:
+  - task: "User Authentication - Login/Register"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fixed CORS credentials issue. Login working via API and frontend."
+
+  - task: "Fare Estimate API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fare estimate returns correct breakdown with Quebec taxes."
+
+  - task: "Driver Profile API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Profile endpoints exist but need verification."
+
+frontend:
+  - task: "Auth Page - Light Theme Fix"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AuthPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fixed dark theme classes (noir-*, cyan) to light theme (gray-*, white). Welcome Back and Transpo branding now visible."
+
+  - task: "User Dashboard - Pickup/Dropoff Inputs"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/UserDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Inputs are active, autocomplete works with Montreal addresses, use current location button present."
+
+  - task: "User Dashboard - Fare Estimate Display"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/UserDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fare estimate displays correctly with breakdown showing base fare, distance, time charges."
+
+  - task: "Driver Dashboard - Menu Navigation"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/DriverDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added slide-out menu with Home, My Profile, Earnings, Trip History, Ratings, Settings, and Log Out options."
+
+  - task: "Landing Page - Light Theme"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/LandingPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Landing page displays correctly with light theme."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "User Dashboard - Pickup/Dropoff Inputs"
+    - "User Dashboard - Fare Estimate Display"
+    - "Driver Dashboard - Menu Navigation"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Fixed the following issues: 1) Auth page now uses light theme classes - visible text and branding. 2) CORS credentials issue fixed by removing 'credentials: include' from fetch calls. 3) Pickup/Dropoff inputs work with mock Montreal address autocomplete. 4) Added full slide-out menu to Driver Dashboard with navigation options. Please test: Login flow, User Dashboard booking flow (pickup, dropoff, fare estimate), and Driver Dashboard menu functionality. Demo accounts: user@demo.com/demo123, driver@demo.com/demo123"
