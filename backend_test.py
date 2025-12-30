@@ -70,6 +70,9 @@ class SwiftMoveAPITester:
             elif method == 'POST':
                 if files:
                     response = requests.post(url, data=data, files=files, headers=test_headers)
+                elif 'auth/register' in endpoint and data:
+                    # Registration endpoint expects form data
+                    response = requests.post(url, data=data, headers=test_headers)
                 else:
                     response = requests.post(url, json=data, headers=test_headers)
             elif method == 'PUT':
