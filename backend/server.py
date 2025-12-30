@@ -29,7 +29,7 @@ db = client[os.environ['DB_NAME']]
 stripe.api_key = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
 
 # JWT Configuration
-SECRET_KEY = os.environ.get('JWT_SECRET', 'swiftmove-secret-key-2024-super-secure')
+SECRET_KEY = os.environ.get('JWT_SECRET', 'transpo-secret-key-2024-super-secure')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
@@ -41,7 +41,7 @@ security = HTTPBearer()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="SwiftMove API", description="Multi-Service Mobility Platform")
+app = FastAPI(title="Transpo API", description="Multi-Service Mobility Platform")
 api_router = APIRouter(prefix="/api")
 
 # ============== MODELS ==============
@@ -746,7 +746,7 @@ async def create_checkout_session(request: Request, booking_id: str, current_use
                 'price_data': {
                     'currency': 'cad',
                     'product_data': {
-                        'name': f'SwiftMove Ride - {booking["pickup"]["address"][:30]} to {booking["dropoff"]["address"][:30]}',
+                        'name': f'Transpo Ride - {booking["pickup"]["address"][:30]} to {booking["dropoff"]["address"][:30]}',
                     },
                     'unit_amount': int(amount * 100),
                 },
@@ -852,7 +852,7 @@ async def seed_demo_drivers():
             "id": driver_id,
             "user_id": driver_id,
             "name": f"Driver {i+1}",
-            "email": f"driver{i+1}@swiftmove.com",
+            "email": f"driver{i+1}@transpo.com",
             "phone": f"+1514555{1000+i}",
             "status": "online" if random.random() > 0.3 else "offline",
             "is_available": random.random() > 0.2,
@@ -876,7 +876,7 @@ async def seed_demo_drivers():
         demo_drivers.append(driver)
     
     # Clear existing demo drivers and insert new ones
-    await db.drivers.delete_many({"email": {"$regex": "driver.*@swiftmove.com"}})
+    await db.drivers.delete_many({"email": {"$regex": "driver.*@transpo.com"}})
     await db.drivers.insert_many(demo_drivers)
     
     return {"message": f"Created {len(demo_drivers)} demo drivers", "count": len(demo_drivers)}
@@ -885,7 +885,7 @@ async def seed_demo_drivers():
 
 @api_router.get("/")
 async def root():
-    return {"message": "SwiftMove API is running", "version": "1.0.0"}
+    return {"message": "Transpo API is running", "version": "1.0.0"}
 
 @api_router.get("/health")
 async def health_check():
