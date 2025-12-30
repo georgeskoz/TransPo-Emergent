@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore, useBookingStore, useMapStore } from "../store";
 import { toast } from "sonner";
 import { 
-  Car, Package, UtensilsCrossed, MapPin, Clock, LogOut, 
+  Car, Package, UtensilsCrossed, MapPin, Clock, LogOut, User,
   Zap, History, CreditCard, Navigation, Star, ChevronRight
 } from "lucide-react";
 
@@ -152,6 +152,15 @@ export default function UserDashboard() {
           </div>
           
           <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/profile')}
+              className="text-noir-100 hover:text-white"
+              data-testid="profile-btn"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Profile
+            </Button>
             <Button 
               variant="ghost" 
               onClick={() => navigate('/book')}
