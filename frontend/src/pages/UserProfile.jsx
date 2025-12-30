@@ -63,7 +63,7 @@ export default function UserProfile() {
     try {
       const res = await fetch(`${API_URL}/user/profile`, {
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         const data = await res.json();
@@ -101,7 +101,7 @@ export default function UserProfile() {
           method: 'POST',
           headers: getAuthHeaders(),
           body: formData,
-          credentials: 'include'
+          
         });
         if (res.ok) {
           const data = await res.json();
@@ -121,7 +121,7 @@ export default function UserProfile() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(profile),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         toast.success('Profile saved');
@@ -141,7 +141,7 @@ export default function UserProfile() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(newPayment),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         const data = await res.json();
@@ -167,7 +167,7 @@ export default function UserProfile() {
       const res = await fetch(`${API_URL}/user/payment-methods/${methodId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         setPaymentMethods(paymentMethods.filter(m => m.id !== methodId));

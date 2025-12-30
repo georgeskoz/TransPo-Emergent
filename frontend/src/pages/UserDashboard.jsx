@@ -360,7 +360,7 @@ export default function UserDashboard() {
     try {
       const res = await fetch(`${API_URL}/bookings/user`, {
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         const data = await res.json();
@@ -464,7 +464,7 @@ export default function UserDashboard() {
           dropoff_lng: dropoff.lng,
           vehicle_type: vehicleType
         }),
-        credentials: 'include'
+        
       });
       const data = await res.json();
       setFareEstimate(data);
@@ -496,7 +496,7 @@ export default function UserDashboard() {
           vehicle_type: vehicleType,
           ordering_for: orderingFor
         }),
-        credentials: 'include'
+        
       });
       const data = await res.json();
       

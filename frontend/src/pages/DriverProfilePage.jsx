@@ -75,7 +75,7 @@ export default function DriverProfilePage() {
     try {
       const res = await fetch(`${API_URL}/driver/profile`, {
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         const data = await res.json();
@@ -143,7 +143,7 @@ export default function DriverProfilePage() {
         method: 'POST',
         headers: getAuthHeaders(),
         body: formData,
-        credentials: 'include'
+        
       });
       if (res.ok) {
         const data = await res.json();
@@ -170,7 +170,7 @@ export default function DriverProfilePage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(profile),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         toast.success('Profile saved');

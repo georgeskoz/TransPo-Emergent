@@ -40,8 +40,8 @@ export default function DriverDashboard() {
   const loadDriverData = async () => {
     try {
       const [profileRes, earningsRes] = await Promise.all([
-        fetch(`${API_URL}/driver/profile`, { headers: getAuthHeaders(), credentials: 'include' }),
-        fetch(`${API_URL}/driver/earnings`, { headers: getAuthHeaders(), credentials: 'include' })
+        fetch(`${API_URL}/driver/profile`, { headers: getAuthHeaders() }),
+        fetch(`${API_URL}/driver/earnings`, { headers: getAuthHeaders() })
       ]);
       
       if (profileRes.ok) {
@@ -64,7 +64,7 @@ export default function DriverDashboard() {
 
   const loadJobs = async () => {
     try {
-      const res = await fetch(`${API_URL}/driver/jobs`, { headers: getAuthHeaders(), credentials: 'include' });
+      const res = await fetch(`${API_URL}/driver/jobs`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setJobs(data.pending_jobs || [], data.active_jobs || []);
@@ -87,7 +87,7 @@ export default function DriverDashboard() {
       const res = await fetch(`${API_URL}/driver/status?status=${newStatus}`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         setIsOnline(!isOnline);
@@ -114,7 +114,7 @@ export default function DriverDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ latitude: lat, longitude: lng }),
-        credentials: 'include'
+        
       });
     } catch (e) {
       console.log('Error updating location:', e);
@@ -127,7 +127,7 @@ export default function DriverDashboard() {
       const res = await fetch(`${API_URL}/driver/accept/${bookingId}`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         toast.success('Trip accepted!');
@@ -157,7 +157,7 @@ export default function DriverDashboard() {
       const res = await fetch(`${API_URL}/driver/complete/${bookingId}`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        credentials: 'include'
+        
       });
       if (res.ok) {
         const data = await res.json();
