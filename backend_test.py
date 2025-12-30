@@ -2,11 +2,13 @@
 """
 SwiftMove Backend API Testing Suite
 Tests all core functionality including auth, fare estimation, booking, and admin features
+Updated to test new profile features: photo upload, payment methods, driver documents, admin verification
 """
 
 import requests
 import sys
 import json
+import io
 from datetime import datetime
 from typing import Dict, List, Optional
 
