@@ -116,6 +116,9 @@ backend:
       - working: true
         agent: "main"
         comment: "Fixed CORS credentials issue. Login working via API and frontend."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Authentication working perfectly. Demo accounts user@demo.com/demo123 and driver@demo.com/demo123 login successfully. JWT tokens returned correctly. GET /api/auth/me returns proper user profiles. Invalid credentials properly rejected with 401. Both user and driver roles functioning."
 
   - task: "Fare Estimate API"
     implemented: true
