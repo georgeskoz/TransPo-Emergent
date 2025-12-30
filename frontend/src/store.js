@@ -21,6 +21,7 @@ export const useAuthStore = create(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
+            credentials: 'include'
           });
           
           const text = await res.text();
@@ -41,13 +42,13 @@ export const useAuthStore = create(
         }
       },
 
-      register: async (name, email, password, phone, role = 'user') => {
+      register: async (formData) => {
         set({ isLoading: true, error: null });
         try {
           const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, phone, role }),
+            body: formData,
+            credentials: 'include'
           });
           
           const text = await res.text();
@@ -68,7 +69,64 @@ export const useAuthStore = create(
         }
       },
 
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      socialLogin: async (sessionId) => {
+        set({ isLoading: true, error: null });
+        try {
+          const res = await fetch(`${API_URL}/auth/social/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId }),
+            credentials: 'include'
+          });
+          
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Social login failed');
+          
+          set({ user: data.user, token: null, isAuthenticated: true, isLoading: false });
+          return data;
+        } catch (error) {
+          set({ error: error.message, isLoading: false });
+          throw error;
+        }
+      },
+
+      checkAuth: async () => {
+        try {
+          const { token } = get();
+          const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+          
+          const res = await fetch(`${API_URL}/auth/me`, {
+            headers,
+            credentials: 'include'
+          });
+          
+          if (res.ok) {
+            const user = await res.json();
+            set({ user, isAuthenticated: true });
+            return user;
+          } else {
+            set({ user: null, token: null, isAuthenticated: false });
+            return null;
+          }
+        } catch (error) {
+          set({ user: null, token: null, isAuthenticated: false });
+          return null;
+        }
+      },
+
+      logout: async () => {
+        try {
+          const { token } = get();
+          await fetch(`${API_URL}/auth/logout`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            credentials: 'include'
+          });
+        } catch (e) {
+          console.log('Logout error:', e);
+        }
+        set({ user: null, token: null, isAuthenticated: false });
+      },
 
       getAuthHeaders: () => {
         const token = get().token;
@@ -111,7 +169,7 @@ export const useDriverStore = create((set) => ({
 
 export const useMapStore = create((set) => ({
   drivers: [],
-  userLocation: { lat: 45.5017, lng: -73.5673 }, // Montreal default
+  userLocation: { lat: 45.5017, lng: -73.5673 },
   pickup: null,
   dropoff: null,
 
