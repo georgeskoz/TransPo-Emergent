@@ -639,6 +639,17 @@ async def get_driver_earnings(current_user: dict = Depends(get_current_user)):
     
     weekly_earnings = sum(r["fare"]["total"] * 0.8 for r in completed_rides)
     
+    # Handle case when driver profile doesn't exist
+    if not driver:
+        return {
+            "today": 0,
+            "weekly": round(weekly_earnings, 2),
+            "total": 0,
+            "total_rides": 0,
+            "rating": 5.0,
+            "recent_rides": completed_rides[:10]
+        }
+    
     return {
         "today": driver.get("earnings_today", 0),
         "weekly": round(weekly_earnings, 2),
