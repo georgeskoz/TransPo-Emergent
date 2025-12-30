@@ -162,6 +162,9 @@ frontend:
       - working: true
         agent: "main"
         comment: "Fixed dark theme classes (noir-*, cyan) to light theme (gray-*, white). Welcome Back and Transpo branding now visible."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Auth page working correctly. Welcome Back heading is visible (not hidden/white text on white), Transpo branding visible, light theme properly applied. Login flow works successfully with demo accounts (user@demo.com/demo123, driver@demo.com/demo123) and redirects properly to respective dashboards."
 
   - task: "User Dashboard - Pickup/Dropoff Inputs"
     implemented: true
