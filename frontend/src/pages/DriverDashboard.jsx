@@ -217,11 +217,11 @@ export default function DriverDashboard() {
       {/* Top Header */}
       <div className="relative z-10 p-4 flex items-center justify-between">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => setShowMenu(true)}
           className="icon-btn"
-          data-testid="home-btn"
+          data-testid="menu-btn"
         >
-          <Home className="w-5 h-5 text-gray-700" />
+          <Menu className="w-5 h-5 text-gray-700" />
         </button>
 
         {/* Earnings Badge */}
@@ -232,11 +232,134 @@ export default function DriverDashboard() {
         <button 
           onClick={() => navigate('/driver/profile')}
           className="icon-btn"
-          data-testid="search-btn"
+          data-testid="profile-btn"
         >
           <User className="w-5 h-5 text-gray-700" />
         </button>
       </div>
+
+      {/* Side Menu Overlay */}
+      <AnimatePresence>
+        {showMenu && (
+          <>
+            <motion.div 
+              className="fixed inset-0 bg-black/30 z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMenu(false)}
+            />
+            <motion.div 
+              className="fixed left-0 top-0 bottom-0 w-72 bg-white z-50 shadow-xl"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            >
+              {/* Menu Header */}
+              <div className="p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center">
+                      <Car className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="text-xl font-bold text-gray-900">Transpo</span>
+                  </div>
+                  <button 
+                    onClick={() => setShowMenu(false)}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+                
+                {/* Driver Info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User className="w-6 h-6 text-gray-500" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">{user?.name || 'Driver'}</div>
+                    <div className="text-sm text-gray-500">{user?.email}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <nav className="p-4">
+                <ul className="space-y-1">
+                  <li>
+                    <button 
+                      onClick={() => { navigate('/'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
+                    >
+                      <Home className="w-5 h-5" />
+                      <span>Home</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => { navigate('/driver/profile'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
+                    >
+                      <User className="w-5 h-5" />
+                      <span>My Profile</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => setShowMenu(false)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
+                    >
+                      <Wallet className="w-5 h-5" />
+                      <span>Earnings</span>
+                      <span className="ml-auto text-green-600 font-semibold">${(earnings?.today || 0).toFixed(2)}</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => setShowMenu(false)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
+                    >
+                      <History className="w-5 h-5" />
+                      <span>Trip History</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => setShowMenu(false)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
+                    >
+                      <Star className="w-5 h-5" />
+                      <span>Ratings</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => setShowMenu(false)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
+                    >
+                      <Settings className="w-5 h-5" />
+                      <span>Settings</span>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+
+              {/* Logout */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
+                <button 
+                  onClick={() => { handleLogout(); setShowMenu(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 text-red-600"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Center - Driver Location Indicator */}
       <div className="flex-1 relative flex items-center justify-center">
