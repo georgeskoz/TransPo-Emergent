@@ -113,6 +113,13 @@ class DriverProfileUpdate(BaseModel):
     drivers_license_expiry: Optional[str] = None
     taxi_license_number: Optional[str] = None
     taxi_license_expiry: Optional[str] = None
+    # Tax Information
+    gst_number: Optional[str] = None
+    qst_number: Optional[str] = None
+    srs_code: Optional[str] = None
+    billing_number: Optional[str] = None
+    srs_available: Optional[bool] = None
+    tax_disclaimer_accepted: Optional[bool] = None
 
 class UserResponse(BaseModel):
     id: str
