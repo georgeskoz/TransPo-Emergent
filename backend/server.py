@@ -378,7 +378,7 @@ async def estimate_fare(request: FareEstimateRequest):
     competitor_estimates = get_competitor_estimates(distance_km, duration_min)
     
     # Find best value recommendation
-    all_options = [{"provider": "SwiftMove", "estimated_fare": our_fare["total"], "is_platform": True}]
+    all_options = [{"provider": "Transpo", "estimated_fare": our_fare["total"], "is_platform": True}]
     all_options.extend(competitor_estimates)
     all_options.sort(key=lambda x: x["estimated_fare"])
     

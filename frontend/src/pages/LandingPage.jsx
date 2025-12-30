@@ -50,7 +50,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 rounded-lg bg-cyan flex items-center justify-center">
               <Zap className="w-6 h-6 text-black" />
             </div>
-            <span className="font-heading text-xl font-bold text-white">SwiftMove</span>
+            <span className="font-heading text-xl font-bold text-white">Transpo</span>
           </div>
           
           <div className="glass-strong rounded-full px-6 py-2 hidden md:flex items-center gap-8">
@@ -548,7 +548,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 rounded-lg bg-cyan flex items-center justify-center">
               <Zap className="w-4 h-4 text-black" />
             </div>
-            <span className="font-heading text-lg font-bold text-white">SwiftMove</span>
+            <span className="font-heading text-lg font-bold text-white">Transpo</span>
           </div>
           <p className="text-noir-100 text-sm">
             © 2024 SwiftMove. All rights reserved.
