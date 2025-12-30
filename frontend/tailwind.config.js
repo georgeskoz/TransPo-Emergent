@@ -38,36 +38,26 @@ module.exports = {
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",
                 ring: "hsl(var(--ring))",
-                // Neon Noir custom colors
-                cyan: {
-                    DEFAULT: "#00F0FF",
-                    dark: "#00B8C4"
+                // Custom colors
+                gray: {
+                    50: "#F9FAFB",
+                    100: "#F3F4F6",
+                    200: "#E5E7EB",
+                    300: "#D1D5DB",
+                    400: "#9CA3AF",
+                    500: "#6B7280",
+                    600: "#4B5563",
+                    700: "#374151",
+                    800: "#1F2937",
+                    900: "#111827"
                 },
-                pink: {
-                    DEFAULT: "#FF0099",
-                    dark: "#CC007A"
-                },
-                yellow: {
-                    DEFAULT: "#FAFF00",
-                    dark: "#C8CC00"
-                },
-                noir: {
-                    50: "#EDEDED",
-                    100: "#A1A1AA",
-                    200: "#52525B",
-                    300: "#27272A",
-                    400: "#18181B",
-                    500: "#121212",
-                    600: "#0A0A0A",
-                    700: "#050505",
-                    800: "#030303",
-                    900: "#000000"
-                }
+                success: "#10B981",
+                warning: "#F59E0B",
+                error: "#EF4444",
+                info: "#3B82F6"
             },
             fontFamily: {
-                sans: ["Manrope", "sans-serif"],
-                heading: ["Unbounded", "sans-serif"],
-                mono: ["JetBrains Mono", "monospace"]
+                sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"]
             },
             borderRadius: {
                 lg: "var(--radius)",
@@ -82,25 +72,16 @@ module.exports = {
                 "accordion-up": {
                     from: { height: "var(--radix-accordion-content-height)" },
                     to: { height: "0" }
-                },
-                "pulse-glow": {
-                    "0%, 100%": { opacity: "1" },
-                    "50%": { opacity: "0.5" }
-                },
-                "float": {
-                    "0%, 100%": { transform: "translateY(0)" },
-                    "50%": { transform: "translateY(-10px)" }
                 }
             },
             animation: {
                 "accordion-down": "accordion-down 0.2s ease-out",
-                "accordion-up": "accordion-up 0.2s ease-out",
-                "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-                "float": "float 3s ease-in-out infinite"
+                "accordion-up": "accordion-up 0.2s ease-out"
             },
-            backgroundImage: {
-                "hero-glow": "radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.15) 0%, rgba(5, 5, 5, 0) 70%)",
-                "grid-pattern": "linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px)"
+            boxShadow: {
+                'soft': '0 2px 8px rgba(0, 0, 0, 0.08)',
+                'medium': '0 4px 12px rgba(0, 0, 0, 0.1)',
+                'large': '0 8px 24px rgba(0, 0, 0, 0.12)'
             }
         }
     },
