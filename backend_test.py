@@ -49,12 +49,16 @@ class SwiftMoveAPITester:
         }
 
     def run_test(self, name: str, method: str, endpoint: str, expected_status: int, 
-                 data: Optional[Dict] = None, headers: Optional[Dict] = None) -> tuple:
+                 data: Optional[Dict] = None, headers: Optional[Dict] = None, files: Optional[Dict] = None) -> tuple:
         """Run a single API test"""
         url = f"{self.base_url}/{endpoint}"
-        test_headers = {'Content-Type': 'application/json'}
+        test_headers = {}
         if headers:
             test_headers.update(headers)
+        
+        # Only add Content-Type for JSON requests
+        if not files and data:
+            test_headers['Content-Type'] = 'application/json'
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
@@ -64,7 +68,10 @@ class SwiftMoveAPITester:
             if method == 'GET':
                 response = requests.get(url, headers=test_headers)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=test_headers)
+                if files:
+                    response = requests.post(url, data=data, files=files, headers=test_headers)
+                else:
+                    response = requests.post(url, json=data, headers=test_headers)
             elif method == 'PUT':
                 response = requests.put(url, json=data, headers=test_headers)
             elif method == 'DELETE':
