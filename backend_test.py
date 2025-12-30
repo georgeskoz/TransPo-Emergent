@@ -23,29 +23,15 @@ class TranspoAPITester:
         self.failed_tests = []
         self.booking_id = None
         
-        # Test data
-        self.test_user = {
-            "name": f"Test User {datetime.now().strftime('%H%M%S')}",
-            "email": f"testuser{datetime.now().strftime('%H%M%S')}@swiftmove.com",
-            "password": "TestPass123!",
-            "phone": "+15145551234",
-            "role": "user"
+        # Demo credentials from review request
+        self.demo_user = {
+            "email": "user@demo.com",
+            "password": "demo123"
         }
         
-        self.test_driver = {
-            "name": f"Test Driver {datetime.now().strftime('%H%M%S')}",
-            "email": f"testdriver{datetime.now().strftime('%H%M%S')}@swiftmove.com",
-            "password": "TestPass123!",
-            "phone": "+15145551235",
-            "role": "driver"
-        }
-        
-        self.test_admin = {
-            "name": f"Test Admin {datetime.now().strftime('%H%M%S')}",
-            "email": f"testadmin{datetime.now().strftime('%H%M%S')}@swiftmove.com",
-            "password": "TestPass123!",
-            "phone": "+15145551236",
-            "role": "admin"
+        self.demo_driver = {
+            "email": "driver@demo.com", 
+            "password": "demo123"
         }
 
     def run_test(self, name: str, method: str, endpoint: str, expected_status: int, 
