@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuthStore, useDriverStore } from "../store";
 import { toast } from "sonner";
 import { 
-  Car, LogOut, Zap, MapPin, DollarSign, Star, Clock,
+  Car, LogOut, Zap, MapPin, DollarSign, Star, Clock, User,
   CheckCircle, XCircle, Navigation, AlertCircle
 } from "lucide-react";
 
@@ -175,6 +175,17 @@ export default function DriverDashboard() {
           </div>
           
           <div className="flex items-center gap-6">
+            {/* Profile Link */}
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/driver/profile')}
+              className="text-noir-100 hover:text-white"
+              data-testid="driver-profile-btn"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Profile
+            </Button>
+
             {/* Online Toggle */}
             <div className="flex items-center gap-3">
               <span className={`text-sm ${isOnline ? 'text-cyan' : 'text-noir-100'}`}>
