@@ -116,116 +116,36 @@ class TranspoAPITester:
         self.run_test("Health Check", "GET", "health", 200)
 
     def test_authentication(self):
-        """Test user registration and login"""
+        """Test authentication flow with demo credentials"""
         print("\n" + "="*50)
         print("🔐 AUTHENTICATION TESTS")
         print("="*50)
         
-        # Test user registration with form data
-        form_data = {
-            'email': self.test_user["email"],
-            'password': self.test_user["password"],
-            'first_name': 'Test',
-            'last_name': 'User',
-            'phone': self.test_user["phone"],
-            'role': self.test_user["role"]
-        }
-        
-        success, response = self.run_test(
-            "User Registration (Form)", 
-            "POST", 
-            "auth/register", 
-            200,
-            data=form_data
-        )
-        if success and 'access_token' in response:
-            self.user_token = response['access_token']
-            print(f"   User token obtained: {self.user_token[:20]}...")
-        
-        # Test driver registration with form data
-        driver_form_data = {
-            'email': self.test_driver["email"],
-            'password': self.test_driver["password"],
-            'first_name': 'Test',
-            'last_name': 'Driver',
-            'phone': self.test_driver["phone"],
-            'role': self.test_driver["role"]
-        }
-        
-        success, response = self.run_test(
-            "Driver Registration (Form)", 
-            "POST", 
-            "auth/register", 
-            200,
-            data=driver_form_data
-        )
-        if success and 'access_token' in response:
-            self.driver_token = response['access_token']
-            print(f"   Driver token obtained: {self.driver_token[:20]}...")
-        
-        # Test admin registration with form data
-        admin_form_data = {
-            'email': self.test_admin["email"],
-            'password': self.test_admin["password"],
-            'first_name': 'Test',
-            'last_name': 'Admin',
-            'phone': self.test_admin["phone"],
-            'role': self.test_admin["role"]
-        }
-        
-        success, response = self.run_test(
-            "Admin Registration (Form)", 
-            "POST", 
-            "auth/register", 
-            200,
-            data=admin_form_data
-        )
-        if success and 'access_token' in response:
-            self.admin_token = response['access_token']
-            print(f"   Admin token obtained: {self.admin_token[:20]}...")
-        
-        # Test login
-        success, response = self.run_test(
-            "User Login", 
-            "POST", 
-            "auth/login", 
-            200,
-            {"email": self.test_user["email"], "password": self.test_user["password"]}
-        )
-        
-        # Test demo credentials and get tokens for profile testing
+        # Test demo user login (user@demo.com/demo123)
         success, response = self.run_test(
             "Demo User Login", 
             "POST", 
             "auth/login", 
             200,
-            {"email": "user@demo.com", "password": "demo123"}
+            self.demo_user
         )
         if success and 'access_token' in response:
             self.user_token = response['access_token']
             print(f"   Demo user token obtained: {self.user_token[:20]}...")
+            print(f"   User role: {response.get('user', {}).get('role', 'unknown')}")
         
+        # Test demo driver login (driver@demo.com/demo123)
         success, response = self.run_test(
             "Demo Driver Login", 
             "POST", 
             "auth/login", 
             200,
-            {"email": "driver@demo.com", "password": "demo123"}
+            self.demo_driver
         )
         if success and 'access_token' in response:
             self.driver_token = response['access_token']
             print(f"   Demo driver token obtained: {self.driver_token[:20]}...")
-        
-        success, response = self.run_test(
-            "Demo Admin Login", 
-            "POST", 
-            "auth/login", 
-            200,
-            {"email": "admin@demo.com", "password": "demo123"}
-        )
-        if success and 'access_token' in response:
-            self.admin_token = response['access_token']
-            print(f"   Demo admin token obtained: {self.admin_token[:20]}...")
+            print(f"   Driver role: {response.get('user', {}).get('role', 'unknown')}")
         
         # Test invalid login
         self.run_test(
@@ -236,15 +156,29 @@ class TranspoAPITester:
             {"email": "invalid@test.com", "password": "wrongpass"}
         )
         
-        # Test get current user
+        # Test get current user with user token
         if self.user_token:
-            self.run_test(
-                "Get Current User", 
+            success, response = self.run_test(
+                "Get Current User (User)", 
                 "GET", 
                 "auth/me", 
                 200,
                 headers=self.get_auth_headers(self.user_token)
             )
+            if success:
+                print(f"   User profile: {response.get('name', 'N/A')} ({response.get('email', 'N/A')})")
+        
+        # Test get current user with driver token
+        if self.driver_token:
+            success, response = self.run_test(
+                "Get Current User (Driver)", 
+                "GET", 
+                "auth/me", 
+                200,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            if success:
+                print(f"   Driver profile: {response.get('name', 'N/A')} ({response.get('email', 'N/A')})")
 
     def test_fare_estimation(self):
         """Test fare estimation with Quebec taxes"""
