@@ -20,8 +20,7 @@ export const useAuthStore = create(
           const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-            credentials: 'include'
+            body: JSON.stringify({ email, password })
           });
           
           const text = await res.text();
@@ -47,8 +46,7 @@ export const useAuthStore = create(
         try {
           const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
-            body: formData,
-            credentials: 'include'
+            body: formData
           });
           
           const text = await res.text();
@@ -75,8 +73,7 @@ export const useAuthStore = create(
           const res = await fetch(`${API_URL}/auth/social/session`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId }),
-            credentials: 'include'
+            body: JSON.stringify({ session_id: sessionId })
           });
           
           const data = await res.json();
@@ -96,8 +93,7 @@ export const useAuthStore = create(
           const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
           
           const res = await fetch(`${API_URL}/auth/me`, {
-            headers,
-            credentials: 'include'
+            headers
           });
           
           if (res.ok) {
@@ -119,8 +115,7 @@ export const useAuthStore = create(
           const { token } = get();
           await fetch(`${API_URL}/auth/logout`, {
             method: 'POST',
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            credentials: 'include'
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
         } catch (e) {
           console.log('Logout error:', e);
@@ -141,8 +136,7 @@ export const useAuthStore = create(
         }
         return fetch(url, {
           ...options,
-          headers,
-          credentials: 'include'
+          headers
         });
       },
     }),
