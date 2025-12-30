@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Request, UploadFile, File, Form, Cookie, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -16,9 +17,18 @@ import json
 import math
 import stripe
 import random
+import httpx
+import aiofiles
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Create upload directories
+UPLOAD_DIR = ROOT_DIR / "uploads"
+PHOTOS_DIR = UPLOAD_DIR / "photos"
+DOCUMENTS_DIR = UPLOAD_DIR / "documents"
+PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -35,7 +45,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -44,25 +54,75 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Transpo API", description="Multi-Service Mobility Platform")
 api_router = APIRouter(prefix="/api")
 
+# Mount static files for uploads
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
 # ============== MODELS ==============
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    name: str
+    first_name: str
+    last_name: str
     phone: Optional[str] = None
-    role: str = "user"  # user, driver, admin
+    role: str = "user"
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class UserProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    country: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    profile_photo: Optional[str] = None
+
+class PaymentMethodAdd(BaseModel):
+    type: str  # credit_card, debit_card, apple_pay, google_pay
+    card_last_four: Optional[str] = None
+    card_brand: Optional[str] = None
+    expiry_month: Optional[int] = None
+    expiry_year: Optional[int] = None
+    is_default: bool = False
+
+class DriverDocuments(BaseModel):
+    drivers_license_number: Optional[str] = None
+    drivers_license_expiry: Optional[str] = None
+    taxi_license_number: Optional[str] = None
+    taxi_license_expiry: Optional[str] = None
+
+class DriverProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    country: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    profile_photo: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_color: Optional[str] = None
+    license_plate: Optional[str] = None
+    drivers_license_number: Optional[str] = None
+    drivers_license_expiry: Optional[str] = None
+    taxi_license_number: Optional[str] = None
+    taxi_license_expiry: Optional[str] = None
+
 class UserResponse(BaseModel):
     id: str
     email: str
     name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     phone: Optional[str] = None
     role: str
+    profile_photo: Optional[str] = None
     created_at: str
 
 class TokenResponse(BaseModel):
@@ -71,12 +131,12 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 class DriverProfile(BaseModel):
-    vehicle_type: str  # sedan, suv, bike, van
+    vehicle_type: str
     vehicle_make: str
     vehicle_model: str
     vehicle_color: str
     license_plate: str
-    services: List[str] = ["taxi"]  # taxi, courier, food
+    services: List[str] = ["taxi"]
 
 class LocationUpdate(BaseModel):
     latitude: float
@@ -104,15 +164,21 @@ class PaymentRequest(BaseModel):
     booking_id: str
     amount: float
 
+class DocumentVerification(BaseModel):
+    driver_id: str
+    document_type: str  # drivers_license, taxi_license, profile_photo
+    status: str  # pending, approved, rejected
+    rejection_reason: Optional[str] = None
+
 # ============== FARE CALCULATION (Quebec Example) ==============
 
 FARE_CONFIG = {
     "base_fare": 3.50,
     "per_km_rate": 1.75,
     "per_minute_rate": 0.65,
-    "government_fee": 0.90,  # Quebec transport fee
-    "gst_rate": 0.05,  # 5% GST
-    "qst_rate": 0.09975,  # 9.975% QST
+    "government_fee": 0.90,
+    "gst_rate": 0.05,
+    "qst_rate": 0.09975,
     "minimum_fare": 7.50,
     "vehicle_multipliers": {
         "sedan": 1.0,
@@ -128,7 +194,6 @@ FARE_CONFIG = {
     }
 }
 
-# Mock competitor pricing for fare comparison
 COMPETITOR_PRICING = {
     "UberX": {"base": 2.75, "per_km": 1.55, "per_min": 0.35},
     "Lyft": {"base": 2.50, "per_km": 1.60, "per_min": 0.40},
@@ -136,40 +201,31 @@ COMPETITOR_PRICING = {
 }
 
 def calculate_distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Calculate distance using Haversine formula"""
-    R = 6371  # Earth's radius in km
+    R = 6371
     lat1_rad = math.radians(lat1)
     lat2_rad = math.radians(lat2)
     delta_lat = math.radians(lat2 - lat1)
     delta_lng = math.radians(lng2 - lng1)
-    
     a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng/2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return R * c
 
 def estimate_duration_minutes(distance_km: float, traffic_factor: float = 1.0) -> float:
-    """Estimate trip duration based on distance and traffic"""
-    avg_speed_kmh = 30 / traffic_factor  # Average city speed
+    avg_speed_kmh = 30 / traffic_factor
     return (distance_km / avg_speed_kmh) * 60
 
 def calculate_fare(distance_km: float, duration_min: float, vehicle_type: str = "sedan", surge_multiplier: float = 1.0) -> Dict[str, float]:
-    """Calculate detailed fare breakdown with Quebec taxes"""
     vehicle_mult = FARE_CONFIG["vehicle_multipliers"].get(vehicle_type, 1.0)
-    
     base = FARE_CONFIG["base_fare"]
     distance_charge = distance_km * FARE_CONFIG["per_km_rate"] * vehicle_mult
     time_charge = duration_min * FARE_CONFIG["per_minute_rate"]
-    
     subtotal = (base + distance_charge + time_charge) * surge_multiplier
     government_fee = FARE_CONFIG["government_fee"]
-    
     taxable_amount = subtotal + government_fee
     gst = taxable_amount * FARE_CONFIG["gst_rate"]
     qst = taxable_amount * FARE_CONFIG["qst_rate"]
-    
     total = taxable_amount + gst + qst
     total = max(total, FARE_CONFIG["minimum_fare"])
-    
     return {
         "base_fare": round(base, 2),
         "distance_charge": round(distance_charge, 2),
@@ -185,7 +241,6 @@ def calculate_fare(distance_km: float, duration_min: float, vehicle_type: str = 
     }
 
 def get_competitor_estimates(distance_km: float, duration_min: float) -> List[Dict]:
-    """Get mock competitor price estimates"""
     estimates = []
     for name, pricing in COMPETITOR_PRICING.items():
         estimate = pricing["base"] + (distance_km * pricing["per_km"]) + (duration_min * pricing["per_min"])
@@ -200,45 +255,31 @@ def get_competitor_estimates(distance_km: float, duration_min: float) -> List[Di
 # ============== DRIVER MATCHING ALGORITHM ==============
 
 async def find_nearby_drivers(lat: float, lng: float, radius_km: float = 5.0, vehicle_type: str = None, limit: int = 10) -> List[Dict]:
-    """
-    Find nearby available drivers using distance calculation
-    Algorithm: Score = (1/distance_km) * 0.6 + rating * 0.3 + acceptance_rate * 0.1
-    """
     query = {"status": "online", "is_available": True}
     if vehicle_type:
         query["vehicle_type"] = vehicle_type
-    
     drivers = await db.drivers.find(query, {"_id": 0}).to_list(100)
-    
     scored_drivers = []
     for driver in drivers:
         if "location" not in driver:
             continue
-        
         driver_lat = driver["location"].get("latitude", 0)
         driver_lng = driver["location"].get("longitude", 0)
         distance = calculate_distance_km(lat, lng, driver_lat, driver_lng)
-        
         if distance <= radius_km:
             rating = driver.get("rating", 4.5)
             acceptance_rate = driver.get("acceptance_rate", 0.85)
-            
-            # Scoring algorithm
             distance_score = (1 / max(distance, 0.1)) * 0.6
             rating_score = (rating / 5.0) * 0.3
             acceptance_score = acceptance_rate * 0.1
             total_score = distance_score + rating_score + acceptance_score
-            
             eta_minutes = estimate_duration_minutes(distance, traffic_factor=1.2)
-            
             scored_drivers.append({
                 **driver,
                 "distance_km": round(distance, 2),
                 "eta_minutes": round(eta_minutes, 1),
                 "match_score": round(total_score, 3)
             })
-    
-    # Sort by score descending
     scored_drivers.sort(key=lambda x: x["match_score"], reverse=True)
     return scored_drivers[:limit]
 
@@ -256,13 +297,39 @@ def create_access_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    session_token: Optional[str] = Cookie(default=None)
+):
+    token = None
+    
+    # Try session_token cookie first (for social auth)
+    if session_token:
+        session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+        if session:
+            expires_at = session.get("expires_at")
+            if isinstance(expires_at, str):
+                expires_at = datetime.fromisoformat(expires_at)
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at > datetime.now(timezone.utc):
+                user = await db.users.find_one({"id": session["user_id"]}, {"_id": 0, "password": 0})
+                if user:
+                    return user
+    
+    # Try Bearer token (for JWT auth)
+    if credentials:
+        token = credentials.credentials
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-        
         user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
@@ -270,38 +337,82 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+# ============== FILE UPLOAD HELPERS ==============
+
+async def save_upload_file(upload_file: UploadFile, folder: str) -> str:
+    file_ext = Path(upload_file.filename).suffix.lower()
+    if file_ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf']:
+        raise HTTPException(status_code=400, detail="Invalid file type")
+    
+    file_id = str(uuid.uuid4())
+    filename = f"{file_id}{file_ext}"
+    
+    if folder == "photos":
+        file_path = PHOTOS_DIR / filename
+    else:
+        file_path = DOCUMENTS_DIR / filename
+    
+    async with aiofiles.open(file_path, 'wb') as f:
+        content = await upload_file.read()
+        await f.write(content)
+    
+    return f"/uploads/{folder}/{filename}"
+
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
-async def register(user_data: UserCreate):
-    existing = await db.users.find_one({"email": user_data.email})
+async def register(
+    email: EmailStr = Form(...),
+    password: str = Form(...),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    phone: Optional[str] = Form(None),
+    role: str = Form("user")
+):
+    existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+    name = f"{first_name} {last_name}"
     
     user_doc = {
         "id": user_id,
-        "email": user_data.email,
-        "password": hash_password(user_data.password),
-        "name": user_data.name,
-        "phone": user_data.phone,
-        "role": user_data.role,
+        "email": email,
+        "password": hash_password(password),
+        "name": name,
+        "first_name": first_name,
+        "last_name": last_name,
+        "phone": phone,
+        "role": role,
+        "profile_photo": None,
+        "address": None,
+        "country": None,
+        "state": None,
+        "city": None,
+        "payment_methods": [],
+        "auth_provider": "email",
         "created_at": now,
         "wallet_balance": 0.0
     }
     
     await db.users.insert_one(user_doc)
     
-    # If driver, create driver profile
-    if user_data.role == "driver":
+    if role == "driver":
         driver_doc = {
             "id": user_id,
             "user_id": user_id,
-            "name": user_data.name,
-            "email": user_data.email,
-            "phone": user_data.phone,
+            "name": name,
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "phone": phone,
+            "profile_photo": None,
+            "address": None,
+            "country": None,
+            "state": None,
+            "city": None,
             "status": "offline",
             "is_available": False,
             "vehicle_type": "sedan",
@@ -316,6 +427,96 @@ async def register(user_data: UserCreate):
             "earnings_today": 0.0,
             "earnings_total": 0.0,
             "location": {"latitude": 0, "longitude": 0},
+            "drivers_license_number": None,
+            "drivers_license_expiry": None,
+            "drivers_license_photo": None,
+            "drivers_license_status": "pending",
+            "taxi_license_number": None,
+            "taxi_license_expiry": None,
+            "taxi_license_photo": None,
+            "taxi_license_status": "pending",
+            "profile_photo_status": "pending",
+            "verification_status": "pending",
+            "created_at": now
+        }
+        await db.drivers.insert_one(driver_doc)
+    
+    token = create_access_token({"sub": user_id, "role": role})
+    
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse(
+            id=user_id, email=email, name=name, first_name=first_name,
+            last_name=last_name, phone=phone, role=role, created_at=now
+        )
+    )
+
+# Keep JSON registration for backward compatibility
+@api_router.post("/auth/register/json", response_model=TokenResponse)
+async def register_json(user_data: UserCreate):
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Parse name into first/last
+    name_parts = user_data.first_name.split() if hasattr(user_data, 'first_name') else user_data.name.split() if hasattr(user_data, 'name') else ["User"]
+    first_name = name_parts[0] if name_parts else "User"
+    last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+    
+    user_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    name = f"{first_name} {last_name}".strip()
+    
+    user_doc = {
+        "id": user_id,
+        "email": user_data.email,
+        "password": hash_password(user_data.password),
+        "name": name,
+        "first_name": first_name,
+        "last_name": last_name,
+        "phone": user_data.phone,
+        "role": user_data.role,
+        "profile_photo": None,
+        "address": None,
+        "country": None,
+        "state": None,
+        "city": None,
+        "payment_methods": [],
+        "auth_provider": "email",
+        "created_at": now,
+        "wallet_balance": 0.0
+    }
+    
+    await db.users.insert_one(user_doc)
+    
+    if user_data.role == "driver":
+        driver_doc = {
+            "id": user_id,
+            "user_id": user_id,
+            "name": name,
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": user_data.email,
+            "phone": user_data.phone,
+            "profile_photo": None,
+            "status": "offline",
+            "is_available": False,
+            "vehicle_type": "sedan",
+            "vehicle_make": "",
+            "vehicle_model": "",
+            "vehicle_color": "",
+            "license_plate": "",
+            "services": ["taxi"],
+            "rating": 5.0,
+            "total_rides": 0,
+            "acceptance_rate": 1.0,
+            "earnings_today": 0.0,
+            "earnings_total": 0.0,
+            "location": {"latitude": 0, "longitude": 0},
+            "drivers_license_status": "pending",
+            "taxi_license_status": "pending",
+            "profile_photo_status": "pending",
+            "verification_status": "pending",
             "created_at": now
         }
         await db.drivers.insert_one(driver_doc)
@@ -325,19 +526,22 @@ async def register(user_data: UserCreate):
     return TokenResponse(
         access_token=token,
         user=UserResponse(
-            id=user_id,
-            email=user_data.email,
-            name=user_data.name,
-            phone=user_data.phone,
-            role=user_data.role,
-            created_at=now
+            id=user_id, email=user_data.email, name=name, first_name=first_name,
+            last_name=last_name, phone=user_data.phone, role=user_data.role, created_at=now
         )
     )
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"email": credentials.email})
-    if not user or not verify_password(credentials.password, user["password"]):
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Check if user has password (might be social auth only)
+    if not user.get("password"):
+        raise HTTPException(status_code=401, detail="Please login with social account")
+    
+    if not verify_password(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_access_token({"sub": user["id"], "role": user["role"]})
@@ -347,127 +551,250 @@ async def login(credentials: UserLogin):
         user=UserResponse(
             id=user["id"],
             email=user["email"],
-            name=user["name"],
+            name=user.get("name", ""),
+            first_name=user.get("first_name"),
+            last_name=user.get("last_name"),
             phone=user.get("phone"),
             role=user["role"],
+            profile_photo=user.get("profile_photo"),
             created_at=user["created_at"]
         )
     )
 
-@api_router.get("/auth/me", response_model=UserResponse)
+@api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return UserResponse(**current_user)
+    return {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "name": current_user.get("name", ""),
+        "first_name": current_user.get("first_name"),
+        "last_name": current_user.get("last_name"),
+        "phone": current_user.get("phone"),
+        "role": current_user["role"],
+        "profile_photo": current_user.get("profile_photo"),
+        "address": current_user.get("address"),
+        "country": current_user.get("country"),
+        "state": current_user.get("state"),
+        "city": current_user.get("city"),
+        "payment_methods": current_user.get("payment_methods", []),
+        "auth_provider": current_user.get("auth_provider", "email"),
+        "created_at": current_user["created_at"]
+    }
 
-# ============== FARE & BOOKING ROUTES ==============
+# ============== SOCIAL AUTH ROUTES ==============
 
-@api_router.post("/fare/estimate")
-async def estimate_fare(request: FareEstimateRequest):
-    distance_km = calculate_distance_km(
-        request.pickup_lat, request.pickup_lng,
-        request.dropoff_lat, request.dropoff_lng
+@api_router.post("/auth/social/session")
+async def process_social_session(request: Request, response: Response):
+    """Process session_id from social auth callback"""
+    data = await request.json()
+    session_id = data.get("session_id")
+    
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id required")
+    
+    # Fetch user data from Emergent Auth
+    async with httpx.AsyncClient() as client:
+        auth_response = await client.get(
+            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            headers={"X-Session-ID": session_id}
+        )
+        
+        if auth_response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid session")
+        
+        auth_data = auth_response.json()
+    
+    email = auth_data.get("email")
+    name = auth_data.get("name", "")
+    picture = auth_data.get("picture")
+    session_token = auth_data.get("session_token")
+    
+    # Parse name
+    name_parts = name.split() if name else ["User"]
+    first_name = name_parts[0]
+    last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+    
+    # Check if user exists
+    existing_user = await db.users.find_one({"email": email})
+    
+    if existing_user:
+        user_id = existing_user["id"]
+        # Update profile photo if provided
+        if picture and not existing_user.get("profile_photo"):
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {"profile_photo": picture}}
+            )
+    else:
+        # Create new user
+        user_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        
+        user_doc = {
+            "id": user_id,
+            "email": email,
+            "password": None,  # No password for social auth
+            "name": name,
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone": None,
+            "role": "user",
+            "profile_photo": picture,
+            "address": None,
+            "country": None,
+            "state": None,
+            "city": None,
+            "payment_methods": [],
+            "auth_provider": "google",
+            "created_at": now,
+            "wallet_balance": 0.0
+        }
+        await db.users.insert_one(user_doc)
+    
+    # Store session
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.user_sessions.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": user_id,
+            "session_token": session_token,
+            "expires_at": expires_at,
+            "created_at": datetime.now(timezone.utc)
+        }},
+        upsert=True
     )
-    duration_min = estimate_duration_minutes(distance_km)
     
-    # Get current surge (mock based on time)
-    hour = datetime.now().hour
-    surge = 1.0
-    if 7 <= hour <= 9 or 17 <= hour <= 19:  # Rush hours
-        surge = 1.25
+    # Set cookie
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7*24*60*60,
+        path="/"
+    )
     
-    our_fare = calculate_fare(distance_km, duration_min, request.vehicle_type, surge)
-    competitor_estimates = get_competitor_estimates(distance_km, duration_min)
-    
-    # Find best value recommendation
-    all_options = [{"provider": "Transpo", "estimated_fare": our_fare["total"], "is_platform": True}]
-    all_options.extend(competitor_estimates)
-    all_options.sort(key=lambda x: x["estimated_fare"])
-    
-    recommendation = "best_value" if all_options[0]["provider"] == "SwiftMove" else "competitive"
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     
     return {
-        "our_fare": our_fare,
-        "competitor_estimates": competitor_estimates,
-        "recommendation": recommendation,
-        "cheapest_option": all_options[0],
-        "disclaimer": "Competitor prices are estimates only and may vary"
+        "user": user,
+        "message": "Login successful"
     }
 
-@api_router.post("/taxi/book")
-async def book_taxi(request: TaxiBookingRequest, current_user: dict = Depends(get_current_user)):
-    # Calculate fare
-    distance_km = calculate_distance_km(
-        request.pickup_lat, request.pickup_lng,
-        request.dropoff_lat, request.dropoff_lng
+@api_router.post("/auth/logout")
+async def logout(response: Response, current_user: dict = Depends(get_current_user)):
+    # Delete session from database
+    await db.user_sessions.delete_one({"user_id": current_user["id"]})
+    
+    # Clear cookie
+    response.delete_cookie(key="session_token", path="/")
+    
+    return {"message": "Logged out successfully"}
+
+# ============== USER PROFILE ROUTES ==============
+
+@api_router.put("/user/profile")
+async def update_user_profile(profile: UserProfileUpdate, current_user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in profile.dict().items() if v is not None}
+    
+    if "first_name" in update_data or "last_name" in update_data:
+        first = update_data.get("first_name", current_user.get("first_name", ""))
+        last = update_data.get("last_name", current_user.get("last_name", ""))
+        update_data["name"] = f"{first} {last}".strip()
+    
+    if update_data:
+        await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
+        
+        # Also update driver profile if driver
+        if current_user["role"] == "driver":
+            await db.drivers.update_one({"user_id": current_user["id"]}, {"$set": update_data})
+    
+    return {"message": "Profile updated successfully"}
+
+@api_router.post("/user/profile/photo")
+async def upload_profile_photo(
+    photo: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    photo_url = await save_upload_file(photo, "photos")
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"profile_photo": photo_url}}
     )
-    duration_min = estimate_duration_minutes(distance_km)
-    fare = calculate_fare(distance_km, duration_min, request.vehicle_type)
     
-    # Find nearby drivers
-    nearby_drivers = await find_nearby_drivers(
-        request.pickup_lat, request.pickup_lng,
-        radius_km=5.0,
-        vehicle_type=request.vehicle_type,
-        limit=5
-    )
+    if current_user["role"] == "driver":
+        await db.drivers.update_one(
+            {"user_id": current_user["id"]},
+            {"$set": {"profile_photo": photo_url, "profile_photo_status": "pending"}}
+        )
     
-    booking_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
-    booking_doc = {
-        "id": booking_id,
-        "user_id": current_user["id"],
-        "user_name": current_user["name"],
-        "type": "taxi",
-        "status": "pending",  # pending, accepted, in_progress, completed, cancelled
-        "pickup": {
-            "latitude": request.pickup_lat,
-            "longitude": request.pickup_lng,
-            "address": request.pickup_address
-        },
-        "dropoff": {
-            "latitude": request.dropoff_lat,
-            "longitude": request.dropoff_lng,
-            "address": request.dropoff_address
-        },
-        "vehicle_type": request.vehicle_type,
-        "fare": fare,
-        "driver_id": None,
-        "driver_name": None,
-        "matched_drivers": [d["id"] for d in nearby_drivers[:5]],
-        "payment_status": "pending",
-        "created_at": now,
-        "updated_at": now
-    }
-    
-    await db.bookings.insert_one(booking_doc)
-    
-    # Notify drivers via WebSocket (simulated - they would receive push notification)
-    
+    return {"photo_url": photo_url, "message": "Photo uploaded successfully"}
+
+@api_router.get("/user/profile")
+async def get_user_profile(current_user: dict = Depends(get_current_user)):
     return {
-        "booking_id": booking_id,
-        "status": "pending",
-        "fare": fare,
-        "nearby_drivers_count": len(nearby_drivers),
-        "estimated_pickup_time": nearby_drivers[0]["eta_minutes"] if nearby_drivers else None,
-        "message": "Looking for nearby drivers..."
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "name": current_user.get("name", ""),
+        "first_name": current_user.get("first_name"),
+        "last_name": current_user.get("last_name"),
+        "phone": current_user.get("phone"),
+        "address": current_user.get("address"),
+        "country": current_user.get("country"),
+        "state": current_user.get("state"),
+        "city": current_user.get("city"),
+        "profile_photo": current_user.get("profile_photo"),
+        "payment_methods": current_user.get("payment_methods", []),
+        "auth_provider": current_user.get("auth_provider", "email"),
+        "role": current_user["role"],
+        "created_at": current_user["created_at"]
     }
 
-@api_router.get("/taxi/booking/{booking_id}")
-async def get_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
-    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    return booking
+# ============== PAYMENT METHODS ROUTES ==============
 
-@api_router.get("/bookings/user")
-async def get_user_bookings(current_user: dict = Depends(get_current_user)):
-    bookings = await db.bookings.find(
-        {"user_id": current_user["id"]},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
-    return {"bookings": bookings}
+@api_router.post("/user/payment-methods")
+async def add_payment_method(method: PaymentMethodAdd, current_user: dict = Depends(get_current_user)):
+    payment_method = {
+        "id": str(uuid.uuid4()),
+        "type": method.type,
+        "card_last_four": method.card_last_four,
+        "card_brand": method.card_brand,
+        "expiry_month": method.expiry_month,
+        "expiry_year": method.expiry_year,
+        "is_default": method.is_default,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # If this is default, unset other defaults
+    if method.is_default:
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$set": {"payment_methods.$[].is_default": False}}
+        )
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$push": {"payment_methods": payment_method}}
+    )
+    
+    return {"message": "Payment method added", "payment_method": payment_method}
 
-# ============== DRIVER ROUTES ==============
+@api_router.get("/user/payment-methods")
+async def get_payment_methods(current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "payment_methods": 1})
+    return {"payment_methods": user.get("payment_methods", [])}
+
+@api_router.delete("/user/payment-methods/{method_id}")
+async def delete_payment_method(method_id: str, current_user: dict = Depends(get_current_user)):
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$pull": {"payment_methods": {"id": method_id}}}
+    )
+    return {"message": "Payment method removed"}
+
+# ============== DRIVER PROFILE & DOCUMENTS ROUTES ==============
 
 @api_router.get("/driver/profile")
 async def get_driver_profile(current_user: dict = Depends(get_current_user)):
@@ -480,22 +807,72 @@ async def get_driver_profile(current_user: dict = Depends(get_current_user)):
     return driver
 
 @api_router.put("/driver/profile")
-async def update_driver_profile(profile: DriverProfile, current_user: dict = Depends(get_current_user)):
+async def update_driver_profile(profile: DriverProfileUpdate, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "driver":
         raise HTTPException(status_code=403, detail="Not a driver")
+    
+    update_data = {k: v for k, v in profile.dict().items() if v is not None}
+    
+    if "first_name" in update_data or "last_name" in update_data:
+        driver = await db.drivers.find_one({"user_id": current_user["id"]})
+        first = update_data.get("first_name", driver.get("first_name", ""))
+        last = update_data.get("last_name", driver.get("last_name", ""))
+        update_data["name"] = f"{first} {last}".strip()
+    
+    if update_data:
+        await db.drivers.update_one({"user_id": current_user["id"]}, {"$set": update_data})
+        # Also update user profile
+        await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
+    
+    return {"message": "Profile updated"}
+
+@api_router.post("/driver/documents/license")
+async def upload_drivers_license(
+    photo: UploadFile = File(...),
+    license_number: str = Form(...),
+    expiry_date: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != "driver":
+        raise HTTPException(status_code=403, detail="Not a driver")
+    
+    photo_url = await save_upload_file(photo, "documents")
     
     await db.drivers.update_one(
         {"user_id": current_user["id"]},
         {"$set": {
-            "vehicle_type": profile.vehicle_type,
-            "vehicle_make": profile.vehicle_make,
-            "vehicle_model": profile.vehicle_model,
-            "vehicle_color": profile.vehicle_color,
-            "license_plate": profile.license_plate,
-            "services": profile.services
+            "drivers_license_photo": photo_url,
+            "drivers_license_number": license_number,
+            "drivers_license_expiry": expiry_date,
+            "drivers_license_status": "pending"
         }}
     )
-    return {"message": "Profile updated"}
+    
+    return {"photo_url": photo_url, "message": "Driver's license uploaded for verification"}
+
+@api_router.post("/driver/documents/taxi-license")
+async def upload_taxi_license(
+    photo: UploadFile = File(...),
+    license_number: str = Form(...),
+    expiry_date: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != "driver":
+        raise HTTPException(status_code=403, detail="Not a driver")
+    
+    photo_url = await save_upload_file(photo, "documents")
+    
+    await db.drivers.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": {
+            "taxi_license_photo": photo_url,
+            "taxi_license_number": license_number,
+            "taxi_license_expiry": expiry_date,
+            "taxi_license_status": "pending"
+        }}
+    )
+    
+    return {"photo_url": photo_url, "message": "Taxi license uploaded for verification"}
 
 @api_router.post("/driver/status")
 async def update_driver_status(status: str, current_user: dict = Depends(get_current_user)):
@@ -533,21 +910,13 @@ async def get_driver_jobs(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "driver":
         raise HTTPException(status_code=403, detail="Not a driver")
     
-    # Get pending bookings where this driver is in matched_drivers
     pending_jobs = await db.bookings.find(
-        {
-            "status": "pending",
-            "matched_drivers": current_user["id"]
-        },
+        {"status": "pending", "matched_drivers": current_user["id"]},
         {"_id": 0}
     ).to_list(10)
     
-    # Get active jobs
     active_jobs = await db.bookings.find(
-        {
-            "driver_id": current_user["id"],
-            "status": {"$in": ["accepted", "in_progress"]}
-        },
+        {"driver_id": current_user["id"], "status": {"$in": ["accepted", "in_progress"]}},
         {"_id": 0}
     ).to_list(10)
     
@@ -560,26 +929,16 @@ async def accept_booking(booking_id: str, current_user: dict = Depends(get_curre
     
     driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
     
-    # Handle case when driver profile doesn't exist
-    if not driver:
-        driver = {
-            "name": current_user["name"],
-            "vehicle_color": "",
-            "vehicle_make": "",
-            "vehicle_model": "",
-            "license_plate": "",
-            "rating": 5.0
-        }
-    
     result = await db.bookings.update_one(
         {"id": booking_id, "status": "pending"},
         {"$set": {
             "status": "accepted",
             "driver_id": current_user["id"],
-            "driver_name": driver.get("name", current_user["name"]),
+            "driver_name": driver.get("name", current_user.get("name", "")),
             "driver_vehicle": f"{driver.get('vehicle_color', '')} {driver.get('vehicle_make', '')} {driver.get('vehicle_model', '')}",
             "driver_plate": driver.get("license_plate", ""),
             "driver_rating": driver.get("rating", 5.0),
+            "driver_photo": driver.get("profile_photo"),
             "accepted_at": datetime.now(timezone.utc).isoformat()
         }}
     )
@@ -587,12 +946,10 @@ async def accept_booking(booking_id: str, current_user: dict = Depends(get_curre
     if result.modified_count == 0:
         raise HTTPException(status_code=400, detail="Booking no longer available")
     
-    # Mark driver as unavailable (only if driver profile exists)
-    if await db.drivers.find_one({"user_id": current_user["id"]}):
-        await db.drivers.update_one(
-            {"user_id": current_user["id"]},
-            {"$set": {"is_available": False}}
-        )
+    await db.drivers.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": {"is_available": False}}
+    )
     
     return {"message": "Booking accepted", "booking_id": booking_id}
 
@@ -610,20 +967,16 @@ async def complete_booking(booking_id: str, current_user: dict = Depends(get_cur
     
     await db.bookings.update_one(
         {"id": booking_id},
-        {"$set": {
-            "status": "completed",
-            "completed_at": now
-        }}
+        {"$set": {"status": "completed", "completed_at": now}}
     )
     
-    # Update driver stats and earnings
     await db.drivers.update_one(
         {"user_id": current_user["id"]},
         {
             "$set": {"is_available": True},
             "$inc": {
                 "total_rides": 1,
-                "earnings_today": fare_total * 0.8,  # 80% to driver
+                "earnings_today": fare_total * 0.8,
                 "earnings_total": fare_total * 0.8
             }
         }
@@ -638,29 +991,13 @@ async def get_driver_earnings(current_user: dict = Depends(get_current_user)):
     
     driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
     
-    # Get completed rides this week
     week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     completed_rides = await db.bookings.find(
-        {
-            "driver_id": current_user["id"],
-            "status": "completed",
-            "completed_at": {"$gte": week_ago}
-        },
+        {"driver_id": current_user["id"], "status": "completed", "completed_at": {"$gte": week_ago}},
         {"_id": 0}
     ).to_list(100)
     
     weekly_earnings = sum(r["fare"]["total"] * 0.8 for r in completed_rides)
-    
-    # Handle case when driver profile doesn't exist
-    if not driver:
-        return {
-            "today": 0,
-            "weekly": round(weekly_earnings, 2),
-            "total": 0,
-            "total_rides": 0,
-            "rating": 5.0,
-            "recent_rides": completed_rides[:10]
-        }
     
     return {
         "today": driver.get("earnings_today", 0),
@@ -681,27 +1018,20 @@ async def get_admin_stats(current_user: dict = Depends(get_current_user)):
     total_users = await db.users.count_documents({"role": "user"})
     total_drivers = await db.drivers.count_documents({})
     online_drivers = await db.drivers.count_documents({"status": "online"})
+    pending_verifications = await db.drivers.count_documents({"verification_status": "pending"})
     total_bookings = await db.bookings.count_documents({})
     active_bookings = await db.bookings.count_documents({"status": {"$in": ["pending", "accepted", "in_progress"]}})
     completed_bookings = await db.bookings.count_documents({"status": "completed"})
     
-    # Calculate revenue
     completed = await db.bookings.find({"status": "completed"}, {"fare.total": 1}).to_list(1000)
     total_revenue = sum(b["fare"]["total"] for b in completed)
-    platform_revenue = total_revenue * 0.2  # 20% commission
+    platform_revenue = total_revenue * 0.2
     
     return {
         "users": {"total": total_users},
-        "drivers": {"total": total_drivers, "online": online_drivers},
-        "bookings": {
-            "total": total_bookings,
-            "active": active_bookings,
-            "completed": completed_bookings
-        },
-        "revenue": {
-            "total": round(total_revenue, 2),
-            "platform": round(platform_revenue, 2)
-        }
+        "drivers": {"total": total_drivers, "online": online_drivers, "pending_verification": pending_verifications},
+        "bookings": {"total": total_bookings, "active": active_bookings, "completed": completed_bookings},
+        "revenue": {"total": round(total_revenue, 2), "platform": round(platform_revenue, 2)}
     }
 
 @api_router.get("/admin/users")
@@ -720,6 +1050,54 @@ async def get_all_drivers(current_user: dict = Depends(get_current_user)):
     drivers = await db.drivers.find({}, {"_id": 0}).to_list(100)
     return {"drivers": drivers}
 
+@api_router.get("/admin/drivers/pending-verification")
+async def get_pending_verifications(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    drivers = await db.drivers.find(
+        {"$or": [
+            {"drivers_license_status": "pending"},
+            {"taxi_license_status": "pending"},
+            {"profile_photo_status": "pending"}
+        ]},
+        {"_id": 0}
+    ).to_list(100)
+    
+    return {"drivers": drivers}
+
+@api_router.post("/admin/verify-document")
+async def verify_document(verification: DocumentVerification, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_field = f"{verification.document_type}_status"
+    update_data = {update_field: verification.status}
+    
+    if verification.status == "rejected" and verification.rejection_reason:
+        update_data[f"{verification.document_type}_rejection_reason"] = verification.rejection_reason
+    
+    await db.drivers.update_one(
+        {"id": verification.driver_id},
+        {"$set": update_data}
+    )
+    
+    # Check if all documents are approved
+    driver = await db.drivers.find_one({"id": verification.driver_id})
+    if driver:
+        all_approved = (
+            driver.get("drivers_license_status") == "approved" and
+            driver.get("taxi_license_status") == "approved" and
+            driver.get("profile_photo_status") == "approved"
+        )
+        if all_approved:
+            await db.drivers.update_one(
+                {"id": verification.driver_id},
+                {"$set": {"verification_status": "approved"}}
+            )
+    
+    return {"message": f"Document {verification.status}"}
+
 @api_router.get("/admin/bookings")
 async def get_all_bookings(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
@@ -727,6 +1105,126 @@ async def get_all_bookings(current_user: dict = Depends(get_current_user)):
     
     bookings = await db.bookings.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return {"bookings": bookings}
+
+# ============== FARE & BOOKING ROUTES ==============
+
+@api_router.post("/fare/estimate")
+async def estimate_fare(request: FareEstimateRequest):
+    distance_km = calculate_distance_km(
+        request.pickup_lat, request.pickup_lng,
+        request.dropoff_lat, request.dropoff_lng
+    )
+    duration_min = estimate_duration_minutes(distance_km)
+    
+    hour = datetime.now().hour
+    surge = 1.0
+    if 7 <= hour <= 9 or 17 <= hour <= 19:
+        surge = 1.25
+    
+    our_fare = calculate_fare(distance_km, duration_min, request.vehicle_type, surge)
+    competitor_estimates = get_competitor_estimates(distance_km, duration_min)
+    
+    all_options = [{"provider": "Transpo", "estimated_fare": our_fare["total"], "is_platform": True}]
+    all_options.extend(competitor_estimates)
+    all_options.sort(key=lambda x: x["estimated_fare"])
+    
+    recommendation = "best_value" if all_options[0]["provider"] == "Transpo" else "competitive"
+    
+    return {
+        "our_fare": our_fare,
+        "competitor_estimates": competitor_estimates,
+        "recommendation": recommendation,
+        "cheapest_option": all_options[0],
+        "disclaimer": "Competitor prices are estimates only and may vary"
+    }
+
+@api_router.post("/taxi/book")
+async def book_taxi(request: TaxiBookingRequest, current_user: dict = Depends(get_current_user)):
+    distance_km = calculate_distance_km(
+        request.pickup_lat, request.pickup_lng,
+        request.dropoff_lat, request.dropoff_lng
+    )
+    duration_min = estimate_duration_minutes(distance_km)
+    fare = calculate_fare(distance_km, duration_min, request.vehicle_type)
+    
+    nearby_drivers = await find_nearby_drivers(
+        request.pickup_lat, request.pickup_lng,
+        radius_km=5.0, vehicle_type=request.vehicle_type, limit=5
+    )
+    
+    booking_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    booking_doc = {
+        "id": booking_id,
+        "user_id": current_user["id"],
+        "user_name": current_user.get("name", ""),
+        "type": "taxi",
+        "status": "pending",
+        "pickup": {
+            "latitude": request.pickup_lat,
+            "longitude": request.pickup_lng,
+            "address": request.pickup_address
+        },
+        "dropoff": {
+            "latitude": request.dropoff_lat,
+            "longitude": request.dropoff_lng,
+            "address": request.dropoff_address
+        },
+        "vehicle_type": request.vehicle_type,
+        "fare": fare,
+        "driver_id": None,
+        "driver_name": None,
+        "matched_drivers": [d["id"] for d in nearby_drivers[:5]],
+        "payment_status": "pending",
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.bookings.insert_one(booking_doc)
+    
+    return {
+        "booking_id": booking_id,
+        "status": "pending",
+        "fare": fare,
+        "nearby_drivers_count": len(nearby_drivers),
+        "estimated_pickup_time": nearby_drivers[0]["eta_minutes"] if nearby_drivers else None,
+        "message": "Looking for nearby drivers..."
+    }
+
+@api_router.get("/taxi/booking/{booking_id}")
+async def get_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return booking
+
+@api_router.get("/bookings/user")
+async def get_user_bookings(current_user: dict = Depends(get_current_user)):
+    bookings = await db.bookings.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return {"bookings": bookings}
+
+# ============== MAP/LOCATION ROUTES ==============
+
+@api_router.get("/map/drivers")
+async def get_map_drivers(lat: float, lng: float, radius: float = 5.0):
+    drivers = await find_nearby_drivers(lat, lng, radius_km=radius, limit=20)
+    return {
+        "drivers": [
+            {
+                "id": d["id"],
+                "location": d["location"],
+                "vehicle_type": d["vehicle_type"],
+                "rating": d["rating"],
+                "eta_minutes": d["eta_minutes"],
+                "profile_photo": d.get("profile_photo")
+            }
+            for d in drivers
+        ]
+    }
 
 # ============== PAYMENT ROUTES ==============
 
@@ -755,13 +1253,9 @@ async def create_checkout_session(request: Request, booking_id: str, current_use
             mode='payment',
             success_url=f'{host_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&booking_id={booking_id}',
             cancel_url=f'{host_url}/payment/cancel?booking_id={booking_id}',
-            metadata={
-                'booking_id': booking_id,
-                'user_id': current_user["id"]
-            }
+            metadata={'booking_id': booking_id, 'user_id': current_user["id"]}
         )
         
-        # Create payment transaction record
         await db.payment_transactions.insert_one({
             "id": str(uuid.uuid4()),
             "session_id": session.id,
@@ -783,23 +1277,15 @@ async def get_payment_status(session_id: str, current_user: dict = Depends(get_c
     try:
         session = stripe.checkout.Session.retrieve(session_id)
         
-        # Update transaction status
         await db.payment_transactions.update_one(
             {"session_id": session_id},
-            {"$set": {
-                "status": session.payment_status,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+            {"$set": {"status": session.payment_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
         
-        # If paid, update booking
         if session.payment_status == "paid":
             booking_id = session.metadata.get("booking_id")
             if booking_id:
-                await db.bookings.update_one(
-                    {"id": booking_id},
-                    {"$set": {"payment_status": "paid"}}
-                )
+                await db.bookings.update_one({"id": booking_id}, {"$set": {"payment_status": "paid"}})
         
         return {
             "status": session.status,
@@ -810,50 +1296,32 @@ async def get_payment_status(session_id: str, current_user: dict = Depends(get_c
         logger.error(f"Payment status error: {e}")
         raise HTTPException(status_code=500, detail="Error checking payment status")
 
-# ============== MAP/LOCATION ROUTES ==============
-
-@api_router.get("/map/drivers")
-async def get_map_drivers(lat: float, lng: float, radius: float = 5.0):
-    """Get drivers for map display (public endpoint for landing page)"""
-    drivers = await find_nearby_drivers(lat, lng, radius_km=radius, limit=20)
-    
-    # Return only public info
-    return {
-        "drivers": [
-            {
-                "id": d["id"],
-                "location": d["location"],
-                "vehicle_type": d["vehicle_type"],
-                "rating": d["rating"],
-                "eta_minutes": d["eta_minutes"]
-            }
-            for d in drivers
-        ]
-    }
-
 # ============== SEED DATA ==============
 
 @api_router.post("/seed/drivers")
 async def seed_demo_drivers():
-    """Create demo drivers for testing"""
-    # Montreal coordinates
     base_lat, base_lng = 45.5017, -73.5673
-    
     demo_drivers = []
     vehicle_types = ["sedan", "suv", "van", "bike"]
+    first_names = ["John", "Marie", "David", "Sophie", "Michael", "Emma", "James", "Olivia", "Robert", "Charlotte", "William", "Amelia", "Joseph", "Mia", "Charles"]
+    last_names = ["Smith", "Tremblay", "Johnson", "Roy", "Williams", "Gagnon", "Brown", "Bouchard", "Jones", "Côté", "Garcia", "Fortin", "Miller", "Lavoie", "Davis"]
     
     for i in range(15):
         driver_id = str(uuid.uuid4())
-        # Random position within ~5km of downtown Montreal
         lat_offset = (random.random() - 0.5) * 0.08
         lng_offset = (random.random() - 0.5) * 0.08
+        first_name = first_names[i]
+        last_name = last_names[i]
         
         driver = {
             "id": driver_id,
             "user_id": driver_id,
-            "name": f"Driver {i+1}",
+            "name": f"{first_name} {last_name}",
+            "first_name": first_name,
+            "last_name": last_name,
             "email": f"driver{i+1}@transpo.com",
             "phone": f"+1514555{1000+i}",
+            "profile_photo": None,
             "status": "online" if random.random() > 0.3 else "offline",
             "is_available": random.random() > 0.2,
             "vehicle_type": random.choice(vehicle_types),
@@ -867,15 +1335,15 @@ async def seed_demo_drivers():
             "acceptance_rate": round(0.7 + random.random() * 0.3, 2),
             "earnings_today": round(random.random() * 200, 2),
             "earnings_total": round(random.random() * 10000, 2),
-            "location": {
-                "latitude": base_lat + lat_offset,
-                "longitude": base_lng + lng_offset
-            },
+            "location": {"latitude": base_lat + lat_offset, "longitude": base_lng + lng_offset},
+            "drivers_license_status": "approved",
+            "taxi_license_status": "approved",
+            "profile_photo_status": "approved",
+            "verification_status": "approved",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         demo_drivers.append(driver)
     
-    # Clear existing demo drivers and insert new ones
     await db.drivers.delete_many({"email": {"$regex": "driver.*@transpo.com"}})
     await db.drivers.insert_many(demo_drivers)
     
