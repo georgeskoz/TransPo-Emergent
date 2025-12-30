@@ -236,8 +236,9 @@ test_plan:
   current_focus:
     - "User Dashboard - Pickup/Dropoff Inputs"
     - "User Dashboard - Fare Estimate Display"
-    - "Driver Dashboard - Menu Navigation"
-  stuck_tasks: []
+  stuck_tasks:
+    - "User Dashboard - Pickup/Dropoff Inputs"
+    - "User Dashboard - Fare Estimate Display"
   test_all: false
   test_priority: "high_first"
 
