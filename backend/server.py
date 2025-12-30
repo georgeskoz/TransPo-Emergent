@@ -444,6 +444,13 @@ async def register(
             "taxi_license_status": "pending",
             "profile_photo_status": "pending",
             "verification_status": "pending",
+            # Tax Information
+            "gst_number": None,
+            "qst_number": None,
+            "srs_code": None,
+            "billing_number": None,
+            "srs_available": False,
+            "tax_disclaimer_accepted": False,
             "created_at": now
         }
         await db.drivers.insert_one(driver_doc)
