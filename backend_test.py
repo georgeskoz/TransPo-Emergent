@@ -423,13 +423,56 @@ class SwiftMoveAPITester:
                     headers=self.get_auth_headers(self.driver_token)
                 )
         
-        # Test get driver earnings
-        self.run_test(
-            "Get Driver Earnings", 
+    def test_admin_functionality(self):
+        """Test admin dashboard functionality"""
+        print("\n" + "="*50)
+        print("👑 ADMIN FUNCTIONALITY TESTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin tests - no admin token")
+            return
+        
+        # Test get admin stats
+        success, response = self.run_test(
+            "Get Admin Stats", 
             "GET", 
-            "driver/earnings", 
+            "admin/stats", 
             200,
-            headers=self.get_auth_headers(self.driver_token)
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            print(f"   Users: {response.get('users', {}).get('total', 0)}")
+            print(f"   Drivers: {response.get('drivers', {}).get('total', 0)} (Online: {response.get('drivers', {}).get('online', 0)})")
+            print(f"   Bookings: {response.get('bookings', {}).get('total', 0)}")
+            print(f"   Revenue: ${response.get('revenue', {}).get('platform', 0)}")
+        
+        # Test get all users
+        self.run_test(
+            "Get All Users", 
+            "GET", 
+            "admin/users", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        # Test get all drivers
+        self.run_test(
+            "Get All Drivers", 
+            "GET", 
+            "admin/drivers", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        # Test get all bookings
+        self.run_test(
+            "Get All Bookings", 
+            "GET", 
+            "admin/bookings", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
         )
 
     def test_user_profile_features(self):
