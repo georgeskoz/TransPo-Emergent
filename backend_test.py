@@ -207,7 +207,7 @@ class SwiftMoveAPITester:
             {"email": self.test_user["email"], "password": self.test_user["password"]}
         )
         
-        # Test demo credentials
+        # Test demo credentials and get tokens for profile testing
         success, response = self.run_test(
             "Demo User Login", 
             "POST", 
@@ -215,6 +215,9 @@ class SwiftMoveAPITester:
             200,
             {"email": "user@demo.com", "password": "demo123"}
         )
+        if success and 'access_token' in response:
+            self.user_token = response['access_token']
+            print(f"   Demo user token obtained: {self.user_token[:20]}...")
         
         success, response = self.run_test(
             "Demo Driver Login", 
@@ -223,6 +226,9 @@ class SwiftMoveAPITester:
             200,
             {"email": "driver@demo.com", "password": "demo123"}
         )
+        if success and 'access_token' in response:
+            self.driver_token = response['access_token']
+            print(f"   Demo driver token obtained: {self.driver_token[:20]}...")
         
         success, response = self.run_test(
             "Demo Admin Login", 
@@ -231,6 +237,9 @@ class SwiftMoveAPITester:
             200,
             {"email": "admin@demo.com", "password": "demo123"}
         )
+        if success and 'access_token' in response:
+            self.admin_token = response['access_token']
+            print(f"   Demo admin token obtained: {self.admin_token[:20]}...")
         
         # Test invalid login
         self.run_test(
