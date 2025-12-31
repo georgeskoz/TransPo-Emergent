@@ -206,6 +206,9 @@ export default function DriverMeter() {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
+    if (farePollingRef.current) {
+      clearInterval(farePollingRef.current);
+    }
 
     try {
       const tipAmount = customTip ? parseFloat(customTip) : 0;
