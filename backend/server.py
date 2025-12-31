@@ -2051,10 +2051,23 @@ async def stop_taxi_meter(
     meter = active_meters[meter_id]
     meter.stop()
     
-    # Calculate final fare with tip
+    # Get commission rate from platform settings
+    settings = await db.platform_settings.find_one({"type": "global"}, {"_id": 0})
+    commission_rate = settings.get("commission_rate", 25.0) if settings else 25.0
+    
+    # Use payment-specific commission if applicable
+    if request.payment_method == "card":
+        commission_rate = settings.get("card_payment_commission", commission_rate) if settings else commission_rate
+    elif request.payment_method == "app":
+        commission_rate = settings.get("app_payment_commission", commission_rate) if settings else commission_rate
+    elif request.payment_method == "cash":
+        commission_rate = settings.get("cash_payment_commission", commission_rate) if settings else commission_rate
+    
+    # Calculate final fare with tip and commission
     final_fare = meter.calculate_with_tip(
         tip_percent=request.tip_percent,
-        custom_tip=request.custom_tip
+        custom_tip=request.custom_tip,
+        commission_rate=commission_rate
     )
     
     # Get end location from session or start location
