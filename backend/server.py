@@ -1538,9 +1538,20 @@ async def stop_taxi_meter(
         custom_tip=request.custom_tip
     )
     
-    # Get end location
+    # Get end location from session or start location
     session = await db.meter_sessions.find_one({"id": meter_id})
-    last_snapshot = session.get("fare_snapshots", [{}])[-1] if session else {}
+    
+    # Get last location - use snapshots if available, otherwise use start location
+    fare_snapshots = session.get("fare_snapshots", []) if session else []
+    if fare_snapshots:
+        last_snapshot = fare_snapshots[-1]
+    else:
+        # No movement, use start location
+        start_loc = session.get("start_location", {}) if session else {}
+        last_snapshot = {
+            "lat": start_loc.get("lat", 0),
+            "lng": start_loc.get("lng", 0)
+        }
     
     map_provider = get_map_provider()
     end_address = map_provider.reverse_geocode(
