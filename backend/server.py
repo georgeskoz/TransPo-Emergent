@@ -1145,6 +1145,525 @@ async def get_all_bookings(current_user: dict = Depends(get_current_user)):
     bookings = await db.bookings.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return {"bookings": bookings}
 
+# ============== ADMIN SETTINGS & COMMISSION ENDPOINTS ==============
+
+class PlatformSettingsUpdate(BaseModel):
+    commission_rate: Optional[float] = None  # Default 25%
+    card_payment_commission: Optional[float] = None  # Commission on card payments
+    cash_payment_commission: Optional[float] = None  # Commission on cash payments
+    app_payment_commission: Optional[float] = None  # Commission on in-app payments
+    min_payout_amount: Optional[float] = None  # Minimum payout threshold
+    payout_frequency: Optional[str] = None  # daily, weekly, bi-weekly, monthly
+    auto_payout_enabled: Optional[bool] = None
+    stripe_enabled: Optional[bool] = None
+    stripe_merchant_id: Optional[str] = None
+
+class DriverContractUpdate(BaseModel):
+    contract_version: Optional[str] = None
+    contract_text: Optional[str] = None
+    effective_date: Optional[str] = None
+    requires_signature: Optional[bool] = None
+
+class CaseCreate(BaseModel):
+    driver_id: Optional[str] = None
+    user_id: Optional[str] = None
+    booking_id: Optional[str] = None
+    case_type: str  # dispute, complaint, incident, refund, other
+    title: str
+    description: str
+    priority: str = "medium"  # low, medium, high, urgent
+
+class CaseUpdate(BaseModel):
+    status: Optional[str] = None  # open, in_progress, resolved, closed
+    resolution: Optional[str] = None
+    notes: Optional[str] = None
+
+class PayoutCreate(BaseModel):
+    driver_id: str
+    amount: float
+    method: str = "bank_transfer"  # bank_transfer, stripe, check
+    notes: Optional[str] = None
+
+@api_router.get("/admin/settings")
+async def get_platform_settings(current_user: dict = Depends(get_current_user)):
+    """Get platform settings including commission rates."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    settings = await db.platform_settings.find_one({"type": "global"}, {"_id": 0})
+    if not settings:
+        # Create default settings
+        settings = {
+            "type": "global",
+            "commission_rate": 25.0,  # 25% default
+            "card_payment_commission": 25.0,
+            "cash_payment_commission": 25.0,
+            "app_payment_commission": 25.0,
+            "min_payout_amount": 50.0,
+            "payout_frequency": "weekly",
+            "auto_payout_enabled": False,
+            "stripe_enabled": False,
+            "stripe_merchant_id": None,
+            "tax_settings": {
+                "gst_rate": 5.0,
+                "qst_rate": 9.975,
+                "government_fee": 0.90
+            },
+            "meter_settings": {
+                "day_base_fare": 4.10,
+                "day_per_km": 2.05,
+                "night_base_fare": 4.70,
+                "night_per_km": 2.35
+            },
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.platform_settings.insert_one(settings)
+    
+    return settings
+
+@api_router.put("/admin/settings")
+async def update_platform_settings(
+    updates: PlatformSettingsUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update platform settings."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = current_user["id"]
+    
+    await db.platform_settings.update_one(
+        {"type": "global"},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    return {"message": "Settings updated", "updated": update_data}
+
+@api_router.get("/admin/meter-settings")
+async def get_meter_settings(current_user: dict = Depends(get_current_user)):
+    """Get taxi meter rate settings."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    from taxi_meter import QUEBEC_TAXI_RATES
+    
+    # Get any custom overrides from DB
+    custom_rates = await db.platform_settings.find_one({"type": "meter_rates"}, {"_id": 0})
+    
+    return {
+        "default_rates": QUEBEC_TAXI_RATES,
+        "custom_rates": custom_rates,
+        "active": "default" if not custom_rates else "custom"
+    }
+
+@api_router.get("/admin/documents/pending")
+async def get_pending_documents(current_user: dict = Depends(get_current_user)):
+    """Get all pending driver documents for verification."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get drivers with pending documents
+    drivers = await db.drivers.find(
+        {"$or": [
+            {"license_verified": False},
+            {"taxi_license_verified": False},
+            {"documents_status": "pending"}
+        ]},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Get user info for each driver
+    for driver in drivers:
+        user = await db.users.find_one({"id": driver.get("user_id")}, {"_id": 0, "password": 0})
+        if user:
+            driver["user"] = user
+    
+    return {"pending_documents": drivers}
+
+@api_router.post("/admin/documents/approve")
+async def approve_document(
+    driver_id: str,
+    document_type: str,  # license, taxi_license, insurance, vehicle_registration
+    approved: bool,
+    notes: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Approve or reject a driver document."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_field = f"{document_type}_verified"
+    
+    await db.drivers.update_one(
+        {"user_id": driver_id},
+        {"$set": {
+            update_field: approved,
+            f"{document_type}_verified_at": datetime.now(timezone.utc).isoformat(),
+            f"{document_type}_verified_by": current_user["id"],
+            f"{document_type}_verification_notes": notes
+        }}
+    )
+    
+    # Log the action
+    await db.admin_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "document_verification",
+        "admin_id": current_user["id"],
+        "driver_id": driver_id,
+        "document_type": document_type,
+        "approved": approved,
+        "notes": notes,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": f"Document {document_type} {'approved' if approved else 'rejected'}"}
+
+# ============== CASES / DISPUTES ==============
+
+@api_router.get("/admin/cases")
+async def get_cases(
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all support cases/disputes."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    cases = await db.cases.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"cases": cases}
+
+@api_router.post("/admin/cases")
+async def create_case(
+    case_data: CaseCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new support case."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    case = {
+        "id": str(uuid.uuid4()),
+        "case_number": f"CASE-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}",
+        **case_data.dict(),
+        "status": "open",
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "history": []
+    }
+    
+    await db.cases.insert_one(case)
+    return case
+
+@api_router.put("/admin/cases/{case_id}")
+async def update_case(
+    case_id: str,
+    updates: CaseUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a case status."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Add to history
+    history_entry = {
+        "action": "status_update" if "status" in update_data else "note_added",
+        "by": current_user["id"],
+        "at": datetime.now(timezone.utc).isoformat(),
+        "changes": update_data
+    }
+    
+    await db.cases.update_one(
+        {"id": case_id},
+        {
+            "$set": update_data,
+            "$push": {"history": history_entry}
+        }
+    )
+    
+    return {"message": "Case updated"}
+
+# ============== PAYOUTS ==============
+
+@api_router.get("/admin/payouts")
+async def get_payouts(
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all payouts."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    payouts = await db.payouts.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"payouts": payouts}
+
+@api_router.get("/admin/payouts/pending")
+async def get_pending_payouts(current_user: dict = Depends(get_current_user)):
+    """Get drivers with pending payouts."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    settings = await db.platform_settings.find_one({"type": "global"}, {"_id": 0})
+    min_payout = settings.get("min_payout_amount", 50) if settings else 50
+    commission_rate = settings.get("commission_rate", 25) if settings else 25
+    
+    # Aggregate earnings by driver
+    pipeline = [
+        {"$match": {"status": "completed"}},
+        {"$group": {
+            "_id": "$driver_id",
+            "total_fares": {"$sum": "$fare.total"},
+            "trip_count": {"$sum": 1}
+        }}
+    ]
+    
+    earnings = await db.meter_sessions.aggregate(pipeline).to_list(100)
+    
+    pending_payouts = []
+    for e in earnings:
+        if e["_id"]:
+            driver = await db.drivers.find_one({"user_id": e["_id"]}, {"_id": 0})
+            user = await db.users.find_one({"id": e["_id"]}, {"_id": 0, "password": 0})
+            
+            # Calculate driver's share (after commission)
+            driver_share = e["total_fares"] * (1 - commission_rate / 100)
+            
+            # Check existing paid out amount
+            paid_out = await db.payouts.aggregate([
+                {"$match": {"driver_id": e["_id"], "status": "completed"}},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ]).to_list(1)
+            
+            total_paid = paid_out[0]["total"] if paid_out else 0
+            balance = driver_share - total_paid
+            
+            if balance >= min_payout:
+                pending_payouts.append({
+                    "driver_id": e["_id"],
+                    "driver": driver,
+                    "user": user,
+                    "total_fares": e["total_fares"],
+                    "commission_rate": commission_rate,
+                    "driver_share": driver_share,
+                    "total_paid": total_paid,
+                    "balance_due": balance,
+                    "trip_count": e["trip_count"]
+                })
+    
+    return {"pending_payouts": pending_payouts, "min_payout_amount": min_payout}
+
+@api_router.post("/admin/payouts")
+async def create_payout(
+    payout_data: PayoutCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new payout for a driver."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    payout = {
+        "id": str(uuid.uuid4()),
+        "reference": f"PAY-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:6].upper()}",
+        **payout_data.dict(),
+        "status": "pending",
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.payouts.insert_one(payout)
+    return payout
+
+@api_router.put("/admin/payouts/{payout_id}/process")
+async def process_payout(
+    payout_id: str,
+    status: str,  # completed, failed
+    transaction_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Process a payout."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    await db.payouts.update_one(
+        {"id": payout_id},
+        {"$set": {
+            "status": status,
+            "transaction_id": transaction_id,
+            "processed_by": current_user["id"],
+            "processed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": f"Payout {status}"}
+
+# ============== DRIVER CONTRACTS ==============
+
+@api_router.get("/admin/contracts/template")
+async def get_contract_template(current_user: dict = Depends(get_current_user)):
+    """Get the current driver contract template."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    contract = await db.contract_templates.find_one({"active": True}, {"_id": 0})
+    if not contract:
+        contract = {
+            "id": str(uuid.uuid4()),
+            "version": "1.0",
+            "title": "Driver Partnership Agreement",
+            "content": """
+DRIVER PARTNERSHIP AGREEMENT
+
+This Agreement is made between Transpo ("Company") and the Driver ("Partner").
+
+1. SERVICES
+The Partner agrees to provide transportation services using the Transpo platform.
+
+2. COMMISSION STRUCTURE
+- The Company will charge a commission of [COMMISSION_RATE]% on all fares.
+- Commissions are calculated on the meter fare excluding government fees and taxes.
+
+3. PAYMENT TERMS
+- Payments are processed [PAYOUT_FREQUENCY].
+- Minimum payout threshold: $[MIN_PAYOUT].
+
+4. COMPLIANCE
+The Partner agrees to comply with all Quebec taxi regulations including CTQ requirements.
+
+5. TERMINATION
+Either party may terminate this agreement with 14 days written notice.
+
+By signing below, the Partner acknowledges and agrees to these terms.
+
+Signature: ____________________
+Date: ____________________
+            """,
+            "active": True,
+            "effective_date": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.contract_templates.insert_one(contract)
+    
+    return contract
+
+@api_router.put("/admin/contracts/template")
+async def update_contract_template(
+    updates: DriverContractUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update the driver contract template."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = current_user["id"]
+    
+    await db.contract_templates.update_one(
+        {"active": True},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Contract template updated"}
+
+@api_router.get("/admin/contracts/signed")
+async def get_signed_contracts(current_user: dict = Depends(get_current_user)):
+    """Get all signed driver contracts."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    contracts = await db.driver_contracts.find({}, {"_id": 0}).sort("signed_at", -1).to_list(100)
+    return {"contracts": contracts}
+
+# ============== TAX REPORTS ==============
+
+@api_router.get("/admin/taxes/report")
+async def generate_tax_report(
+    year: int = None,
+    quarter: int = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate tax report for a period."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    year = year or datetime.now().year
+    
+    # Build date range
+    if quarter:
+        start_month = (quarter - 1) * 3 + 1
+        end_month = start_month + 2
+        start_date = f"{year}-{start_month:02d}-01"
+        end_date = f"{year}-{end_month:02d}-31"
+    else:
+        start_date = f"{year}-01-01"
+        end_date = f"{year}-12-31"
+    
+    # Aggregate completed meter sessions
+    pipeline = [
+        {"$match": {
+            "status": "completed",
+            "start_time": {"$gte": start_date, "$lte": end_date}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_fares": {"$sum": "$final_fare.total_final"},
+            "total_base_fares": {"$sum": "$final_fare.base_fare"},
+            "total_distance_cost": {"$sum": "$final_fare.distance_cost"},
+            "total_waiting_cost": {"$sum": "$final_fare.waiting_cost"},
+            "total_gov_fees": {"$sum": "$final_fare.government_fee"},
+            "total_tips": {"$sum": "$final_fare.tip_amount"},
+            "trip_count": {"$sum": 1}
+        }}
+    ]
+    
+    result = await db.meter_sessions.aggregate(pipeline).to_list(1)
+    
+    settings = await db.platform_settings.find_one({"type": "global"}, {"_id": 0})
+    commission_rate = settings.get("commission_rate", 25) if settings else 25
+    gst_rate = settings.get("tax_settings", {}).get("gst_rate", 5) if settings else 5
+    qst_rate = settings.get("tax_settings", {}).get("qst_rate", 9.975) if settings else 9.975
+    
+    totals = result[0] if result else {
+        "total_fares": 0, "total_base_fares": 0, "total_distance_cost": 0,
+        "total_waiting_cost": 0, "total_gov_fees": 0, "total_tips": 0, "trip_count": 0
+    }
+    
+    # Calculate taxable amounts
+    taxable_revenue = totals["total_fares"] - totals["total_gov_fees"] - totals["total_tips"]
+    platform_commission = taxable_revenue * (commission_rate / 100)
+    gst_collected = platform_commission * (gst_rate / 100)
+    qst_collected = platform_commission * (qst_rate / 100)
+    
+    return {
+        "period": {"year": year, "quarter": quarter},
+        "date_range": {"start": start_date, "end": end_date},
+        "totals": totals,
+        "taxable_revenue": round(taxable_revenue, 2),
+        "platform_commission": round(platform_commission, 2),
+        "commission_rate": commission_rate,
+        "taxes": {
+            "gst_rate": gst_rate,
+            "gst_collected": round(gst_collected, 2),
+            "qst_rate": qst_rate,
+            "qst_collected": round(qst_collected, 2),
+            "total_tax_liability": round(gst_collected + qst_collected, 2)
+        }
+    }
+
 # ============== FARE & BOOKING ROUTES ==============
 
 @api_router.post("/fare/estimate")
