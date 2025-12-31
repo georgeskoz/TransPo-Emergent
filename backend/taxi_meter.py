@@ -177,6 +177,15 @@ class TaxiMeter:
     
     def stop(self) -> Dict:
         """Stop the meter and return final fare."""
+        # Add any remaining waiting time since last update
+        if self.is_running and self.last_timestamp:
+            current_time = datetime.now(timezone.utc)
+            time_since_last_update = (current_time - self.last_timestamp).total_seconds()
+            if time_since_last_update > 0:
+                # Assume stationary since last update (no GPS movement)
+                self.total_waiting_minutes += time_since_last_update / 60
+                self.waiting_cost = self.total_waiting_minutes * self.rates["waiting_per_min"]
+        
         self.is_running = False
         self.is_completed = True
         return self.get_fare_breakdown()
@@ -189,7 +198,19 @@ class TaxiMeter:
         base_fare = self.rates["base_fare"]
         government_fee = self.rates["government_fee"]
         
-        subtotal = base_fare + self.distance_cost + self.waiting_cost
+        # Calculate real-time waiting if meter is still running
+        current_waiting_minutes = self.total_waiting_minutes
+        current_waiting_cost = self.waiting_cost
+        
+        if self.is_running and self.last_timestamp:
+            current_time = datetime.now(timezone.utc)
+            time_since_last_update = (current_time - self.last_timestamp).total_seconds()
+            if time_since_last_update > 0:
+                # Add time since last GPS update as waiting time
+                current_waiting_minutes += time_since_last_update / 60
+                current_waiting_cost = current_waiting_minutes * self.rates["waiting_per_min"]
+        
+        subtotal = base_fare + self.distance_cost + current_waiting_cost
         total_before_tip = subtotal + government_fee
         
         return {
@@ -197,8 +218,8 @@ class TaxiMeter:
             "base_fare": round(base_fare, 2),
             "distance_km": round(self.total_distance_km, 2),
             "distance_cost": round(self.distance_cost, 2),
-            "waiting_minutes": round(self.total_waiting_minutes, 1),
-            "waiting_cost": round(self.waiting_cost, 2),
+            "waiting_minutes": round(current_waiting_minutes, 1),
+            "waiting_cost": round(current_waiting_cost, 2),
             "subtotal": round(subtotal, 2),
             "government_fee": round(government_fee, 2),
             "total_before_tip": round(total_before_tip, 2),
