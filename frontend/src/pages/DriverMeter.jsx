@@ -54,6 +54,9 @@ export default function DriverMeter() {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (farePollingRef.current) {
+        clearInterval(farePollingRef.current);
+      }
     };
   }, []);
 
