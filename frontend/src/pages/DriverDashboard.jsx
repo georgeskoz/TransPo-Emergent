@@ -449,7 +449,7 @@ export default function DriverDashboard() {
 
         {/* Go Online Button */}
         {!isOnline && (
-          <div className="px-6 pb-4">
+          <div className="px-6 pb-4 space-y-3">
             <Button 
               onClick={toggleOnlineStatus}
               className="w-full py-6 text-lg font-semibold bg-gray-800 hover:bg-gray-900 text-white rounded-xl"
@@ -457,6 +457,16 @@ export default function DriverDashboard() {
               data-testid="go-online-btn"
             >
               {loading ? <div className="spinner" /> : 'Go Online'}
+            </Button>
+            
+            {/* Street Hail Button */}
+            <Button 
+              onClick={() => navigate('/driver/meter')}
+              variant="outline"
+              className="w-full py-4 border-orange-300 text-orange-700 hover:bg-orange-50 rounded-xl"
+            >
+              <Flag className="w-5 h-5 mr-2" />
+              Street Hail / Flag Mode
             </Button>
           </div>
         )}
