@@ -131,9 +131,33 @@ export default function DriverMeter() {
       // Start location tracking
       startLocationTracking(data.meter_id);
       
+      // Start fare polling (for real-time waiting time updates)
+      startFarePolling(data.meter_id);
+      
     } catch (e) {
       toast.error(e.message);
     }
+  };
+
+  const farePollingRef = useRef(null);
+  
+  const startFarePolling = (meterId) => {
+    // Poll every 3 seconds for updated fare (waiting time)
+    farePollingRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_URL}/taxi/meter/${meterId}`, {
+          headers: getAuthHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.fare) {
+            setFare(data.fare);
+          }
+        }
+      } catch (e) {
+        console.log('Fare poll error:', e);
+      }
+    }, 3000);
   };
 
   const startLocationTracking = (meterId) => {
