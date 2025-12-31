@@ -1441,7 +1441,7 @@ async def start_taxi_meter(
     - With booking_id: App-booked ride
     - Without booking_id: Street hail / flag mode
     """
-    current_user = await get_current_user(credentials)
+    current_user = await get_current_user_jwt(credentials)
     if current_user.get("role") != "driver":
         raise HTTPException(status_code=403, detail="Only drivers can use the meter")
     
@@ -1489,7 +1489,7 @@ async def update_taxi_meter(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Update meter with new GPS position. Returns current fare."""
-    current_user = await get_current_user(credentials)
+    current_user = await get_current_user_jwt(credentials)
     if current_user.get("role") != "driver":
         raise HTTPException(status_code=403, detail="Only drivers can use the meter")
     
@@ -1522,7 +1522,7 @@ async def stop_taxi_meter(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Stop the meter and calculate final fare with tip."""
-    current_user = await get_current_user(credentials)
+    current_user = await get_current_user_jwt(credentials)
     if current_user.get("role") != "driver":
         raise HTTPException(status_code=403, detail="Only drivers can use the meter")
     
@@ -1616,7 +1616,7 @@ async def get_meter_history(
     limit: int = 20
 ):
     """Get driver's meter session history."""
-    current_user = await get_current_user(credentials)
+    current_user = await get_current_user_jwt(credentials)
     if current_user.get("role") != "driver":
         raise HTTPException(status_code=403, detail="Only drivers can access meter history")
     
