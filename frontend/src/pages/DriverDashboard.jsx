@@ -319,6 +319,16 @@ export default function DriverDashboard() {
                   </li>
                   <li>
                     <button 
+                      onClick={() => { navigate('/driver/meter'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-orange-50 text-orange-700 bg-orange-50"
+                    >
+                      <Gauge className="w-5 h-5" />
+                      <span className="font-semibold">Taxi Meter</span>
+                      <Flag className="w-4 h-4 ml-auto" />
+                    </button>
+                  </li>
+                  <li>
+                    <button 
                       onClick={() => setShowMenu(false)}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
                     >
