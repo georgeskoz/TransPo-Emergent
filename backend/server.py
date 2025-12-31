@@ -1378,6 +1378,279 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+# ============== TAXI METER ENDPOINTS ==============
+
+from taxi_meter import TaxiMeter, calculate_fare_estimate, get_rates, QUEBEC_TAXI_RATES
+from services.map_provider import get_map_provider
+
+# In-memory storage for active meters (in production, use Redis)
+active_meters: Dict[str, TaxiMeter] = {}
+
+class MeterStartRequest(BaseModel):
+    lat: float
+    lng: float
+    booking_id: Optional[str] = None  # None for street hail mode
+
+class MeterUpdateRequest(BaseModel):
+    lat: float
+    lng: float
+
+class MeterStopRequest(BaseModel):
+    tip_percent: Optional[float] = 0
+    custom_tip: Optional[float] = 0
+    payment_method: Optional[str] = "cash"
+
+@api_router.get("/taxi/rates")
+async def get_taxi_rates():
+    """Get current Quebec taxi rates."""
+    now = datetime.now(timezone.utc)
+    rates = get_rates(now)
+    return {
+        "current_period": rates["period"],
+        "rates": QUEBEC_TAXI_RATES,
+        "current_time": now.isoformat()
+    }
+
+@api_router.post("/taxi/meter/start")
+async def start_taxi_meter(
+    request: MeterStartRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Start the taxi meter. 
+    - With booking_id: App-booked ride
+    - Without booking_id: Street hail / flag mode
+    """
+    current_user = await get_current_user(credentials)
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Only drivers can use the meter")
+    
+    driver_id = current_user["id"]
+    meter_id = str(uuid.uuid4())
+    
+    # Create new meter
+    meter = TaxiMeter()
+    meter.start(request.lat, request.lng)
+    active_meters[meter_id] = meter
+    
+    # Get address for location
+    map_provider = get_map_provider()
+    address = map_provider.reverse_geocode(request.lat, request.lng)
+    
+    # Store meter session in DB
+    session_data = {
+        "id": meter_id,
+        "driver_id": driver_id,
+        "booking_id": request.booking_id,
+        "mode": "app_booking" if request.booking_id else "street_hail",
+        "start_time": datetime.now(timezone.utc).isoformat(),
+        "start_location": {
+            "lat": request.lat,
+            "lng": request.lng,
+            "address": address.formatted
+        },
+        "status": "running",
+        "fare_snapshots": []
+    }
+    await db.meter_sessions.insert_one(session_data)
+    
+    return {
+        "meter_id": meter_id,
+        "mode": session_data["mode"],
+        "start_location": session_data["start_location"],
+        "fare": meter.get_fare_breakdown(),
+        "message": "Meter started" + (" (Street Hail Mode)" if not request.booking_id else "")
+    }
+
+@api_router.post("/taxi/meter/{meter_id}/update")
+async def update_taxi_meter(
+    meter_id: str,
+    request: MeterUpdateRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Update meter with new GPS position. Returns current fare."""
+    current_user = await get_current_user(credentials)
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Only drivers can use the meter")
+    
+    if meter_id not in active_meters:
+        raise HTTPException(status_code=404, detail="Meter not found or expired")
+    
+    meter = active_meters[meter_id]
+    fare = meter.update(request.lat, request.lng)
+    
+    # Store snapshot periodically (every update for now)
+    await db.meter_sessions.update_one(
+        {"id": meter_id},
+        {"$push": {"fare_snapshots": {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "lat": request.lat,
+            "lng": request.lng,
+            "fare": fare["total_before_tip"]
+        }}}
+    )
+    
+    return {
+        "meter_id": meter_id,
+        "fare": fare
+    }
+
+@api_router.post("/taxi/meter/{meter_id}/stop")
+async def stop_taxi_meter(
+    meter_id: str,
+    request: MeterStopRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Stop the meter and calculate final fare with tip."""
+    current_user = await get_current_user(credentials)
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Only drivers can use the meter")
+    
+    if meter_id not in active_meters:
+        raise HTTPException(status_code=404, detail="Meter not found or expired")
+    
+    meter = active_meters[meter_id]
+    meter.stop()
+    
+    # Calculate final fare with tip
+    final_fare = meter.calculate_with_tip(
+        tip_percent=request.tip_percent,
+        custom_tip=request.custom_tip
+    )
+    
+    # Get end location
+    session = await db.meter_sessions.find_one({"id": meter_id})
+    last_snapshot = session.get("fare_snapshots", [{}])[-1] if session else {}
+    
+    map_provider = get_map_provider()
+    end_address = map_provider.reverse_geocode(
+        last_snapshot.get("lat", 0), 
+        last_snapshot.get("lng", 0)
+    )
+    
+    # Update session as completed
+    await db.meter_sessions.update_one(
+        {"id": meter_id},
+        {"$set": {
+            "status": "completed",
+            "end_time": datetime.now(timezone.utc).isoformat(),
+            "end_location": {
+                "lat": last_snapshot.get("lat"),
+                "lng": last_snapshot.get("lng"),
+                "address": end_address.formatted
+            },
+            "final_fare": final_fare,
+            "payment_method": request.payment_method
+        }}
+    )
+    
+    # Remove from active meters
+    del active_meters[meter_id]
+    
+    return {
+        "meter_id": meter_id,
+        "status": "completed",
+        "final_fare": final_fare,
+        "receipt": {
+            "start_location": session.get("start_location") if session else None,
+            "end_location": {
+                "lat": last_snapshot.get("lat"),
+                "lng": last_snapshot.get("lng"),
+                "address": end_address.formatted
+            },
+            "start_time": session.get("start_time") if session else None,
+            "end_time": datetime.now(timezone.utc).isoformat(),
+            "fare_breakdown": final_fare,
+            "payment_method": request.payment_method
+        }
+    }
+
+@api_router.get("/taxi/meter/{meter_id}")
+async def get_meter_status(
+    meter_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get current meter status and fare."""
+    if meter_id not in active_meters:
+        # Check if it's a completed session
+        session = await db.meter_sessions.find_one({"id": meter_id})
+        if session:
+            return {
+                "meter_id": meter_id,
+                "status": session.get("status"),
+                "final_fare": session.get("final_fare"),
+                "mode": session.get("mode")
+            }
+        raise HTTPException(status_code=404, detail="Meter not found")
+    
+    meter = active_meters[meter_id]
+    return {
+        "meter_id": meter_id,
+        "status": "running" if meter.is_running else "stopped",
+        "fare": meter.get_fare_breakdown()
+    }
+
+@api_router.get("/taxi/history")
+async def get_meter_history(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    limit: int = 20
+):
+    """Get driver's meter session history."""
+    current_user = await get_current_user(credentials)
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Only drivers can access meter history")
+    
+    sessions = await db.meter_sessions.find(
+        {"driver_id": current_user["id"]},
+        {"_id": 0, "fare_snapshots": 0}  # Exclude large snapshot data
+    ).sort("start_time", -1).limit(limit).to_list(limit)
+    
+    return {"sessions": sessions}
+
+@api_router.post("/taxi/estimate")
+async def estimate_taxi_fare(
+    pickup_lat: float,
+    pickup_lng: float,
+    dropoff_lat: float,
+    dropoff_lng: float
+):
+    """
+    Get fare estimate using Quebec rates and road-based distance.
+    Uses MapProvider for accurate distance calculation.
+    """
+    map_provider = get_map_provider()
+    route = map_provider.get_route(
+        (pickup_lat, pickup_lng),
+        (dropoff_lat, dropoff_lng)
+    )
+    
+    # Use the taxi_meter estimate function with road-based distance
+    estimate = calculate_fare_estimate(
+        pickup_lat, pickup_lng,
+        dropoff_lat, dropoff_lng,
+        estimated_duration_minutes=route.duration_minutes
+    )
+    
+    # Override distance with road-based calculation
+    estimate["distance_km"] = route.distance_km
+    estimate["estimated_duration_minutes"] = route.duration_minutes
+    
+    # Recalculate costs with road distance
+    rates = get_rates(datetime.now(timezone.utc))
+    estimate["distance_cost"] = round(route.distance_km * rates["per_km_rate"], 2)
+    
+    # Recalculate totals
+    estimate["subtotal"] = round(
+        estimate["base_fare"] + estimate["distance_cost"] + estimate["waiting_cost"], 2
+    )
+    estimate["total_estimate"] = round(estimate["subtotal"] + estimate["government_fee"], 2)
+    estimate["estimate_range"] = {
+        "low": round(estimate["total_estimate"] * 0.85, 2),
+        "high": round(estimate["total_estimate"] * 1.25, 2)
+    }
+    
+    return estimate
+
 # Include router and middleware
 app.include_router(api_router)
 
