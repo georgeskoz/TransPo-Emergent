@@ -1627,7 +1627,7 @@ async def get_meter_history(
     
     return {"sessions": sessions}
 
-@api_router.post("/taxi/estimate")
+@api_router.get("/taxi/estimate")
 async def estimate_taxi_fare(
     pickup_lat: float,
     pickup_lng: float,
