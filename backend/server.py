@@ -344,6 +344,26 @@ async def get_current_user(
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+async def get_current_user_jwt(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Simple JWT-only authentication for API endpoints that don't use cookies."""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
 # ============== FILE UPLOAD HELPERS ==============
 
 async def save_upload_file(upload_file: UploadFile, folder: str) -> str:
