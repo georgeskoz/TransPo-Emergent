@@ -1047,6 +1047,335 @@ async def get_driver_earnings(current_user: dict = Depends(get_current_user)):
         "recent_rides": completed_rides[:10]
     }
 
+# ============== ADMIN ROLE DEFINITIONS ==============
+
+# Admin roles and their permissions
+ADMIN_ROLES = {
+    "super_admin": {
+        "name": "Super Admin",
+        "description": "Full platform access with ability to create other admins",
+        "permissions": ["all"]
+    },
+    "admin": {
+        "name": "Admin",
+        "description": "General admin access",
+        "permissions": ["view_dashboard", "manage_users", "manage_drivers", "manage_bookings", "view_reports"]
+    },
+    "document_reviewer": {
+        "name": "Document Reviewer",
+        "description": "Can approve/reject driver documents",
+        "permissions": ["view_dashboard", "manage_documents"]
+    },
+    "payout_manager": {
+        "name": "Payout Manager",
+        "description": "Can process driver payouts",
+        "permissions": ["view_dashboard", "manage_payouts", "view_reports"]
+    },
+    "support_agent": {
+        "name": "Support Agent",
+        "description": "Can handle support cases and disputes",
+        "permissions": ["view_dashboard", "manage_cases"]
+    },
+    "finance_admin": {
+        "name": "Finance Admin",
+        "description": "Can view reports and manage commissions",
+        "permissions": ["view_dashboard", "view_reports", "manage_commissions", "manage_taxes"]
+    }
+}
+
+def check_admin_permission(user: dict, required_permission: str) -> bool:
+    """Check if admin has a specific permission."""
+    if user.get("role") not in ["admin", "super_admin"]:
+        return False
+    
+    admin_role = user.get("admin_role", "admin")
+    
+    # Super admin has all permissions
+    if admin_role == "super_admin":
+        return True
+    
+    role_config = ADMIN_ROLES.get(admin_role, ADMIN_ROLES["admin"])
+    permissions = role_config.get("permissions", [])
+    
+    return "all" in permissions or required_permission in permissions
+
+def require_permission(permission: str):
+    """Dependency to check admin permission."""
+    async def check(current_user: dict = Depends(get_current_user)):
+        if not check_admin_permission(current_user, permission):
+            raise HTTPException(status_code=403, detail=f"Permission '{permission}' required")
+        return current_user
+    return check
+
+# ============== ADMIN MANAGEMENT ENDPOINTS ==============
+
+class AdminCreateRequest(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    admin_role: str = "admin"
+    phone: Optional[str] = None
+
+class AdminUpdateRequest(BaseModel):
+    admin_role: Optional[str] = None
+    is_active: Optional[bool] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+@api_router.get("/admin/roles")
+async def get_admin_roles(current_user: dict = Depends(get_current_user)):
+    """Get all available admin roles."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return {"roles": ADMIN_ROLES}
+
+@api_router.get("/admin/admins")
+async def get_all_admins(current_user: dict = Depends(get_current_user)):
+    """Get all admin users. Only super_admin can see all admins."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Only super admin can view all admins
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    admins = await db.users.find(
+        {"role": {"$in": ["admin", "super_admin"]}},
+        {"_id": 0, "password": 0}
+    ).to_list(100)
+    
+    return {"admins": admins}
+
+@api_router.post("/admin/admins")
+async def create_admin(
+    admin_data: AdminCreateRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new admin user. Only super_admin can create admins."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can create admin accounts")
+    
+    # Check if admin role is valid
+    if admin_data.admin_role not in ADMIN_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid admin role. Valid roles: {list(ADMIN_ROLES.keys())}")
+    
+    # Only super admin can create another super admin
+    if admin_data.admin_role == "super_admin":
+        # Check if this is the first super admin or if current user is super admin
+        existing_super = await db.users.find_one({"admin_role": "super_admin"})
+        if existing_super and current_user.get("admin_role") != "super_admin":
+            raise HTTPException(status_code=403, detail="Only existing super admin can create another super admin")
+    
+    # Check if email already exists
+    existing = await db.users.find_one({"email": admin_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create admin user
+    admin_user = {
+        "id": str(uuid.uuid4()),
+        "email": admin_data.email,
+        "password": pwd_context.hash(admin_data.password),
+        "name": f"{admin_data.first_name} {admin_data.last_name}",
+        "first_name": admin_data.first_name,
+        "last_name": admin_data.last_name,
+        "phone": admin_data.phone,
+        "role": "admin",
+        "admin_role": admin_data.admin_role,
+        "permissions": ADMIN_ROLES[admin_data.admin_role]["permissions"],
+        "is_active": True,
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(admin_user)
+    
+    # Log the action
+    await db.admin_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "admin_created",
+        "admin_id": current_user["id"],
+        "target_user_id": admin_user["id"],
+        "details": {
+            "email": admin_data.email,
+            "admin_role": admin_data.admin_role
+        },
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Remove password from response
+    admin_user.pop("password", None)
+    
+    return {"message": "Admin created successfully", "admin": admin_user}
+
+@api_router.put("/admin/admins/{admin_id}")
+async def update_admin(
+    admin_id: str,
+    updates: AdminUpdateRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update an admin user. Only super_admin can update admins."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can update admin accounts")
+    
+    # Check if target admin exists
+    target_admin = await db.users.find_one({"id": admin_id, "role": {"$in": ["admin", "super_admin"]}})
+    if not target_admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    # Cannot demote/modify yourself
+    if admin_id == current_user["id"] and updates.admin_role and updates.admin_role != "super_admin":
+        raise HTTPException(status_code=400, detail="Cannot demote yourself")
+    
+    # Build update
+    update_data = {}
+    if updates.admin_role:
+        if updates.admin_role not in ADMIN_ROLES:
+            raise HTTPException(status_code=400, detail=f"Invalid admin role")
+        update_data["admin_role"] = updates.admin_role
+        update_data["permissions"] = ADMIN_ROLES[updates.admin_role]["permissions"]
+    
+    if updates.is_active is not None:
+        update_data["is_active"] = updates.is_active
+    
+    if updates.first_name:
+        update_data["first_name"] = updates.first_name
+        update_data["name"] = f"{updates.first_name} {target_admin.get('last_name', '')}"
+    
+    if updates.last_name:
+        update_data["last_name"] = updates.last_name
+        update_data["name"] = f"{target_admin.get('first_name', '')} {updates.last_name}"
+    
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        update_data["updated_by"] = current_user["id"]
+        
+        await db.users.update_one({"id": admin_id}, {"$set": update_data})
+        
+        # Log the action
+        await db.admin_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "action": "admin_updated",
+            "admin_id": current_user["id"],
+            "target_user_id": admin_id,
+            "details": update_data,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    return {"message": "Admin updated successfully"}
+
+@api_router.delete("/admin/admins/{admin_id}")
+async def delete_admin(
+    admin_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Deactivate an admin user. Only super_admin can delete admins."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can delete admin accounts")
+    
+    # Cannot delete yourself
+    if admin_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    # Check if target admin exists
+    target_admin = await db.users.find_one({"id": admin_id, "role": {"$in": ["admin", "super_admin"]}})
+    if not target_admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    
+    # Soft delete - just deactivate
+    await db.users.update_one(
+        {"id": admin_id},
+        {"$set": {
+            "is_active": False,
+            "deactivated_at": datetime.now(timezone.utc).isoformat(),
+            "deactivated_by": current_user["id"]
+        }}
+    )
+    
+    # Log the action
+    await db.admin_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "action": "admin_deactivated",
+        "admin_id": current_user["id"],
+        "target_user_id": admin_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "Admin deactivated successfully"}
+
+@api_router.get("/admin/profile")
+async def get_admin_profile(current_user: dict = Depends(get_current_user)):
+    """Get current admin's profile."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    admin_role = current_user.get("admin_role", "admin")
+    role_info = ADMIN_ROLES.get(admin_role, ADMIN_ROLES["admin"])
+    
+    return {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "name": current_user.get("name"),
+        "first_name": current_user.get("first_name"),
+        "last_name": current_user.get("last_name"),
+        "phone": current_user.get("phone"),
+        "profile_photo_url": current_user.get("profile_photo_url"),
+        "admin_role": admin_role,
+        "role_info": role_info,
+        "permissions": current_user.get("permissions", role_info["permissions"]),
+        "is_super_admin": admin_role == "super_admin",
+        "created_at": current_user.get("created_at")
+    }
+
+@api_router.put("/admin/profile")
+async def update_admin_profile(
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    phone: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update current admin's profile."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data = {}
+    if first_name:
+        update_data["first_name"] = first_name
+    if last_name:
+        update_data["last_name"] = last_name
+    if first_name or last_name:
+        update_data["name"] = f"{first_name or current_user.get('first_name', '')} {last_name or current_user.get('last_name', '')}"
+    if phone:
+        update_data["phone"] = phone
+    
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.users.update_one({"id": current_user["id"]}, {"$set": update_data})
+    
+    return {"message": "Profile updated successfully"}
+
+@api_router.get("/admin/activity-log")
+async def get_admin_activity_log(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get admin activity log. Super admins see all, others see their own."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if current_user.get("admin_role") != "super_admin":
+        query["admin_id"] = current_user["id"]
+    
+    logs = await db.admin_logs.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return {"logs": logs}
+
 # ============== ADMIN ROUTES ==============
 
 @api_router.get("/admin/stats")
