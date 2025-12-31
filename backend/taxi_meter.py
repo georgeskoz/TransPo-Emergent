@@ -233,11 +233,10 @@ class TaxiMeter:
             "is_completed": self.is_completed
         }
     
-    def calculate_with_tip(self, tip_percent: float = 0, custom_tip: float = 0) -> Dict:
+    def calculate_with_tip(self, tip_percent: float = 0, custom_tip: float = 0, commission_rate: float = 25.0) -> Dict:
         """
-        Calculate final fare with tip.
-        Tip is calculated on total_before_tip (includes gov fee for simplicity,
-        but can be adjusted to exclude if needed).
+        Calculate final fare with tip and commission breakdown.
+        Commission is calculated on the fare EXCLUDING government fees and tips.
         """
         breakdown = self.get_fare_breakdown()
         
@@ -253,6 +252,18 @@ class TaxiMeter:
         breakdown["tip_percent"] = tip_percent if custom_tip == 0 else 0
         breakdown["tip_amount"] = round(tip_amount, 2)
         breakdown["total_final"] = round(breakdown["total_before_tip"] + tip_amount, 2)
+        
+        # Calculate commission (on subtotal, excluding gov fee and tip)
+        commissionable_amount = breakdown["subtotal"]  # base + distance + waiting
+        platform_commission = commissionable_amount * (commission_rate / 100)
+        driver_earnings = commissionable_amount - platform_commission + tip_amount
+        
+        breakdown["commission"] = {
+            "rate": commission_rate,
+            "commissionable_amount": round(commissionable_amount, 2),
+            "platform_commission": round(platform_commission, 2),
+            "driver_earnings": round(driver_earnings, 2)
+        }
         
         return breakdown
 
