@@ -115,7 +115,7 @@ function getDashboardPath(role) {
 
 function App() {
   return (
-    <div className="min-h-screen bg-noir-700">
+    <div className="min-h-screen bg-gray-50">
       <BrowserRouter>
         <AppRouter />
       </BrowserRouter>
