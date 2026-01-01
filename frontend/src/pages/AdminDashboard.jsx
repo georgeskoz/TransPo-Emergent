@@ -58,6 +58,12 @@ export default function AdminDashboard() {
   const [showCreateDriverModal, setShowCreateDriverModal] = useState(false);
   const [showCreatePayoutModal, setShowCreatePayoutModal] = useState(false);
   const [showEditContractModal, setShowEditContractModal] = useState(false);
+  const [showTripDetailModal, setShowTripDetailModal] = useState(false);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [complaintType, setComplaintType] = useState('service');
+  const [complaintDescription, setComplaintDescription] = useState('');
+  const [tripNote, setTripNote] = useState('');
   const [selectedPayoutDriver, setSelectedPayoutDriver] = useState(null);
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutMethod, setPayoutMethod] = useState('bank_transfer');
