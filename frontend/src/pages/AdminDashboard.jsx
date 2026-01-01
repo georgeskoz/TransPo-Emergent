@@ -1499,13 +1499,157 @@ export default function AdminDashboard() {
         {/* Cases & Disputes */}
         {activeSection === "cases" && (
           <div className="space-y-6">
+            {/* Header with Stats */}
+            <div className="flex justify-between items-center">
+              <div className="flex gap-4">
+                <div className="text-sm">
+                  <span className="text-red-600 font-bold">{cases.filter(c => c.status === 'open').length}</span>
+                  <span className="text-gray-500 ml-1">Open</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-yellow-600 font-bold">{cases.filter(c => c.status === 'in_progress').length}</span>
+                  <span className="text-gray-500 ml-1">In Progress</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-green-600 font-bold">{cases.filter(c => c.status === 'resolved').length}</span>
+                  <span className="text-gray-500 ml-1">Resolved</span>
+                </div>
+              </div>
+              <Button onClick={() => setShowCreateCaseModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />Create Case
+              </Button>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex gap-2 border-b pb-4">
+              {['all', 'open', 'in_progress', 'resolved', 'closed'].map(filter => (
+                <Button
+                  key={filter}
+                  variant={caseFilter === filter ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCaseFilter(filter)}
+                  className="capitalize"
+                >
+                  {filter.replace('_', ' ')}
+                </Button>
+              ))}
+            </div>
+
+            {/* Cases List */}
             <Card>
               <CardHeader>
-                <CardTitle>Disputes</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-500" />
+                  Support Cases & Incidents
+                </CardTitle>
+                <CardDescription>Manage user and driver incidents, complaints, and support requests</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {cases.filter(c => caseFilter === 'all' || c.status === caseFilter).length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No cases found</p>
+                    <p className="text-sm mt-2">Click "Create Case" to log a new incident or support request</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cases
+                      .filter(c => caseFilter === 'all' || c.status === caseFilter)
+                      .map((c) => (
+                        <div key={c.id} className={`p-4 border rounded-lg hover:shadow-md transition-shadow ${
+                          c.priority === 'urgent' ? 'border-red-300 bg-red-50' :
+                          c.priority === 'high' ? 'border-orange-300 bg-orange-50' :
+                          'bg-white'
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-sm font-bold">{c.case_number}</span>
+                                <Badge className={
+                                  c.case_type === 'incident' ? 'bg-red-100 text-red-700' :
+                                  c.case_type === 'complaint' ? 'bg-orange-100 text-orange-700' :
+                                  c.case_type === 'dispute' ? 'bg-purple-100 text-purple-700' :
+                                  c.case_type === 'refund' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }>{c.case_type}</Badge>
+                                <Badge className={
+                                  c.status === 'open' ? 'bg-red-100 text-red-700' :
+                                  c.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                                  c.status === 'resolved' ? 'bg-green-100 text-green-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }>{c.status?.replace('_', ' ')}</Badge>
+                                <Badge variant="outline" className={
+                                  c.priority === 'urgent' ? 'border-red-500 text-red-600' :
+                                  c.priority === 'high' ? 'border-orange-500 text-orange-600' :
+                                  c.priority === 'medium' ? 'border-yellow-500 text-yellow-600' :
+                                  'border-gray-300 text-gray-500'
+                                }>
+                                  {c.priority === 'urgent' && '🚨 '}{c.priority}
+                                </Badge>
+                              </div>
+                              <h4 className="font-semibold mt-2">{c.title}</h4>
+                              <p className="text-sm text-gray-600 mt-1 line-clamp-2">{c.description}</p>
+                              <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                                {c.driver_id && <span>🚗 Driver: {c.driver_id.slice(0, 8)}...</span>}
+                                {c.user_id && <span>👤 User: {c.user_id.slice(0, 8)}...</span>}
+                                {c.booking_id && <span>📍 Trip: {c.booking_id.slice(0, 8)}...</span>}
+                                <span>📅 {new Date(c.created_at).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-2 ml-4">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedCase(c);
+                                  setShowCaseDetailModal(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />View
+                              </Button>
+                              {c.status === 'open' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="text-yellow-600"
+                                  onClick={() => updateCaseStatus(c.id, 'in_progress')}
+                                >
+                                  Start
+                                </Button>
+                              )}
+                              {c.status === 'in_progress' && (
+                                <Button 
+                                  size="sm" 
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={() => {
+                                    const resolution = prompt('Enter resolution:');
+                                    if (resolution) updateCaseStatus(c.id, 'resolved', resolution);
+                                  }}
+                                >
+                                  Resolve
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Trip Complaints / Disputes */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-500" />
+                  Trip Disputes
+                </CardTitle>
+                <CardDescription>Disputes from trip complaints and booking issues</CardDescription>
               </CardHeader>
               <CardContent>
                 {disputes.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">No disputes found</div>
+                  <div className="text-center py-8 text-gray-500">No trip disputes found</div>
                 ) : (
                   <div className="space-y-3">
                     {disputes.map((d) => (
@@ -1519,18 +1663,96 @@ export default function AdminDashboard() {
                                 d.status === 'resolved' ? 'bg-green-100 text-green-700' :
                                 'bg-yellow-100 text-yellow-700'
                               }>{d.status}</Badge>
+                              <Badge variant="outline">{d.reason}</Badge>
                             </div>
-                            <div className="text-sm text-gray-700 mt-1">{d.reason}</div>
-                            <div className="text-sm text-gray-500 mt-1">{d.description}</div>
+                            <div className="text-sm text-gray-700 mt-2">{d.description}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Trip: {d.booking_id?.slice(0, 8)}... | {new Date(d.created_at).toLocaleDateString()}
+                            </div>
                           </div>
-                          <Button variant="outline" size="sm">
-                            <Eye className="w-4 h-4 mr-1" />View
-                          </Button>
+                          <div className="flex gap-2">
+                            {d.status === 'open' && (
+                              <Button 
+                                size="sm" 
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => resolveDispute(d.id)}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />Resolve
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Case Templates */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Create</CardTitle>
+                <CardDescription>Create common case types quickly</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewCase({...newCase, case_type: 'incident', title: 'Driver Incident'});
+                      setShowCreateCaseModal(true);
+                    }}
+                  >
+                    <AlertTriangle className="w-6 h-6 text-red-500" />
+                    <span className="text-sm">Driver Incident</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewCase({...newCase, case_type: 'complaint', title: 'User Complaint'});
+                      setShowCreateCaseModal(true);
+                    }}
+                  >
+                    <Users className="w-6 h-6 text-orange-500" />
+                    <span className="text-sm">User Complaint</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewCase({...newCase, case_type: 'refund', title: 'Refund Request'});
+                      setShowCreateCaseModal(true);
+                    }}
+                  >
+                    <DollarSign className="w-6 h-6 text-blue-500" />
+                    <span className="text-sm">Refund Request</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewCase({...newCase, case_type: 'dispute', title: 'Fare Dispute'});
+                      setShowCreateCaseModal(true);
+                    }}
+                  >
+                    <Receipt className="w-6 h-6 text-purple-500" />
+                    <span className="text-sm">Fare Dispute</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewCase({...newCase, case_type: 'other', title: ''});
+                      setShowCreateCaseModal(true);
+                    }}
+                  >
+                    <FileText className="w-6 h-6 text-gray-500" />
+                    <span className="text-sm">Other</span>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
