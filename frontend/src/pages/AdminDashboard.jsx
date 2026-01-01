@@ -1497,7 +1497,7 @@ export default function AdminDashboard() {
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">License Information</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Driver's License #</Label>
+                      <Label>Driver&apos;s License #</Label>
                       <Input 
                         value={newDriver.drivers_license_number}
                         onChange={(e) => setNewDriver({...newDriver, drivers_license_number: e.target.value})}
