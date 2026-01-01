@@ -520,9 +520,14 @@ class TranspoAPITester:
                 driver = pending_drivers[0]
                 print(f"   Sample pending: {driver.get('name', 'N/A')} - ${driver.get('pending_amount', 0)}")
         
-        # Test create new payout
+        # Test create new payout - use the driver we just created
+        if success:
+            driver_id = response.get('driver', {}).get('id', 'test-driver-id')
+        else:
+            driver_id = "test-driver-id"
+            
         payout_data = {
-            "driver_id": "test-driver-id",
+            "driver_id": driver_id,
             "amount": 150.00,
             "method": "bank_transfer",
             "notes": "Weekly payout test"
