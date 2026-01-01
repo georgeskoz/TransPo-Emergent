@@ -198,6 +198,93 @@ export default function AdminDashboard() {
     } catch (e) { console.log(e); }
   };
 
+  const createCase = async () => {
+    if (!newCase.title || !newCase.description) {
+      toast.error('Please fill in title and description');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/admin/cases`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(newCase)
+      });
+      if (res.ok) {
+        toast.success('Case created successfully');
+        setShowCreateCaseModal(false);
+        setNewCase({
+          case_type: 'incident', title: '', description: '', priority: 'medium',
+          driver_id: '', user_id: '', booking_id: ''
+        });
+        loadCases();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create case');
+      }
+    } catch (e) {
+      toast.error('Failed to create case');
+    }
+  };
+
+  const updateCaseStatus = async (caseId, status, resolution = null) => {
+    try {
+      const body = { status };
+      if (resolution) body.resolution = resolution;
+      
+      const res = await fetch(`${API_URL}/admin/cases/${caseId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        toast.success(`Case ${status}`);
+        loadCases();
+        if (selectedCase?.id === caseId) {
+          setSelectedCase({...selectedCase, status});
+        }
+      }
+    } catch (e) {
+      toast.error('Failed to update case');
+    }
+  };
+
+  const addCaseNote = async (caseId, note) => {
+    if (!note) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/cases/${caseId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ notes: note })
+      });
+      if (res.ok) {
+        toast.success('Note added');
+        loadCases();
+      }
+    } catch (e) {
+      toast.error('Failed to add note');
+    }
+  };
+
+  const resolveDispute = async (disputeId, resolution) => {
+    if (!resolution) {
+      resolution = prompt('Enter resolution details:');
+      if (!resolution) return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/admin/disputes/${disputeId}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ resolution, resolution_type: 'resolved' })
+      });
+      if (res.ok) {
+        toast.success('Dispute resolved');
+        loadDisputes();
+      }
+    } catch (e) {
+      toast.error('Failed to resolve dispute');
+    }
+  };
+
   const loadPayouts = async () => {
     try {
       const res = await fetch(`${API_URL}/admin/payouts`, { headers: getAuthHeaders() });
