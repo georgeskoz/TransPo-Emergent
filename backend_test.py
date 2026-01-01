@@ -524,8 +524,7 @@ class TranspoAPITester:
         payout_data = {
             "driver_id": "test-driver-id",
             "amount": 150.00,
-            "period_start": "2024-01-01",
-            "period_end": "2024-01-07",
+            "method": "bank_transfer",
             "notes": "Weekly payout test"
         }
         
