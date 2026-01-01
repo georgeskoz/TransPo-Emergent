@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   // Modal states
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [showCreateConfigModal, setShowCreateConfigModal] = useState(false);
+  const [showEditConfigModal, setShowEditConfigModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showCreateDriverModal, setShowCreateDriverModal] = useState(false);
   const [showCreatePayoutModal, setShowCreatePayoutModal] = useState(false);
@@ -61,6 +62,8 @@ export default function AdminDashboard() {
   const [showTripDetailModal, setShowTripDetailModal] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState(null);
+  const [selectedConfig, setSelectedConfig] = useState(null);
+  const [editConfigData, setEditConfigData] = useState(null);
   const [complaintType, setComplaintType] = useState('service');
   const [complaintDescription, setComplaintDescription] = useState('');
   const [tripNote, setTripNote] = useState('');
