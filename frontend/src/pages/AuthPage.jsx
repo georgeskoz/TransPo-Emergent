@@ -38,9 +38,11 @@ export default function AuthPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      await login(loginForm.email, loginForm.password);
+      const result = await login(loginForm.email, loginForm.password);
       toast.success("Welcome back!");
-      navigate(role === 'driver' ? '/driver' : role === 'admin' ? '/admin' : '/dashboard');
+      // Navigate based on the actual user role from login response
+      const userRole = result.user?.role;
+      navigate(userRole === 'driver' ? '/driver' : userRole === 'admin' ? '/admin' : '/dashboard');
     } catch (error) {
       toast.error(error.message);
     }
