@@ -922,7 +922,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Taxi Configuration Versions</CardTitle>
-                <CardDescription>Quebec CTQ-compliant rate configurations</CardDescription>
+                <CardDescription>Quebec CTQ-compliant rate configurations. Unlock to edit, then lock when done.</CardDescription>
               </CardHeader>
               <CardContent>
                 {taxiConfigs.length === 0 ? (
@@ -930,7 +930,7 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {taxiConfigs.map((config) => (
-                      <div key={config.id} className={`p-4 border rounded-lg ${config.status === 'active' ? 'border-green-500 bg-green-50' : config.status === 'locked' ? 'border-red-300 bg-red-50' : ''}`}>
+                      <div key={config.id} className={`p-4 border rounded-lg ${config.status === 'active' ? 'border-green-500 bg-green-50' : config.status === 'locked' ? 'border-red-300 bg-red-50' : 'border-yellow-300 bg-yellow-50'}`}>
                         <div className="flex items-start justify-between">
                           <div>
                             <div className="flex items-center gap-2">
@@ -945,24 +945,41 @@ export default function AdminDashboard() {
                               {config.status === 'locked' && <Lock className="w-4 h-4 text-red-500" />}
                             </div>
                             <p className="text-sm text-gray-500 mt-1">{config.description}</p>
+                            {config.locked_reason && (
+                              <p className="text-xs text-red-600 mt-1">Lock reason: {config.locked_reason}</p>
+                            )}
                           </div>
-                          {isSuperAdmin && config.status !== 'locked' && (
-                            <div className="flex gap-2">
-                              {config.status !== 'active' && (
-                                <Button size="sm" onClick={() => activateTaxiConfig(config.id)}>
-                                  Activate
+                          {isSuperAdmin && (
+                            <div className="flex gap-2 flex-wrap justify-end">
+                              {/* Locked config - show Unlock button */}
+                              {config.status === 'locked' && (
+                                <Button size="sm" variant="outline" className="text-blue-600 border-blue-200" onClick={() => unlockTaxiConfig(config.id)}>
+                                  <Unlock className="w-4 h-4 mr-1" />Unlock
                                 </Button>
                               )}
-                              <Button size="sm" variant="outline" onClick={() => lockTaxiConfig(config.id)}>
-                                <Lock className="w-4 h-4 mr-1" />Lock
-                              </Button>
+                              {/* Draft/Active config - show Edit and Lock buttons */}
+                              {config.status !== 'locked' && (
+                                <>
+                                  <Button size="sm" variant="outline" onClick={() => openEditConfig(config)}>
+                                    <Edit className="w-4 h-4 mr-1" />Edit
+                                  </Button>
+                                  {config.status !== 'active' && (
+                                    <Button size="sm" onClick={() => activateTaxiConfig(config.id)}>
+                                      Activate
+                                    </Button>
+                                  )}
+                                  <Button size="sm" variant="outline" className="text-red-600 border-red-200" onClick={() => lockTaxiConfig(config.id)}>
+                                    <Lock className="w-4 h-4 mr-1" />Lock
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
                         
                         <div className="grid md:grid-cols-2 gap-4 mt-4">
                           <div className="p-3 bg-white rounded border">
-                            <div className="text-sm font-medium text-amber-700 mb-2">Day Rates (05:00-23:00)</div>
+                            <div className="text-sm font-medium text-amber-700 mb-2">☀️ Day Rates (05:00-23:00)</div>
                             <div className="space-y-1 text-sm">
                               <div className="flex justify-between"><span>Base:</span><span className="font-mono">${config.day_rates?.base_fare}</span></div>
                               <div className="flex justify-between"><span>Per km:</span><span className="font-mono">${config.day_rates?.per_km_rate}</span></div>
@@ -970,7 +987,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <div className="p-3 bg-white rounded border">
-                            <div className="text-sm font-medium text-indigo-700 mb-2">Night Rates (23:00-05:00)</div>
+                            <div className="text-sm font-medium text-indigo-700 mb-2">🌙 Night Rates (23:00-05:00)</div>
                             <div className="space-y-1 text-sm">
                               <div className="flex justify-between"><span>Base:</span><span className="font-mono">${config.night_rates?.base_fare}</span></div>
                               <div className="flex justify-between"><span>Per km:</span><span className="font-mono">${config.night_rates?.per_km_rate}</span></div>
@@ -982,6 +999,7 @@ export default function AdminDashboard() {
                         <div className="mt-3 text-xs text-gray-500">
                           Gov Fee: ${config.government_fee} | Speed Threshold: {config.speed_threshold_kmh} km/h | 
                           Created: {new Date(config.created_at).toLocaleDateString()}
+                          {config.updated_at && ` | Updated: ${new Date(config.updated_at).toLocaleDateString()}`}
                         </div>
                       </div>
                     ))}
