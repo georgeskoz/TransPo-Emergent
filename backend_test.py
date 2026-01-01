@@ -546,6 +546,19 @@ class TranspoAPITester:
                 headers=self.get_auth_headers(self.user_token)
             )
 
+    def setup_admin_user(self):
+        """Setup admin user if it doesn't exist"""
+        print("\n🔧 Setting up admin user...")
+        try:
+            response = requests.post(f"{self.base_url}/seed/super-admin")
+            if response.status_code == 200:
+                result = response.json()
+                print(f"✅ {result.get('message', 'Admin setup completed')}")
+            else:
+                print(f"⚠️ Admin setup response: {response.status_code}")
+        except Exception as e:
+            print(f"⚠️ Admin setup failed: {e}")
+
     def run_focused_tests(self):
         """Run focused tests based on test_result.md requirements"""
         print("🚀 Starting Transpo Backend API Focused Test Suite")
