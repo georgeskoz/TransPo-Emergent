@@ -2657,6 +2657,295 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Merchants Section */}
+        {activeSection === "merchants" && (
+          <div className="space-y-6">
+            {/* Bank Connection Status Banner */}
+            {merchantOverview && !merchantSettings?.bank_account_number && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-yellow-800">Bank Account Not Connected</h4>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Connect your bank account to withdraw platform earnings. Your funds are safe and will be available once connected.
+                  </p>
+                  {isSuperAdmin && (
+                    <Button 
+                      size="sm" 
+                      className="mt-3 bg-yellow-600 hover:bg-yellow-700"
+                      onClick={() => setShowBankSettingsModal(true)}
+                    >
+                      <Building className="w-4 h-4 mr-2" />Connect Bank Account
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Total Collected</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        ${merchantOverview?.total_collected?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                      <DollarSign className="w-6 h-6 text-green-600" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">All time from trips</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Platform Commission</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        ${merchantOverview?.total_commission?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                      <Percent className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">{merchantOverview?.commission_rate || 15}% commission rate</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Available Balance</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        ${merchantOverview?.available_balance?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                      <Wallet className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Ready to withdraw</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">This Month</p>
+                      <p className="text-2xl font-bold text-amber-600">
+                        ${merchantOverview?.this_month_commission?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                      <TrendingUp className="w-6 h-6 text-amber-600" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Platform earnings</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { loadMerchantOverview(); loadMerchantTransactions(); loadMerchantWithdrawals(); }}>
+                  <RefreshCw className="w-4 h-4 mr-2" />Refresh
+                </Button>
+                {isSuperAdmin && (
+                  <Button variant="outline" onClick={() => setShowBankSettingsModal(true)}>
+                    <Building className="w-4 h-4 mr-2" />Bank Settings
+                  </Button>
+                )}
+              </div>
+              {isSuperAdmin && merchantSettings?.bank_account_number && (
+                <Button 
+                  onClick={() => setShowWithdrawalModal(true)}
+                  disabled={!merchantOverview?.available_balance || merchantOverview.available_balance <= 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />Withdraw Funds
+                </Button>
+              )}
+            </div>
+
+            {/* Pending Driver Payouts Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-orange-500" />
+                  Driver Payouts Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-orange-50 rounded-lg">
+                    <div className="text-sm text-orange-600 font-medium">Pending to Drivers</div>
+                    <div className="text-xl font-bold text-orange-700">
+                      ${merchantOverview?.pending_driver_payouts?.toFixed(2) || '0.00'}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="text-sm text-green-600 font-medium">Paid to Drivers</div>
+                    <div className="text-xl font-bold text-green-700">
+                      ${merchantOverview?.total_paid_to_drivers?.toFixed(2) || '0.00'}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="text-sm text-gray-600 font-medium">Taxes Collected</div>
+                    <div className="text-xl font-bold text-gray-700">
+                      ${merchantOverview?.total_taxes_collected?.toFixed(2) || '0.00'}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Withdrawal History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Download className="w-5 h-5 text-blue-500" />
+                  Platform Withdrawals
+                </CardTitle>
+                <CardDescription>History of withdrawals to your bank account</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {merchantWithdrawals.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Wallet className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No withdrawals yet</p>
+                    <p className="text-sm mt-1">Withdrawn funds will appear here</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Amount</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Bank Account</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Notes</th>
+                          {isSuperAdmin && <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Actions</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {merchantWithdrawals.map((withdrawal) => (
+                          <tr key={withdrawal.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm">
+                              {new Date(withdrawal.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-4 font-semibold text-green-600">
+                              ${withdrawal.amount?.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              {withdrawal.bank_name} {withdrawal.bank_account}
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge className={
+                                withdrawal.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                withdrawal.status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                                withdrawal.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }>
+                                {withdrawal.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-500">
+                              {withdrawal.notes || '-'}
+                            </td>
+                            {isSuperAdmin && (
+                              <td className="py-3 px-4">
+                                {withdrawal.status === 'pending' && (
+                                  <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => updateWithdrawalStatus(withdrawal.id, 'processing')}>
+                                      Processing
+                                    </Button>
+                                    <Button size="sm" onClick={() => updateWithdrawalStatus(withdrawal.id, 'completed')}>
+                                      Complete
+                                    </Button>
+                                  </div>
+                                )}
+                                {withdrawal.status === 'processing' && (
+                                  <Button size="sm" onClick={() => updateWithdrawalStatus(withdrawal.id, 'completed')}>
+                                    Mark Complete
+                                  </Button>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Transaction History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-green-500" />
+                  Commission Transactions
+                </CardTitle>
+                <CardDescription>Platform earnings from completed trips</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {merchantTransactions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Activity className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No transactions yet</p>
+                    <p className="text-sm mt-1">Commission earnings will appear here after trips are completed</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Type</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Description</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Fare Total</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Commission</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {merchantTransactions.map((txn) => (
+                          <tr key={txn.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm">
+                              {new Date(txn.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge variant="outline" className="capitalize">{txn.type}</Badge>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {txn.description}
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              ${txn.fare_total?.toFixed(2) || '-'}
+                            </td>
+                            <td className="py-3 px-4 font-semibold text-green-600">
+                              +${txn.amount?.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
       </main>
 
       {/* Create Admin Modal */}
