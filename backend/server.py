@@ -1858,6 +1858,45 @@ async def lock_taxi_config(
     
     return {"message": "Configuration locked"}
 
+@api_router.post("/admin/taxi-configs/{config_id}/unlock")
+async def unlock_taxi_config(
+    config_id: str,
+    reason: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Unlock a locked taxi configuration for editing. Only super admin."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can unlock configurations")
+    
+    config = await db.taxi_configs.find_one({"id": config_id})
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    
+    if config.get("status") != ConfigStatus.LOCKED:
+        raise HTTPException(status_code=400, detail="Configuration is not locked")
+    
+    await db.taxi_configs.update_one(
+        {"id": config_id},
+        {"$set": {
+            "status": ConfigStatus.DRAFT,
+            "unlocked_at": datetime.now(timezone.utc).isoformat(),
+            "unlocked_by": current_user["id"],
+            "unlocked_reason": reason
+        }}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="taxi_config_unlocked",
+        entity_type="taxi_config",
+        entity_id=config_id,
+        notes=f"Unlocked: {reason}"
+    )
+    
+    return {"message": "Configuration unlocked for editing"}
+
 # ============== DISPUTE RESOLUTION ==============
 
 from models.admin_models import DisputeCreate, DisputeResolution
