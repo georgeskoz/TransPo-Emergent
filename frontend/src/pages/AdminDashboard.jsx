@@ -36,6 +36,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [settings, setSettings] = useState(null);
   const [pendingDocs, setPendingDocs] = useState([]);
+  const [platformDocs, setPlatformDocs] = useState([]);
   const [cases, setCases] = useState([]);
   const [disputes, setDisputes] = useState([]);
   const [payouts, setPayouts] = useState([]);
@@ -53,6 +54,19 @@ export default function AdminDashboard() {
   
   // Modal states
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [showCreateDocModal, setShowCreateDocModal] = useState(false);
+  const [showEditDocModal, setShowEditDocModal] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [newDoc, setNewDoc] = useState({
+    title: '',
+    doc_type: 'policy',
+    content: '',
+    target_audience: 'all',
+    is_active: true,
+    requires_acceptance: false,
+    popup_enabled: false,
+    popup_title: ''
+  });
   const [showCreateConfigModal, setShowCreateConfigModal] = useState(false);
   const [showEditConfigModal, setShowEditConfigModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
