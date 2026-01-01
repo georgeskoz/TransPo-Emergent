@@ -3549,6 +3549,323 @@ async def process_payout(
     
     return {"message": f"Payout {status}"}
 
+# ============== MERCHANTS / PLATFORM EARNINGS ==============
+
+class MerchantSettingsUpdate(BaseModel):
+    bank_account_name: Optional[str] = None
+    bank_account_number: Optional[str] = None  # Last 4 digits only for display
+    bank_routing_number: Optional[str] = None  # Last 4 digits only for display
+    bank_name: Optional[str] = None
+    payout_schedule: Optional[str] = None  # daily, weekly, monthly
+    auto_payout_enabled: Optional[bool] = None
+    min_payout_amount: Optional[float] = None
+
+@api_router.get("/admin/merchants/overview")
+async def get_merchant_overview(current_user: dict = Depends(get_current_user)):
+    """Get platform earnings overview for merchants section."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get completed trips for earnings calculation
+    completed_trips = await db.meter_trips.find(
+        {"status": "completed"},
+        {"_id": 0, "final_fare": 1, "end_time": 1, "driver_id": 1}
+    ).to_list(10000)
+    
+    # Calculate totals
+    total_collected = 0.0
+    total_commission = 0.0
+    total_taxes = 0.0
+    
+    # Get current commission rate
+    commission_config = await db.commission_configs.find_one({"is_active": True}, {"_id": 0})
+    commission_rate = commission_config.get("rate", 15) / 100 if commission_config else 0.15
+    
+    for trip in completed_trips:
+        fare = trip.get("final_fare", {})
+        trip_total = fare.get("total_final", 0)
+        total_collected += trip_total
+        total_commission += trip_total * commission_rate
+        total_taxes += fare.get("gst", 0) + fare.get("qst", 0)
+    
+    # Get pending payouts to drivers
+    pending_to_drivers = 0.0
+    pending_payouts = await db.payouts.find({"status": "pending"}, {"_id": 0, "amount": 1}).to_list(1000)
+    for p in pending_payouts:
+        pending_to_drivers += p.get("amount", 0)
+    
+    # Get processed payouts
+    processed_payouts = await db.payouts.find({"status": "processed"}, {"_id": 0, "amount": 1}).to_list(1000)
+    total_paid_out = sum(p.get("amount", 0) for p in processed_payouts)
+    
+    # Platform balance (commission - already paid to platform)
+    platform_withdrawals = await db.platform_withdrawals.find({"status": "completed"}, {"_id": 0, "amount": 1}).to_list(1000)
+    total_withdrawn = sum(w.get("amount", 0) for w in platform_withdrawals)
+    
+    available_balance = total_commission - total_withdrawn
+    
+    # Get merchant settings
+    settings = await db.merchant_settings.find_one({"type": "platform"}, {"_id": 0})
+    
+    # Calculate this month's earnings
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    this_month_trips = [t for t in completed_trips if t.get("end_time") and datetime.fromisoformat(t["end_time"].replace("Z", "+00:00")) >= month_start]
+    this_month_collected = sum(t.get("final_fare", {}).get("total_final", 0) for t in this_month_trips)
+    this_month_commission = this_month_collected * commission_rate
+    
+    return {
+        "overview": {
+            "total_collected": round(total_collected, 2),
+            "total_commission": round(total_commission, 2),
+            "total_taxes_collected": round(total_taxes, 2),
+            "pending_driver_payouts": round(pending_to_drivers, 2),
+            "total_paid_to_drivers": round(total_paid_out, 2),
+            "total_withdrawn": round(total_withdrawn, 2),
+            "available_balance": round(available_balance, 2),
+            "commission_rate": commission_rate * 100,
+            "this_month_collected": round(this_month_collected, 2),
+            "this_month_commission": round(this_month_commission, 2)
+        },
+        "settings": settings,
+        "bank_connected": settings.get("bank_account_number") is not None if settings else False
+    }
+
+@api_router.get("/admin/merchants/transactions")
+async def get_merchant_transactions(
+    page: int = 1,
+    limit: int = 50,
+    transaction_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get platform transaction history."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Build query
+    query = {}
+    if transaction_type:
+        query["type"] = transaction_type
+    
+    skip = (page - 1) * limit
+    
+    # Get platform transactions
+    transactions = await db.platform_transactions.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    total = await db.platform_transactions.count_documents(query)
+    
+    # If no transactions exist, generate from completed trips
+    if not transactions:
+        # Get commission rate
+        commission_config = await db.commission_configs.find_one({"is_active": True}, {"_id": 0})
+        commission_rate = commission_config.get("rate", 15) / 100 if commission_config else 0.15
+        
+        # Generate transactions from trips
+        trips = await db.meter_trips.find(
+            {"status": "completed"},
+            {"_id": 0}
+        ).sort("end_time", -1).skip(skip).limit(limit).to_list(limit)
+        
+        for trip in trips:
+            fare = trip.get("final_fare", {})
+            trip_total = fare.get("total_final", 0)
+            commission = trip_total * commission_rate
+            
+            transactions.append({
+                "id": f"txn_{trip.get('id', str(uuid.uuid4())[:8])}",
+                "type": "commission",
+                "amount": round(commission, 2),
+                "trip_id": trip.get("id"),
+                "driver_id": trip.get("driver_id"),
+                "description": f"Commission from trip {trip.get('id', 'N/A')[:8]}...",
+                "fare_total": round(trip_total, 2),
+                "created_at": trip.get("end_time", datetime.now(timezone.utc).isoformat()),
+                "status": "completed"
+            })
+        
+        total = await db.meter_trips.count_documents({"status": "completed"})
+    
+    return {
+        "transactions": transactions,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": (total + limit - 1) // limit
+        }
+    }
+
+@api_router.get("/admin/merchants/settings")
+async def get_merchant_settings(current_user: dict = Depends(get_current_user)):
+    """Get merchant/platform payout settings."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    settings = await db.merchant_settings.find_one({"type": "platform"}, {"_id": 0})
+    
+    if not settings:
+        settings = {
+            "id": str(uuid.uuid4()),
+            "type": "platform",
+            "bank_account_name": None,
+            "bank_account_number": None,
+            "bank_routing_number": None,
+            "bank_name": None,
+            "payout_schedule": "weekly",
+            "auto_payout_enabled": False,
+            "min_payout_amount": 100.0,
+            "stripe_connected": False,
+            "stripe_account_id": None,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.merchant_settings.insert_one(settings)
+        settings.pop("_id", None)
+    
+    return {"settings": settings}
+
+@api_router.put("/admin/merchants/settings")
+async def update_merchant_settings(
+    updates: MerchantSettingsUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update merchant/platform payout settings."""
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super Admin access required")
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = current_user["id"]
+    
+    result = await db.merchant_settings.update_one(
+        {"type": "platform"},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role="super_admin",
+        action_type="merchant_settings_updated",
+        entity_type="merchant_settings",
+        entity_id="platform",
+        notes=f"Updated fields: {list(update_data.keys())}"
+    )
+    
+    return {"message": "Merchant settings updated"}
+
+@api_router.post("/admin/merchants/withdraw")
+async def create_platform_withdrawal(
+    amount: float,
+    notes: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a platform withdrawal request (transfer to bank)."""
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super Admin access required")
+    
+    # Check available balance
+    overview_response = await get_merchant_overview(current_user)
+    available_balance = overview_response["overview"]["available_balance"]
+    
+    if amount > available_balance:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient balance. Available: ${available_balance:.2f}"
+        )
+    
+    # Check if bank is connected
+    settings = await db.merchant_settings.find_one({"type": "platform"}, {"_id": 0})
+    if not settings or not settings.get("bank_account_number"):
+        raise HTTPException(
+            status_code=400,
+            detail="No bank account connected. Please configure bank details first."
+        )
+    
+    withdrawal = {
+        "id": str(uuid.uuid4()),
+        "amount": amount,
+        "status": "pending",  # pending, processing, completed, failed
+        "notes": notes,
+        "bank_account": f"****{settings.get('bank_account_number', 'XXXX')[-4:]}",
+        "bank_name": settings.get("bank_name"),
+        "requested_by": current_user["id"],
+        "requested_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.platform_withdrawals.insert_one(withdrawal)
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role="super_admin",
+        action_type="withdrawal_requested",
+        entity_type="platform_withdrawal",
+        entity_id=withdrawal["id"],
+        notes=f"Amount: ${amount:.2f}"
+    )
+    
+    withdrawal.pop("_id", None)
+    return {"message": "Withdrawal request created", "withdrawal": withdrawal}
+
+@api_router.get("/admin/merchants/withdrawals")
+async def get_platform_withdrawals(
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get platform withdrawal history."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    withdrawals = await db.platform_withdrawals.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"withdrawals": withdrawals}
+
+@api_router.put("/admin/merchants/withdrawals/{withdrawal_id}")
+async def update_withdrawal_status(
+    withdrawal_id: str,
+    status: str,
+    transaction_ref: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update withdrawal status (for manual processing)."""
+    if current_user.get("role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super Admin access required")
+    
+    if status not in ["processing", "completed", "failed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    withdrawal = await db.platform_withdrawals.find_one({"id": withdrawal_id})
+    if not withdrawal:
+        raise HTTPException(status_code=404, detail="Withdrawal not found")
+    
+    update_data = {
+        "status": status,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": current_user["id"]
+    }
+    
+    if status == "completed":
+        update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+    if transaction_ref:
+        update_data["transaction_ref"] = transaction_ref
+    
+    await db.platform_withdrawals.update_one(
+        {"id": withdrawal_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": f"Withdrawal marked as {status}"}
+
 # ============== DRIVER CONTRACTS ==============
 
 @api_router.get("/admin/contracts/template")
