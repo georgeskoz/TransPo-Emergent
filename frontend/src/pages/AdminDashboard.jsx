@@ -591,6 +591,94 @@ export default function AdminDashboard() {
     }
   };
 
+  const createPlatformDoc = async () => {
+    if (!newDoc.title || !newDoc.content) {
+      toast.error('Please fill in title and content');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/admin/platform-documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(newDoc)
+      });
+      if (res.ok) {
+        toast.success('Document created successfully');
+        setShowCreateDocModal(false);
+        setNewDoc({
+          title: '', doc_type: 'policy', content: '', target_audience: 'all',
+          is_active: true, requires_acceptance: false, popup_enabled: false, popup_title: ''
+        });
+        loadPlatformDocs();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create document');
+      }
+    } catch (e) {
+      toast.error('Failed to create document');
+    }
+  };
+
+  const updatePlatformDoc = async () => {
+    if (!selectedDoc) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/platform-documents/${selectedDoc.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          title: selectedDoc.title,
+          content: selectedDoc.content,
+          is_active: selectedDoc.is_active,
+          requires_acceptance: selectedDoc.requires_acceptance,
+          popup_enabled: selectedDoc.popup_enabled,
+          popup_title: selectedDoc.popup_title
+        })
+      });
+      if (res.ok) {
+        toast.success('Document updated successfully');
+        setShowEditDocModal(false);
+        setSelectedDoc(null);
+        loadPlatformDocs();
+      } else {
+        toast.error('Failed to update document');
+      }
+    } catch (e) {
+      toast.error('Failed to update document');
+    }
+  };
+
+  const deletePlatformDoc = async (docId) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/platform-documents/${docId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success('Document deleted');
+        loadPlatformDocs();
+      }
+    } catch (e) {
+      toast.error('Failed to delete document');
+    }
+  };
+
+  const sendDocNotification = async (docId, notificationType) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/platform-documents/${docId}/send-notification?notification_type=${notificationType}`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success(`Notification sent via ${notificationType}`);
+      } else {
+        toast.error('Failed to send notification');
+      }
+    } catch (e) {
+      toast.error('Failed to send notification');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
