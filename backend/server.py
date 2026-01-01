@@ -3198,6 +3198,7 @@ Date: ____________________
         }
         await db.contract_templates.insert_one(contract)
     
+    contract.pop("_id", None)
     return contract
 
 @api_router.put("/admin/contracts/template")
