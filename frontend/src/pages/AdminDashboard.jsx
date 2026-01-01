@@ -341,6 +341,88 @@ export default function AdminDashboard() {
     }
   };
 
+  const createPayout = async () => {
+    if (!selectedPayoutDriver || !payoutAmount) {
+      toast.error('Please select driver and enter amount');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/admin/payouts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          driver_id: selectedPayoutDriver.driver_id,
+          amount: parseFloat(payoutAmount),
+          method: payoutMethod,
+          notes: payoutNotes
+        })
+      });
+      if (res.ok) {
+        toast.success('Payout created successfully');
+        setShowCreatePayoutModal(false);
+        setSelectedPayoutDriver(null);
+        setPayoutAmount('');
+        setPayoutNotes('');
+        loadPayouts();
+        loadPendingPayouts();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create payout');
+      }
+    } catch (e) {
+      toast.error('Failed to create payout');
+    }
+  };
+
+  const processPayout = async (payoutId, status) => {
+    const transactionId = status === 'completed' ? prompt('Enter transaction ID (optional):') : null;
+    try {
+      const url = `${API_URL}/admin/payouts/${payoutId}/process?status=${status}${transactionId ? `&transaction_id=${transactionId}` : ''}`;
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success(`Payout ${status}`);
+        loadPayouts();
+        loadPendingPayouts();
+      }
+    } catch (e) {
+      toast.error('Failed to process payout');
+    }
+  };
+
+  const updateContractTemplate = async () => {
+    if (!contractTemplate) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/contracts/template`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          title: contractTemplate.title,
+          content: contractTemplate.content
+        })
+      });
+      if (res.ok) {
+        toast.success('Contract template updated');
+        setShowEditContractModal(false);
+      }
+    } catch (e) {
+      toast.error('Failed to update contract template');
+    }
+  };
+
+  const loadTaxReportWithFilters = async () => {
+    try {
+      let url = `${API_URL}/admin/taxes/report?year=${taxYear}`;
+      if (taxQuarter) url += `&quarter=${taxQuarter}`;
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      if (res.ok) setTaxReport(await res.json());
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   const activateTaxiConfig = async (configId) => {
     try {
       const res = await fetch(`${API_URL}/admin/taxi-configs/${configId}/activate`, {
