@@ -56,6 +56,14 @@ export default function AdminDashboard() {
   const [showCreateConfigModal, setShowCreateConfigModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showCreateDriverModal, setShowCreateDriverModal] = useState(false);
+  const [showCreatePayoutModal, setShowCreatePayoutModal] = useState(false);
+  const [showEditContractModal, setShowEditContractModal] = useState(false);
+  const [selectedPayoutDriver, setSelectedPayoutDriver] = useState(null);
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutMethod, setPayoutMethod] = useState('bank_transfer');
+  const [payoutNotes, setPayoutNotes] = useState('');
+  const [taxYear, setTaxYear] = useState(new Date().getFullYear());
+  const [taxQuarter, setTaxQuarter] = useState(null);
   const [newAdmin, setNewAdmin] = useState({ email: '', password: '', first_name: '', last_name: '', admin_role: 'admin' });
   const [newUser, setNewUser] = useState({ email: '', password: '', first_name: '', last_name: '', phone: '', address: '' });
   const [newDriver, setNewDriver] = useState({ 
