@@ -61,7 +61,7 @@
 # END - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
 #====================================================================================================
 
-user_problem_statement: "Transpo Mobility Platform - Admin Panel Features (Payouts, Taxes, Contracts) and Password Management"
+user_problem_statement: "Transpo Mobility Platform - Merchants Section for Platform Earnings and Bank Account Management"
 
 backend:
   - task: "Change Password API"
