@@ -3838,7 +3838,7 @@ async def update_withdrawal_status(
     current_user: dict = Depends(get_current_user)
 ):
     """Update withdrawal status (for manual processing)."""
-    if current_user.get("role") != "super_admin":
+    if current_user.get("admin_role") != "super_admin":
         raise HTTPException(status_code=403, detail="Super Admin access required")
     
     if status not in ["processing", "completed", "failed"]:
