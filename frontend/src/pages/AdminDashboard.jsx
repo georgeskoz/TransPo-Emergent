@@ -15,7 +15,7 @@ import {
   Gauge, CreditCard, Wallet, Receipt, FileCheck, AlertTriangle,
   ChevronRight, Save, Eye, Download, Building, Percent, Calendar,
   Shield, UserPlus, Lock, Unlock, History, MapPin, Activity,
-  RefreshCw, Search, Filter, MoreVertical, Edit, Trash2, Plus
+  RefreshCw, Search, Filter, MoreVertical, Edit, Trash2, Plus, Mail, Bell
 } from "lucide-react";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
