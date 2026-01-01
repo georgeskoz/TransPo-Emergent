@@ -1070,7 +1070,7 @@ class TranspoAPITester:
         """Run focused tests based on test_result.md requirements"""
         print("🚀 Starting Transpo Backend API Focused Test Suite")
         print(f"🎯 Testing against: {self.base_url}")
-        print("📋 Focus: Password Management, Admin Panel (Payouts, Taxes, Contracts), Authentication, Fare Estimation")
+        print("📋 Focus: Password Management, Admin Panel (Payouts, Taxes, Contracts, Merchants), Authentication, Fare Estimation")
         
         start_time = datetime.now()
         
@@ -1083,6 +1083,7 @@ class TranspoAPITester:
             self.test_password_management()
             self.test_admin_taxes()
             self.test_admin_contracts()
+            self.test_admin_merchants()  # New merchants section tests
             self.test_admin_endpoints()
             self.test_admin_payouts()
             self.test_fare_estimation()
