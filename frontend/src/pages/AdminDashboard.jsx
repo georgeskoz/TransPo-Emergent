@@ -358,6 +358,97 @@ export default function AdminDashboard() {
     } catch (e) { console.log(e); }
   };
 
+  // Merchant functions
+  const loadMerchantOverview = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/merchants/overview`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setMerchantOverview(data.overview);
+        setMerchantSettings(data.settings);
+      }
+    } catch (e) { console.log(e); }
+  };
+
+  const loadMerchantTransactions = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/merchants/transactions?limit=50`, { headers: getAuthHeaders() });
+      if (res.ok) setMerchantTransactions((await res.json()).transactions || []);
+    } catch (e) { console.log(e); }
+  };
+
+  const loadMerchantWithdrawals = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/merchants/withdrawals`, { headers: getAuthHeaders() });
+      if (res.ok) setMerchantWithdrawals((await res.json()).withdrawals || []);
+    } catch (e) { console.log(e); }
+  };
+
+  const saveBankSettings = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/merchants/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(bankSettings)
+      });
+      if (res.ok) {
+        toast.success('Bank settings saved');
+        setShowBankSettingsModal(false);
+        loadMerchantOverview();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to save settings');
+      }
+    } catch (e) {
+      toast.error('Failed to save bank settings');
+    }
+  };
+
+  const createWithdrawal = async () => {
+    try {
+      const amount = parseFloat(withdrawalAmount);
+      if (isNaN(amount) || amount <= 0) {
+        toast.error('Please enter a valid amount');
+        return;
+      }
+      
+      const res = await fetch(`${API_URL}/admin/merchants/withdraw?amount=${amount}&notes=${encodeURIComponent(withdrawalNotes || '')}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+      });
+      
+      if (res.ok) {
+        toast.success('Withdrawal request created');
+        setShowWithdrawalModal(false);
+        setWithdrawalAmount('');
+        setWithdrawalNotes('');
+        loadMerchantOverview();
+        loadMerchantWithdrawals();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create withdrawal');
+      }
+    } catch (e) {
+      toast.error('Failed to create withdrawal');
+    }
+  };
+
+  const updateWithdrawalStatus = async (withdrawalId, status) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/merchants/withdrawals/${withdrawalId}?status=${status}`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success(`Withdrawal marked as ${status}`);
+        loadMerchantWithdrawals();
+        loadMerchantOverview();
+      }
+    } catch (e) {
+      toast.error('Failed to update withdrawal');
+    }
+  };
+
   const updateSettings = async (updates) => {
     try {
       const res = await fetch(`${API_URL}/admin/settings`, {
