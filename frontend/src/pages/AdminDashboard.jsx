@@ -164,6 +164,13 @@ export default function AdminDashboard() {
     } catch (e) { console.log(e); }
   };
 
+  const loadPlatformDocs = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/platform-documents`, { headers: getAuthHeaders() });
+      if (res.ok) setPlatformDocs((await res.json()).documents || []);
+    } catch (e) { console.log(e); }
+  };
+
   const loadCases = async () => {
     try {
       const res = await fetch(`${API_URL}/admin/cases`, { headers: getAuthHeaders() });
