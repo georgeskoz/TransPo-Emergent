@@ -800,18 +800,15 @@ class TranspoAPITester:
                 print(f"   Sample withdrawal: ${withdrawal.get('amount', 0)} - {withdrawal.get('status', 'N/A')}")
         
         # Test create withdrawal (should fail without bank connected initially)
-        withdrawal_data = {
-            "amount": 50.0,
-            "notes": "Test withdrawal"
-        }
+        withdrawal_amount = 50.0
+        withdrawal_notes = "Test withdrawal"
         
         # First test should fail if no bank connected
         success, response = self.run_test(
             "Create Withdrawal - No Bank", 
             "POST", 
-            "admin/merchants/withdraw", 
+            f"admin/merchants/withdraw?amount={withdrawal_amount}&notes={withdrawal_notes}", 
             400,  # Should fail without bank
-            withdrawal_data,
             headers=self.get_auth_headers(self.admin_token)
         )
         
