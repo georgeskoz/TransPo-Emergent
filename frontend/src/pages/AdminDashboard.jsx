@@ -679,6 +679,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const approveDocument = async (driverId, documentType, approved) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/documents/approve?driver_id=${driverId}&document_type=${documentType}&approved=${approved}`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success(`Document ${approved ? 'approved' : 'rejected'}`);
+        loadPendingDocs();
+      }
+    } catch (e) {
+      toast.error('Failed to process document');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
