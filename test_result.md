@@ -126,11 +126,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "POST /api/admin/drivers creates new driver with vehicle info and Quebec tax fields - tested with curl"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - POST /api/admin/drivers tested successfully. Creates both user account (role: driver) and driver profile. Required fields: email, password, first_name, last_name, phone. Optional vehicle fields: vehicle_type, vehicle_make, vehicle_model, vehicle_color, license_plate. Optional license fields: drivers_license_number, taxi_permit_number. Quebec tax fields: gst_number, qst_number, srs_code. Services array working correctly. Returns driver data without password. Requires admin auth. Properly handles duplicate email validation and access restrictions."
 
   - task: "Taxi Rates API"
     implemented: true
