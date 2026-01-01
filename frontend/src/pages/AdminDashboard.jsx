@@ -1261,6 +1261,411 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Payouts Section */}
+        {activeSection === "payouts" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">Driver payout management</div>
+              <Button onClick={() => setShowCreatePayoutModal(true)} disabled={pendingPayouts.length === 0}>
+                <Plus className="w-4 h-4 mr-2" />Create Payout
+              </Button>
+            </div>
+
+            {/* Pending Payouts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-yellow-500" />
+                  Pending Driver Earnings
+                </CardTitle>
+                <CardDescription>Drivers with earnings above minimum payout threshold</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingPayouts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No drivers with pending payouts</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Driver</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Total Fares</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Commission</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Driver Share</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Paid Out</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Balance Due</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingPayouts.map((p) => (
+                          <tr key={p.driver_id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                  <Car className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div>
+                                  <div className="font-medium">{p.user?.name || p.driver?.name || 'Driver'}</div>
+                                  <div className="text-xs text-gray-500">{p.trip_count} trips</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 font-medium">${p.total_fares?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-red-600">-{p.commission_rate}%</td>
+                            <td className="py-3 px-4 font-medium">${p.driver_share?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-gray-600">${p.total_paid?.toFixed(2)}</td>
+                            <td className="py-3 px-4 font-bold text-green-600">${p.balance_due?.toFixed(2)}</td>
+                            <td className="py-3 px-4">
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  setSelectedPayoutDriver(p);
+                                  setPayoutAmount(p.balance_due.toFixed(2));
+                                  setShowCreatePayoutModal(true);
+                                }}
+                              >
+                                <DollarSign className="w-3 h-3 mr-1" />Pay
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Payouts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-blue-500" />
+                  Recent Payouts
+                </CardTitle>
+                <CardDescription>All processed and pending payouts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {payouts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No payouts recorded yet</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Reference</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Amount</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Method</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payouts.map((payout) => (
+                          <tr key={payout.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4 font-mono text-sm">{payout.reference}</td>
+                            <td className="py-3 px-4 font-bold">${payout.amount?.toFixed(2)}</td>
+                            <td className="py-3 px-4 capitalize">{payout.method?.replace('_', ' ')}</td>
+                            <td className="py-3 px-4">
+                              <Badge className={
+                                payout.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                payout.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }>{payout.status}</Badge>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-500">
+                              {payout.created_at ? new Date(payout.created_at).toLocaleDateString() : '-'}
+                            </td>
+                            <td className="py-3 px-4">
+                              {payout.status === 'pending' && (
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => processPayout(payout.id, 'completed')}>
+                                    <CheckCircle className="w-3 h-3 mr-1" />Complete
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="text-red-600" onClick={() => processPayout(payout.id, 'failed')}>
+                                    <XCircle className="w-3 h-3 mr-1" />Fail
+                                  </Button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Taxes Section */}
+        {activeSection === "taxes" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">Quebec GST/QST Tax Reports</div>
+              <div className="flex gap-2">
+                <select 
+                  value={taxYear} 
+                  onChange={(e) => setTaxYear(parseInt(e.target.value))}
+                  className="border rounded-md px-3 py-2"
+                >
+                  {[2026, 2025, 2024, 2023].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <select 
+                  value={taxQuarter || ''} 
+                  onChange={(e) => setTaxQuarter(e.target.value ? parseInt(e.target.value) : null)}
+                  className="border rounded-md px-3 py-2"
+                >
+                  <option value="">Full Year</option>
+                  <option value="1">Q1 (Jan-Mar)</option>
+                  <option value="2">Q2 (Apr-Jun)</option>
+                  <option value="3">Q3 (Jul-Sep)</option>
+                  <option value="4">Q4 (Oct-Dec)</option>
+                </select>
+                <Button onClick={loadTaxReportWithFilters}>
+                  <RefreshCw className="w-4 h-4 mr-2" />Generate Report
+                </Button>
+              </div>
+            </div>
+
+            {taxReport ? (
+              <>
+                {/* Tax Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Total Revenue</p>
+                          <p className="text-2xl font-bold">${taxReport.totals?.total_fares?.toFixed(2) || '0.00'}</p>
+                        </div>
+                        <DollarSign className="w-8 h-8 text-green-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Platform Commission</p>
+                          <p className="text-2xl font-bold">${taxReport.platform_commission?.toFixed(2) || '0.00'}</p>
+                          <p className="text-xs text-gray-400">{taxReport.commission_rate}% rate</p>
+                        </div>
+                        <Percent className="w-8 h-8 text-blue-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Total Trips</p>
+                          <p className="text-2xl font-bold">{taxReport.totals?.trip_count || 0}</p>
+                        </div>
+                        <Activity className="w-8 h-8 text-purple-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-500">Tax Liability</p>
+                          <p className="text-2xl font-bold text-red-600">${taxReport.taxes?.total_tax_liability?.toFixed(2) || '0.00'}</p>
+                        </div>
+                        <Receipt className="w-8 h-8 text-red-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Detailed Tax Report */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Receipt className="w-5 h-5" />
+                      Tax Report: {taxReport.period?.year} {taxReport.period?.quarter ? `Q${taxReport.period.quarter}` : '(Full Year)'}
+                    </CardTitle>
+                    <CardDescription>
+                      Period: {taxReport.date_range?.start} to {taxReport.date_range?.end}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {/* Revenue Breakdown */}
+                      <div>
+                        <h3 className="font-semibold mb-3">Revenue Breakdown</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="p-4 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-500">Base Fares</p>
+                            <p className="text-lg font-bold">${taxReport.totals?.total_base_fares?.toFixed(2) || '0.00'}</p>
+                          </div>
+                          <div className="p-4 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-500">Distance Charges</p>
+                            <p className="text-lg font-bold">${taxReport.totals?.total_distance_cost?.toFixed(2) || '0.00'}</p>
+                          </div>
+                          <div className="p-4 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-500">Waiting Time</p>
+                            <p className="text-lg font-bold">${taxReport.totals?.total_waiting_cost?.toFixed(2) || '0.00'}</p>
+                          </div>
+                          <div className="p-4 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-500">Tips Collected</p>
+                            <p className="text-lg font-bold">${taxReport.totals?.total_tips?.toFixed(2) || '0.00'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quebec Tax Breakdown */}
+                      <div>
+                        <h3 className="font-semibold mb-3">Quebec Tax Obligations (GST/QST)</h3>
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <table className="w-full">
+                            <tbody>
+                              <tr className="border-b border-blue-100">
+                                <td className="py-2 text-gray-600">Taxable Revenue (excl. gov fees & tips)</td>
+                                <td className="py-2 text-right font-medium">${taxReport.taxable_revenue?.toFixed(2)}</td>
+                              </tr>
+                              <tr className="border-b border-blue-100">
+                                <td className="py-2 text-gray-600">Platform Commission ({taxReport.commission_rate}%)</td>
+                                <td className="py-2 text-right font-medium">${taxReport.platform_commission?.toFixed(2)}</td>
+                              </tr>
+                              <tr className="border-b border-blue-100">
+                                <td className="py-2 text-gray-600">GST ({taxReport.taxes?.gst_rate}%) on Commission</td>
+                                <td className="py-2 text-right font-medium">${taxReport.taxes?.gst_collected?.toFixed(2)}</td>
+                              </tr>
+                              <tr className="border-b border-blue-100">
+                                <td className="py-2 text-gray-600">QST ({taxReport.taxes?.qst_rate}%) on Commission</td>
+                                <td className="py-2 text-right font-medium">${taxReport.taxes?.qst_collected?.toFixed(2)}</td>
+                              </tr>
+                              <tr>
+                                <td className="py-2 font-bold">Total Tax Liability</td>
+                                <td className="py-2 text-right font-bold text-red-600">${taxReport.taxes?.total_tax_liability?.toFixed(2)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Export Button */}
+                      <div className="flex justify-end">
+                        <Button variant="outline">
+                          <Download className="w-4 h-4 mr-2" />Export Tax Report
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center text-gray-500">
+                  <Receipt className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Click &quot;Generate Report&quot; to view tax information</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Contracts Section */}
+        {activeSection === "contracts" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">Driver partnership agreements</div>
+              <Button onClick={() => setShowEditContractModal(true)}>
+                <Edit className="w-4 h-4 mr-2" />Edit Template
+              </Button>
+            </div>
+
+            {/* Contract Template */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  Current Contract Template
+                </CardTitle>
+                <CardDescription>
+                  Version: {contractTemplate?.version || '1.0'} | 
+                  Effective: {contractTemplate?.effective_date ? new Date(contractTemplate.effective_date).toLocaleDateString() : 'N/A'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contractTemplate ? (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-bold text-lg mb-4">{contractTemplate.title}</h3>
+                    <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                      {contractTemplate.content}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">Loading contract template...</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Signed Contracts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-green-500" />
+                  Signed Contracts
+                </CardTitle>
+                <CardDescription>Drivers who have signed the partnership agreement</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contracts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No signed contracts yet</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Driver</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Contract Version</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Signed Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contracts.map((contract) => (
+                          <tr key={contract.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                  <Car className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div className="font-medium">{contract.driver_name || 'Driver'}</div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">{contract.contract_version || '1.0'}</td>
+                            <td className="py-3 px-4 text-sm text-gray-500">
+                              {contract.signed_at ? new Date(contract.signed_at).toLocaleDateString() : '-'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge className="bg-green-100 text-green-700">Active</Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Button size="sm" variant="outline">
+                                <Eye className="w-3 h-3 mr-1" />View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
       </main>
 
       {/* Create Admin Modal */}
