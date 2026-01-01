@@ -287,6 +287,52 @@ export default function AdminDashboard() {
     }
   };
 
+  const createUser = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(newUser)
+      });
+      if (res.ok) {
+        toast.success('User created successfully');
+        setShowCreateUserModal(false);
+        setNewUser({ email: '', password: '', first_name: '', last_name: '', phone: '', address: '' });
+        loadInitialData();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create user');
+      }
+    } catch (e) {
+      toast.error('Failed to create user');
+    }
+  };
+
+  const createDriver = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/drivers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(newDriver)
+      });
+      if (res.ok) {
+        toast.success('Driver created successfully');
+        setShowCreateDriverModal(false);
+        setNewDriver({ 
+          email: '', password: '', first_name: '', last_name: '', phone: '',
+          vehicle_type: 'sedan', vehicle_make: '', vehicle_model: '', vehicle_color: '', license_plate: '',
+          drivers_license_number: '', taxi_permit_number: '', services: ['taxi']
+        });
+        loadInitialData();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create driver');
+      }
+    } catch (e) {
+      toast.error('Failed to create driver');
+    }
+  };
+
   const activateTaxiConfig = async (configId) => {
     try {
       const res = await fetch(`${API_URL}/admin/taxi-configs/${configId}/activate`, {
