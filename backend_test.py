@@ -679,8 +679,10 @@ class TranspoAPITester:
             return
         
         # Test admin create user
+        import time
+        timestamp = int(time.time())
         user_data = {
-            "email": "testuser@example.com",
+            "email": f"testuser{timestamp}@example.com",
             "password": "testpass123",
             "first_name": "Test",
             "last_name": "User",
