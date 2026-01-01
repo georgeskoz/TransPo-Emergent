@@ -832,14 +832,12 @@ class TranspoAPITester:
             if bank_connected and available_balance > 0:
                 # Test withdrawal with valid amount
                 test_amount = min(25.0, available_balance)
-                withdrawal_data["amount"] = test_amount
                 
                 success, response = self.run_test(
                     "Create Withdrawal - Valid", 
                     "POST", 
-                    "admin/merchants/withdraw", 
+                    f"admin/merchants/withdraw?amount={test_amount}&notes=Test withdrawal", 
                     200,
-                    withdrawal_data,
                     headers=self.get_auth_headers(self.admin_token)
                 )
                 
@@ -865,14 +863,12 @@ class TranspoAPITester:
                 
                 # Test withdrawal with amount exceeding balance
                 excessive_amount = available_balance + 1000
-                withdrawal_data["amount"] = excessive_amount
                 
                 success, response = self.run_test(
                     "Create Withdrawal - Excessive Amount", 
                     "POST", 
-                    "admin/merchants/withdraw", 
+                    f"admin/merchants/withdraw?amount={excessive_amount}&notes=Test excessive withdrawal", 
                     400,
-                    withdrawal_data,
                     headers=self.get_auth_headers(self.admin_token)
                 )
                 
