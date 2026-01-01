@@ -52,6 +52,22 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [trips, setTrips] = useState([]);
   
+  // Merchant states
+  const [merchantOverview, setMerchantOverview] = useState(null);
+  const [merchantTransactions, setMerchantTransactions] = useState([]);
+  const [merchantSettings, setMerchantSettings] = useState(null);
+  const [merchantWithdrawals, setMerchantWithdrawals] = useState([]);
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [showBankSettingsModal, setShowBankSettingsModal] = useState(false);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [withdrawalNotes, setWithdrawalNotes] = useState('');
+  const [bankSettings, setBankSettings] = useState({
+    bank_name: '',
+    bank_account_name: '',
+    bank_account_number: '',
+    bank_routing_number: ''
+  });
+  
   // Modal states
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [showCreateDocModal, setShowCreateDocModal] = useState(false);
