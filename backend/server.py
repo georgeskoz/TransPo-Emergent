@@ -2903,6 +2903,45 @@ async def seed_demo_drivers():
     
     return {"message": f"Created {len(demo_drivers)} demo drivers", "count": len(demo_drivers)}
 
+@api_router.post("/seed/super-admin")
+async def create_super_admin():
+    """Create or upgrade the demo admin to super_admin."""
+    # Check if admin@demo.com exists
+    admin = await db.users.find_one({"email": "admin@demo.com"})
+    
+    if admin:
+        # Upgrade to super_admin
+        await db.users.update_one(
+            {"email": "admin@demo.com"},
+            {"$set": {
+                "admin_role": "super_admin",
+                "permissions": ["all"],
+                "is_super_admin": True,
+                "requires_2fa": True,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Admin upgraded to Super Admin", "email": "admin@demo.com"}
+    else:
+        # Create super admin
+        super_admin = {
+            "id": str(uuid.uuid4()),
+            "email": "admin@demo.com",
+            "password": pwd_context.hash("demo123"),
+            "name": "Super Admin",
+            "first_name": "Super",
+            "last_name": "Admin",
+            "role": "admin",
+            "admin_role": "super_admin",
+            "permissions": ["all"],
+            "is_super_admin": True,
+            "is_active": True,
+            "requires_2fa": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(super_admin)
+        return {"message": "Super Admin created", "email": "admin@demo.com", "password": "demo123"}
+
 # ============== HEALTH CHECK ==============
 
 @api_router.get("/")
