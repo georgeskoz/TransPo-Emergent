@@ -2386,6 +2386,8 @@ async def admin_create_driver(
         after_snapshot={"email": new_driver["email"], "name": new_driver["name"]}
     )
     
+    new_user.pop("_id", None)
+    new_driver.pop("_id", None)
     return {"message": "Driver created successfully", "driver": new_driver, "user_id": driver_id}
 
 @api_router.put("/admin/drivers/{driver_id}")
