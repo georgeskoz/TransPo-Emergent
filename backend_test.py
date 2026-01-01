@@ -557,6 +557,7 @@ class TranspoAPITester:
         try:
             self.test_health_check()
             self.test_authentication()
+            self.test_admin_endpoints()
             self.test_fare_estimation()
             self.test_driver_profile_api()
         except KeyboardInterrupt:
