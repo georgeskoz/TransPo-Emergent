@@ -3123,6 +3123,241 @@ async def approve_document(
     
     return {"message": f"Document {document_type} {'approved' if approved else 'rejected'}"}
 
+# ============== PLATFORM DOCUMENTS MANAGEMENT ==============
+
+class PlatformDocument(BaseModel):
+    title: str
+    doc_type: str  # terms, privacy, refund, driver_guide, customer_letter, driver_popup, policy
+    content: str
+    target_audience: str  # all, users, drivers, admins
+    is_active: bool = True
+    requires_acceptance: bool = False
+    popup_enabled: bool = False
+    popup_title: Optional[str] = None
+
+class PlatformDocumentUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    is_active: Optional[bool] = None
+    requires_acceptance: Optional[bool] = None
+    popup_enabled: Optional[bool] = None
+    popup_title: Optional[str] = None
+
+@api_router.get("/admin/platform-documents")
+async def get_platform_documents(
+    doc_type: Optional[str] = None,
+    target_audience: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all platform documents (terms, policies, letters, etc.)."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if doc_type:
+        query["doc_type"] = doc_type
+    if target_audience:
+        query["target_audience"] = target_audience
+    
+    documents = await db.platform_documents.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"documents": documents}
+
+@api_router.post("/admin/platform-documents")
+async def create_platform_document(
+    doc: PlatformDocument,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new platform document."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can create documents")
+    
+    document = {
+        "id": str(uuid.uuid4()),
+        **doc.dict(),
+        "version": 1,
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.platform_documents.insert_one(document)
+    document.pop("_id", None)
+    
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="document_created",
+        entity_type="platform_document",
+        entity_id=document["id"],
+        notes=f"Created {doc.doc_type}: {doc.title}"
+    )
+    
+    return {"message": "Document created", "document": document}
+
+@api_router.put("/admin/platform-documents/{doc_id}")
+async def update_platform_document(
+    doc_id: str,
+    updates: PlatformDocumentUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a platform document."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can update documents")
+    
+    doc = await db.platform_documents.find_one({"id": doc_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    update_data["version"] = doc.get("version", 1) + 1
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = current_user["id"]
+    
+    await db.platform_documents.update_one({"id": doc_id}, {"$set": update_data})
+    
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="document_updated",
+        entity_type="platform_document",
+        entity_id=doc_id,
+        notes=f"Updated document v{update_data['version']}"
+    )
+    
+    return {"message": "Document updated"}
+
+@api_router.delete("/admin/platform-documents/{doc_id}")
+async def delete_platform_document(
+    doc_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a platform document."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can delete documents")
+    
+    result = await db.platform_documents.delete_one({"id": doc_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    return {"message": "Document deleted"}
+
+@api_router.post("/admin/platform-documents/{doc_id}/send-notification")
+async def send_document_notification(
+    doc_id: str,
+    notification_type: str,  # email, push, popup
+    current_user: dict = Depends(get_current_user)
+):
+    """Send notification about a document to target audience."""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    doc = await db.platform_documents.find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Create notification record
+    notification = {
+        "id": str(uuid.uuid4()),
+        "document_id": doc_id,
+        "document_title": doc["title"],
+        "notification_type": notification_type,
+        "target_audience": doc["target_audience"],
+        "sent_by": current_user["id"],
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+        "status": "sent"
+    }
+    
+    await db.document_notifications.insert_one(notification)
+    
+    # If popup enabled for drivers, update driver popup settings
+    if notification_type == "popup" and doc["target_audience"] in ["drivers", "all"]:
+        await db.platform_settings.update_one(
+            {"setting_type": "driver_popup"},
+            {"$set": {
+                "active_popup_doc_id": doc_id,
+                "popup_title": doc.get("popup_title", doc["title"]),
+                "popup_content": doc["content"][:500],  # First 500 chars
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+    
+    logger.info(f"[NOTIFICATION] Document '{doc['title']}' notification sent via {notification_type} to {doc['target_audience']}")
+    
+    return {"message": f"Notification sent via {notification_type}", "notification": notification}
+
+# Public endpoint for users/drivers to get active documents
+@api_router.get("/documents/public")
+async def get_public_documents(
+    doc_type: Optional[str] = None
+):
+    """Get active public documents (terms, privacy policy, etc.)."""
+    query = {"is_active": True, "target_audience": {"$in": ["all", "users"]}}
+    if doc_type:
+        query["doc_type"] = doc_type
+    
+    documents = await db.platform_documents.find(query, {"_id": 0}).to_list(50)
+    return {"documents": documents}
+
+@api_router.get("/driver/popup")
+async def get_driver_popup(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get active popup for driver."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    popup_setting = await db.platform_settings.find_one({"setting_type": "driver_popup"}, {"_id": 0})
+    if not popup_setting or not popup_setting.get("active_popup_doc_id"):
+        return {"has_popup": False}
+    
+    # Check if driver has already seen this popup
+    driver_popup_status = await db.driver_popup_status.find_one({
+        "driver_id": current_user["id"],
+        "popup_doc_id": popup_setting["active_popup_doc_id"]
+    })
+    
+    if driver_popup_status and driver_popup_status.get("acknowledged"):
+        return {"has_popup": False}
+    
+    doc = await db.platform_documents.find_one({"id": popup_setting["active_popup_doc_id"]}, {"_id": 0})
+    if not doc:
+        return {"has_popup": False}
+    
+    return {
+        "has_popup": True,
+        "popup": {
+            "id": doc["id"],
+            "title": popup_setting.get("popup_title", doc["title"]),
+            "content": doc["content"],
+            "requires_acceptance": doc.get("requires_acceptance", False)
+        }
+    }
+
+@api_router.post("/driver/popup/{doc_id}/acknowledge")
+async def acknowledge_driver_popup(
+    doc_id: str,
+    accepted: bool = True,
+    current_user: dict = Depends(get_current_user)
+):
+    """Acknowledge/accept a driver popup."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    await db.driver_popup_status.update_one(
+        {"driver_id": current_user["id"], "popup_doc_id": doc_id},
+        {"$set": {
+            "driver_id": current_user["id"],
+            "popup_doc_id": doc_id,
+            "acknowledged": True,
+            "accepted": accepted,
+            "acknowledged_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Popup acknowledged"}
+
 # ============== CASES / DISPUTES ==============
 
 @api_router.get("/admin/cases")
