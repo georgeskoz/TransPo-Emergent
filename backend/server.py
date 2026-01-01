@@ -2141,6 +2141,7 @@ async def admin_create_user(
     )
     
     new_user.pop("password", None)
+    new_user.pop("_id", None)
     return {"message": "User created successfully", "user": new_user}
 
 @api_router.put("/admin/users/{user_id}")
