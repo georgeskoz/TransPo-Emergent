@@ -198,6 +198,19 @@ class TranspoAPITester:
             )
             if success:
                 print(f"   Driver profile: {response.get('name', 'N/A')} ({response.get('email', 'N/A')})")
+        
+        # Test get current user with admin token
+        if self.admin_token:
+            success, response = self.run_test(
+                "Get Current User (Admin)", 
+                "GET", 
+                "auth/me", 
+                200,
+                headers=self.get_auth_headers(self.admin_token)
+            )
+            if success:
+                print(f"   Admin profile: {response.get('name', 'N/A')} ({response.get('email', 'N/A')})")
+                print(f"   Admin role: {response.get('admin_role', 'N/A')}")
 
     def test_fare_estimation(self):
         """Test fare estimation with Quebec taxes - Montreal locations"""
