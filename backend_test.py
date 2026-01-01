@@ -567,6 +567,9 @@ class TranspoAPITester:
         
         start_time = datetime.now()
         
+        # Setup admin user first
+        self.setup_admin_user()
+        
         try:
             self.test_health_check()
             self.test_authentication()
