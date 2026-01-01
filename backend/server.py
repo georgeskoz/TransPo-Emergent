@@ -3763,7 +3763,7 @@ async def create_platform_withdrawal(
     current_user: dict = Depends(get_current_user)
 ):
     """Create a platform withdrawal request (transfer to bank)."""
-    if current_user.get("role") != "super_admin":
+    if current_user.get("admin_role") != "super_admin":
         raise HTTPException(status_code=403, detail="Super Admin access required")
     
     # Check available balance
