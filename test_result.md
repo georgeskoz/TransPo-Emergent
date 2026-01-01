@@ -283,15 +283,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Admin Payouts API - Fix ObjectId serialization bug"
-  stuck_tasks:
-    - "Admin Payouts API - POST endpoint failing with 500 error"
+    - "Merchants Section - Platform Earnings and Bank Account Management"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Implemented complete Password Management (Change Password, Forgot Password with mock email, Reset Password) and finalized Admin Panel sections (Payouts with earnings tracking, Taxes with GST/QST, Contracts with template editor). All features verified with curl tests and screenshots. Test credentials: admin@demo.com/demo123, user@demo.com/demo123, driver@demo.com/demo123"
+    message: "Implemented Merchants section for platform earnings management. Features include: 1) Overview cards (Total Collected, Platform Commission, Available Balance, This Month), 2) Bank Account Settings modal for configuring withdrawal destination, 3) Platform Withdrawals history with status tracking, 4) Commission Transactions from completed trips, 5) Driver Payouts Overview. All backend endpoints tested with curl and working. Frontend UI verified with screenshots. Backend: /api/admin/merchants/overview, /api/admin/merchants/transactions, /api/admin/merchants/settings, /api/admin/merchants/withdraw, /api/admin/merchants/withdrawals. Test credentials: admin@demo.com/demo123"
   - agent: "testing"
     message: "BACKEND TESTING COMPLETED: 39/40 tests passed (97.5% success rate). ✅ Password Management APIs working perfectly. ✅ Admin Taxes and Contracts APIs working correctly. ❌ CRITICAL ISSUE: Admin Payouts POST /api/admin/payouts fails with 500 error due to ObjectId serialization bug in backend - needs main agent to fix by excluding _id field or converting ObjectId to string before returning response."
   - agent: "testing"
