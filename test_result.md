@@ -48,240 +48,207 @@
 ##   run_ui: false
 ##
 ## test_plan:
-##   current_focus:
-##     - "Task name 1"
-##     - "Task name 2"
-##   stuck_tasks:
-##     - "Task name with persistent issues"
+##   current_focus: "What is being tested now"
+##   stuck_tasks: []
 ##   test_all: false
-##   test_priority: "high_first"  # or "sequential" or "stuck_first"
+##   test_priority: "high_first"  # or "all" or "failed_only"
 ##
 ## agent_communication:
-##     -agent: "main"  # or "testing" or "user"
-##     -message: "Communication message between agents"
-
-# Protocol Guidelines for Main agent
-#
-# 1. Update Test Result File Before Testing:
-#    - Main agent must always update the `test_result.md` file before calling the testing agent
-#    - Add implementation details to the status_history
-#    - Set `needs_retesting` to true for tasks that need testing
-#    - Update the `test_plan` section to guide testing priorities
-#    - Add a message to `agent_communication` explaining what you've done
-#
-# 2. Incorporate User Feedback:
-#    - When a user provides feedback that something is or isn't working, add this information to the relevant task's status_history
-#    - Update the working status based on user feedback
-#    - If a user reports an issue with a task that was marked as working, increment the stuck_count
-#    - Whenever user reports issue in the app, if we have testing agent and task_result.md file so find the appropriate task for that and append in status_history of that task to contain the user concern and problem as well 
-#
-# 3. Track Stuck Tasks:
-#    - Monitor which tasks have high stuck_count values or where you are fixing same issue again and again, analyze that when you read task_result.md
-#    - For persistent issues, use websearch tool to find solutions
-#    - Pay special attention to tasks in the stuck_tasks list
-#    - When you fix an issue with a stuck task, don't reset the stuck_count until the testing agent confirms it's working
-#
-# 4. Provide Context to Testing Agent:
-#    - When calling the testing agent, provide clear instructions about:
-#      - Which tasks need testing (reference the test_plan)
-#      - Any authentication details or configuration needed
-#      - Specific test scenarios to focus on
-#      - Any known issues or edge cases to verify
-#
-# 5. Call the testing agent with specific instructions referring to test_result.md
-#
-# IMPORTANT: Main agent must ALWAYS update test_result.md BEFORE calling the testing agent, as it relies on this file to understand what to test next.
+##     -agent: "main"
+##     -message: "Communication message"
 
 #====================================================================================================
 # END - Testing Protocol - DO NOT EDIT OR REMOVE THIS SECTION
 #====================================================================================================
 
-
-
-#====================================================================================================
-# Testing Data - Main Agent and testing sub agent both should log testing data below this section
-#====================================================================================================
-
-user_problem_statement: "Multi-service mobility platform (Transpo) - Admin Panel User/Driver Creation Feature"
+user_problem_statement: "Transpo Mobility Platform - Admin Panel Features (Payouts, Taxes, Contracts) and Password Management"
 
 backend:
-  - task: "Admin Create User API"
+  - task: "Change Password API"
     implemented: true
     working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "main"
-        comment: "POST /api/admin/users creates new user - tested with curl, returns success with user data"
-      - working: true
-        agent: "testing"
-        comment: "✅ PASSED - POST /api/admin/users tested successfully. Creates user with required fields (email, password, first_name, last_name) and optional fields (phone, address). Returns user data without password. Requires admin auth (admin@demo.com/demo123). Properly handles duplicate email validation (400 error). Correctly restricts access (401 without auth, 403 with user token)."
+        comment: "POST /api/auth/change-password - tested with curl, successfully changes password"
 
-  - task: "Admin Create Driver API"
+  - task: "Forgot Password API"
     implemented: true
     working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "main"
-        comment: "POST /api/admin/drivers creates new driver with vehicle info and Quebec tax fields - tested with curl"
-      - working: true
-        agent: "testing"
-        comment: "✅ PASSED - POST /api/admin/drivers tested successfully. Creates both user account (role: driver) and driver profile. Required fields: email, password, first_name, last_name, phone. Optional vehicle fields: vehicle_type, vehicle_make, vehicle_model, vehicle_color, license_plate. Optional license fields: drivers_license_number, taxi_permit_number. Quebec tax fields: gst_number, qst_number, srs_code. Services array working correctly. Returns driver data without password. Requires admin auth. Properly handles duplicate email validation and access restrictions."
+        comment: "POST /api/auth/forgot-password - generates reset token and logs mock email to console"
 
-  - task: "Taxi Rates API"
+  - task: "Reset Password API"
     implemented: true
     working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "main"
-        comment: "GET /api/taxi/rates returns Quebec day/night rates correctly"
+        comment: "POST /api/auth/reset-password - resets password using valid token"
 
-  - task: "Taxi Meter Start API (Street Hail)"
+  - task: "Verify Reset Token API"
     implemented: true
     working: true
     file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "main"
-        comment: "POST /api/taxi/meter/start works in street_hail mode without booking_id"
-
-  - task: "Taxi Meter Update API"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "main"
-        comment: "POST /api/taxi/meter/{id}/update calculates distance and fare correctly"
-
-  - task: "Taxi Meter Stop API"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "main"
-        comment: "POST /api/taxi/meter/{id}/stop calculates final fare with tip"
-
-  - task: "Taxi Estimate API"
-    implemented: true
-    working: true
-    file: "/app/backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "main"
-        comment: "GET /api/taxi/estimate uses road-based distance (haversine x 1.4)"
-
-  - task: "MapProvider Service"
-    implemented: true
-    working: true
-    file: "/app/backend/services/map_provider.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "main"
-        comment: "Abstract MapProvider with MockMapProvider (road factor 1.4) and GoogleMapProvider stub"
+        comment: "GET /api/auth/verify-reset-token - validates reset tokens"
+
+  - task: "Admin Payouts API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET/POST /api/admin/payouts, PUT /api/admin/payouts/{id}/process - full payout management"
+
+  - task: "Admin Taxes API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/admin/taxes/report - returns GST/QST tax report with year/quarter filters"
+
+  - task: "Admin Contracts API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET/PUT /api/admin/contracts/template, GET /api/admin/contracts/signed - contract management"
 
 frontend:
-  - task: "Admin Users Section with Add User"
+  - task: "Forgot Password Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ForgotPassword.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "New page at /forgot-password - email input, sends reset request, shows success state"
+
+  - task: "Reset Password Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ResetPassword.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "New page at /reset-password - validates token, new password form, success confirmation"
+
+  - task: "Change Password Page"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ChangePassword.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "New page at /change-password - current/new password form with validation"
+
+  - task: "Auth Page Forgot Password Link"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/AuthPage.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added 'Forgot password?' link above password field - screenshot verified"
+
+  - task: "Admin Payouts Section"
     implemented: true
     working: true
     file: "/app/frontend/src/pages/AdminDashboard.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "main"
-        comment: "Users section displays user table with Add User button and modal - tested with screenshot"
-      - working: true
-        agent: "testing"
-        comment: "✅ PASSED - Admin Users Section fully tested via Playwright. Successfully logged in as admin (admin@demo.com/demo123), navigated to Users section, opened Add User modal with all required fields (First Name, Last Name, Email, Password, Phone, Address), filled form with test data (UITest User, uitest123@test.com), submitted successfully. Modal closed indicating success, and new user was verified in users table. All functionality working correctly."
+        comment: "Full Payouts UI - pending earnings table, recent payouts, create payout modal - screenshot verified"
 
-  - task: "Admin Drivers Section with Add Driver"
+  - task: "Admin Taxes Section"
     implemented: true
     working: true
     file: "/app/frontend/src/pages/AdminDashboard.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "main"
-        comment: "Drivers section displays driver table with Add Driver button and comprehensive modal - tested with screenshot"
-      - working: true
-        agent: "testing"
-        comment: "✅ PASSED - Admin Drivers Section fully tested via Playwright. Successfully navigated to Drivers section, opened Add Driver modal with all form sections: Personal Information (First Name, Last Name, Email, Password, Phone), Vehicle Information (Type dropdown with sedan/suv/van/bike options, Make, Model, Color, License Plate), License Information (Driver's License #, Taxi Permit #), and Services (taxi/courier/food checkboxes). Filled comprehensive test data (UITest Driver, uitestdriver123@test.com, Toyota Camry Black, XYZ 789), submitted successfully. Success toast 'Driver created successfully' appeared, modal closed, and new driver verified in drivers table. All functionality working correctly."
+        comment: "Full Taxes UI - revenue cards, GST/QST breakdown table, year/quarter filters - screenshot verified"
 
-  - task: "Driver Meter Page"
+  - task: "Admin Contracts Section"
     implemented: true
     working: true
-    file: "/app/frontend/src/pages/DriverMeter.jsx"
+    file: "/app/frontend/src/pages/AdminDashboard.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
         agent: "main"
-        comment: "Full taxi meter UI with start/stop, fare display, tip modal, Quebec compliance notice"
-
-  - task: "Street Hail Button on Driver Dashboard"
-    implemented: true
-    working: true
-    file: "/app/frontend/src/pages/DriverDashboard.jsx"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: true
-        agent: "main"
-        comment: "Added 'Street Hail / Flag Mode' button and Taxi Meter option in menu"
+        comment: "Full Contracts UI - template display, signed contracts table, edit template modal - screenshot verified"
 
 metadata:
   created_by: "main_agent"
-  version: "1.2"
-  test_sequence: 3
+  version: "1.3"
+  test_sequence: 4
   run_ui: true
 
 test_plan:
   current_focus:
-    - "Admin Create User API"
-    - "Admin Create Driver API"
-    - "Admin Users Section with Add User"
-    - "Admin Drivers Section with Add Driver"
+    - "Password Management (Change, Forgot, Reset)"
+    - "Admin Payouts Section"
+    - "Admin Taxes Section"
+    - "Admin Contracts Section"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Implemented Admin User/Driver Creation feature. Backend APIs: POST /api/admin/users and POST /api/admin/drivers - both tested successfully via curl. Frontend: Added Users section with Add User button/modal and Drivers section with Add Driver button/modal to AdminDashboard.jsx. Fixed MongoDB ObjectId serialization issue. Test credentials: admin@demo.com/demo123"
-  - agent: "testing"
-    message: "✅ BACKEND TESTING COMPLETE - Admin User/Driver Creation APIs fully tested and working. Both POST /api/admin/users and POST /api/admin/drivers pass all tests including authentication, validation, data creation, and error handling. All 27 backend tests passed (100% success rate). Admin authentication working with admin@demo.com/demo123. Ready for frontend testing or summary."
-  - agent: "testing"
-    message: "✅ FRONTEND TESTING COMPLETE - Admin Panel User and Driver Creation UI fully tested and working. Successfully tested complete flow: login as admin (admin@demo.com/demo123) → navigate to Users section → open Add User modal → fill form (UITest User, uitest123@test.com, +1234567890) → submit successfully → verify in table. Then tested Drivers section → open Add Driver modal with all sections (Personal Info, Vehicle Info, License Info, Services) → fill comprehensive form (UITest Driver, uitestdriver123@test.com, Toyota Camry Black, XYZ 789) → submit successfully with success toast → verify in table. All admin panel functionality working correctly. Both backend APIs and frontend UI are fully functional."
+    message: "Implemented complete Password Management (Change Password, Forgot Password with mock email, Reset Password) and finalized Admin Panel sections (Payouts with earnings tracking, Taxes with GST/QST, Contracts with template editor). All features verified with curl tests and screenshots. Test credentials: admin@demo.com/demo123, user@demo.com/demo123, driver@demo.com/demo123"
