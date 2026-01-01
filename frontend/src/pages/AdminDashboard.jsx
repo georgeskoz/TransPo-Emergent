@@ -54,7 +54,15 @@ export default function AdminDashboard() {
   // Modal states
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [showCreateConfigModal, setShowCreateConfigModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [showCreateDriverModal, setShowCreateDriverModal] = useState(false);
   const [newAdmin, setNewAdmin] = useState({ email: '', password: '', first_name: '', last_name: '', admin_role: 'admin' });
+  const [newUser, setNewUser] = useState({ email: '', password: '', first_name: '', last_name: '', phone: '', address: '' });
+  const [newDriver, setNewDriver] = useState({ 
+    email: '', password: '', first_name: '', last_name: '', phone: '',
+    vehicle_type: 'sedan', vehicle_make: '', vehicle_model: '', vehicle_color: '', license_plate: '',
+    drivers_license_number: '', taxi_permit_number: '', services: ['taxi']
+  });
   
   useEffect(() => {
     loadAdminProfile();
