@@ -759,6 +759,9 @@ class TranspoAPITester:
             print(f"   GST Number: {response.get('driver', {}).get('tax_info', {}).get('gst_number', 'N/A')}")
             print(f"   QST Number: {response.get('driver', {}).get('tax_info', {}).get('qst_number', 'N/A')}")
             
+            # Store driver ID for payout test
+            self.created_driver_id = response.get('driver', {}).get('id')
+            
             # Verify driver data structure
             driver = response.get('driver', {})
             if 'password' not in driver:
