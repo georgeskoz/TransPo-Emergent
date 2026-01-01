@@ -3397,7 +3397,8 @@ async def create_case(
     }
     
     await db.cases.insert_one(case)
-    return case
+    case.pop("_id", None)
+    return {"message": "Case created", "case": case}
 
 @api_router.put("/admin/cases/{case_id}")
 async def update_case(
