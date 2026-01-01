@@ -932,59 +932,176 @@ export default function AdminDashboard() {
         {/* Trips Section */}
         {activeSection === "trips" && (
           <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">{trips.length} trips found</div>
+              <Button variant="outline" onClick={loadTrips}>
+                <RefreshCw className="w-4 h-4 mr-2" />Refresh
+              </Button>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Trip Monitor</CardTitle>
-                <CardDescription>View all trips with config versions and GPS data</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-blue-500" />
+                  Trip Monitor
+                </CardTitle>
+                <CardDescription>View all trips with driver info, fare details, and manage complaints</CardDescription>
               </CardHeader>
               <CardContent>
                 {trips.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">No trips found</div>
+                  <div className="text-center py-12 text-gray-500">
+                    <MapPin className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No trips found</p>
+                    <p className="text-sm mt-2">Trips will appear here when drivers start using the meter</p>
+                  </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Trip ID</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Mode</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Fare</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trips.map((trip) => (
-                          <tr key={trip.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4">
-                              <div className="font-mono text-sm">{trip.id?.slice(0, 8)}...</div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <Badge variant="outline">{trip.mode || 'app'}</Badge>
-                            </td>
-                            <td className="py-3 px-4">
+                  <div className="space-y-4">
+                    {trips.map((trip) => (
+                      <div key={trip.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                          {/* Trip Status & ID */}
+                          <div className="flex items-center gap-3 lg:w-48">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              trip.status === 'completed' ? 'bg-green-100' :
+                              trip.status === 'running' ? 'bg-blue-100' :
+                              trip.status === 'cancelled' ? 'bg-red-100' : 'bg-gray-100'
+                            }`}>
+                              <Car className={`w-5 h-5 ${
+                                trip.status === 'completed' ? 'text-green-600' :
+                                trip.status === 'running' ? 'text-blue-600' :
+                                trip.status === 'cancelled' ? 'text-red-600' : 'text-gray-600'
+                              }`} />
+                            </div>
+                            <div>
                               <Badge className={
                                 trip.status === 'completed' ? 'bg-green-100 text-green-700' :
                                 trip.status === 'running' ? 'bg-blue-100 text-blue-700' :
                                 trip.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                                 'bg-gray-100 text-gray-700'
                               }>{trip.status}</Badge>
-                            </td>
-                            <td className="py-3 px-4 font-mono">
+                              <div className="text-xs text-gray-500 mt-1 font-mono">{trip.id?.slice(0, 8)}...</div>
+                            </div>
+                          </div>
+
+                          {/* Driver Info */}
+                          <div className="flex-1 border-l pl-4">
+                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Driver</div>
+                            {trip.driver_info ? (
+                              <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <Users className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <div className="font-medium">{trip.driver_info.name || 'Unknown Driver'}</div>
+                                  <div className="text-sm text-gray-500">{trip.driver_info.phone || 'No phone'}</div>
+                                  {trip.driver_info.vehicle && (
+                                    <div className="text-xs text-gray-400">{trip.driver_info.vehicle}</div>
+                                  )}
+                                  {trip.driver_info.license_plate && (
+                                    <Badge variant="outline" className="mt-1 text-xs">{trip.driver_info.license_plate}</Badge>
+                                  )}
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <span className="text-yellow-500 text-sm">★</span>
+                                    <span className="text-sm">{trip.driver_info.rating?.toFixed(1) || '5.0'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-gray-400 text-sm">No driver assigned</div>
+                            )}
+                          </div>
+
+                          {/* Customer Info (if available) */}
+                          <div className="flex-1 border-l pl-4">
+                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Customer</div>
+                            {trip.customer_info ? (
+                              <div>
+                                <div className="font-medium">{trip.customer_info.name || 'Guest'}</div>
+                                <div className="text-sm text-gray-500">{trip.customer_info.phone || trip.customer_info.email || 'No contact'}</div>
+                              </div>
+                            ) : (
+                              <div className="text-gray-400 text-sm">
+                                {trip.mode === 'street_hail' ? 'Street Hail (No booking)' : 'No customer info'}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Trip Details */}
+                          <div className="flex-1 border-l pl-4">
+                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Trip Details</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-gray-500">Mode:</span>
+                                <Badge variant="outline" className="ml-1">{trip.mode || 'app'}</Badge>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Distance:</span>
+                                <span className="ml-1 font-medium">{trip.final_fare?.distance?.toFixed(2) || '0'} km</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Duration:</span>
+                                <span className="ml-1">{trip.final_fare?.trip_duration_minutes?.toFixed(0) || '0'} min</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Waiting:</span>
+                                <span className="ml-1">{trip.final_fare?.total_waiting_minutes?.toFixed(0) || '0'} min</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Fare & Actions */}
+                          <div className="lg:w-48 border-l pl-4">
+                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Fare</div>
+                            <div className="text-2xl font-bold text-green-600">
                               ${trip.final_fare?.total_final?.toFixed(2) || '0.00'}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-500">
-                              {new Date(trip.start_time).toLocaleString()}
-                            </td>
-                            <td className="py-3 px-4">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="w-4 h-4" />
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(trip.start_time).toLocaleDateString()} {new Date(trip.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedTrip(trip);
+                                  setShowTripDetailModal(true);
+                                }}
+                              >
+                                <Eye className="w-3 h-3 mr-1" />View
                               </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                onClick={() => {
+                                  setSelectedTrip(trip);
+                                  setShowComplaintModal(true);
+                                }}
+                              >
+                                <AlertTriangle className="w-3 h-3 mr-1" />Report
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Admin Notes (if any) */}
+                        {trip.admin_notes && trip.admin_notes.length > 0 && (
+                          <div className="mt-4 pt-4 border-t">
+                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Admin Notes</div>
+                            <div className="space-y-2">
+                              {trip.admin_notes.map((note, idx) => (
+                                <div key={idx} className="bg-yellow-50 p-2 rounded text-sm">
+                                  <div className="text-gray-700">{note.note}</div>
+                                  <div className="text-xs text-gray-400 mt-1">
+                                    By {note.created_by_name} • {new Date(note.created_at).toLocaleString()}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
