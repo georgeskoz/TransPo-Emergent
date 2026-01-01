@@ -2077,6 +2077,179 @@ async def get_all_users(current_user: dict = Depends(get_current_user)):
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(100)
     return {"users": users}
 
+class AdminCreateUser(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+class AdminUpdateUser(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_restricted: Optional[bool] = None
+    restriction_reason: Optional[str] = None
+
+@api_router.post("/admin/users")
+async def admin_create_user(
+    user_data: AdminCreateUser,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new user from admin panel."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Check permission
+    if not check_admin_permission(current_user, "manage_users"):
+        raise HTTPException(status_code=403, detail="manage_users permission required")
+    
+    # Check if email exists
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    new_user = {
+        "id": str(uuid.uuid4()),
+        "email": user_data.email,
+        "password": pwd_context.hash(user_data.password),
+        "name": f"{user_data.first_name} {user_data.last_name}",
+        "first_name": user_data.first_name,
+        "last_name": user_data.last_name,
+        "phone": user_data.phone,
+        "address": user_data.address,
+        "role": "user",
+        "is_active": True,
+        "is_restricted": False,
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(new_user)
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="user_created",
+        entity_type="user",
+        entity_id=new_user["id"],
+        after_snapshot={"email": new_user["email"], "name": new_user["name"]}
+    )
+    
+    new_user.pop("password", None)
+    return {"message": "User created successfully", "user": new_user}
+
+@api_router.put("/admin/users/{user_id}")
+async def admin_update_user(
+    user_id: str,
+    updates: AdminUpdateUser,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a user from admin panel."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not check_admin_permission(current_user, "manage_users"):
+        raise HTTPException(status_code=403, detail="manage_users permission required")
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    before_snapshot = {k: v for k, v in user.items() if k not in ["_id", "password"]}
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    
+    if "first_name" in update_data or "last_name" in update_data:
+        update_data["name"] = f"{update_data.get('first_name', user.get('first_name', ''))} {update_data.get('last_name', user.get('last_name', ''))}".strip()
+    
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        update_data["updated_by"] = current_user["id"]
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+        
+        # Audit log
+        await create_audit_log(
+            actor_id=current_user["id"],
+            actor_role=current_user.get("admin_role", "admin"),
+            action_type="user_updated",
+            entity_type="user",
+            entity_id=user_id,
+            before_snapshot=before_snapshot,
+            after_snapshot=update_data
+        )
+    
+    return {"message": "User updated successfully"}
+
+@api_router.post("/admin/users/{user_id}/restrict")
+async def admin_restrict_user(
+    user_id: str,
+    reason: str,
+    is_permanent: bool = False,
+    current_user: dict = Depends(get_current_user)
+):
+    """Restrict a user (temporary or permanent)."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not check_admin_permission(current_user, "restrict_users"):
+        raise HTTPException(status_code=403, detail="restrict_users permission required")
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_restricted": True,
+            "restriction_reason": reason,
+            "restriction_type": "permanent" if is_permanent else "temporary",
+            "restricted_by": current_user["id"],
+            "restricted_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="user_restricted",
+        entity_type="user",
+        entity_id=user_id,
+        notes=f"Reason: {reason}, Permanent: {is_permanent}"
+    )
+    
+    return {"message": "User restricted"}
+
+@api_router.post("/admin/users/{user_id}/unrestrict")
+async def admin_unrestrict_user(
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove restriction from a user."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "is_restricted": False,
+            "unrestricted_by": current_user["id"],
+            "unrestricted_at": datetime.now(timezone.utc).isoformat()
+        },
+        "$unset": {
+            "restriction_reason": "",
+            "restriction_type": ""
+        }}
+    )
+    
+    return {"message": "User restriction removed"}
+
 @api_router.get("/admin/drivers")
 async def get_all_drivers(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
@@ -2084,6 +2257,306 @@ async def get_all_drivers(current_user: dict = Depends(get_current_user)):
     
     drivers = await db.drivers.find({}, {"_id": 0}).to_list(100)
     return {"drivers": drivers}
+
+class AdminCreateDriver(BaseModel):
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    phone: str
+    # Vehicle info
+    vehicle_type: str = "sedan"
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_color: Optional[str] = None
+    vehicle_year: Optional[int] = None
+    license_plate: Optional[str] = None
+    # License info
+    drivers_license_number: Optional[str] = None
+    taxi_permit_number: Optional[str] = None
+    # Quebec tax info
+    gst_number: Optional[str] = None
+    qst_number: Optional[str] = None
+    srs_code: Optional[str] = None
+    # Services
+    services: List[str] = ["taxi"]
+
+class AdminUpdateDriver(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_color: Optional[str] = None
+    license_plate: Optional[str] = None
+    status: Optional[str] = None
+    is_active: Optional[bool] = None
+    services: Optional[List[str]] = None
+
+@api_router.post("/admin/drivers")
+async def admin_create_driver(
+    driver_data: AdminCreateDriver,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new driver from admin panel."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not check_admin_permission(current_user, "manage_drivers"):
+        raise HTTPException(status_code=403, detail="manage_drivers permission required")
+    
+    # Check if email exists
+    existing = await db.users.find_one({"email": driver_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    driver_id = str(uuid.uuid4())
+    
+    # Create user account
+    new_user = {
+        "id": driver_id,
+        "email": driver_data.email,
+        "password": pwd_context.hash(driver_data.password),
+        "name": f"{driver_data.first_name} {driver_data.last_name}",
+        "first_name": driver_data.first_name,
+        "last_name": driver_data.last_name,
+        "phone": driver_data.phone,
+        "role": "driver",
+        "is_active": True,
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(new_user)
+    
+    # Create driver profile
+    new_driver = {
+        "id": str(uuid.uuid4()),
+        "user_id": driver_id,
+        "name": f"{driver_data.first_name} {driver_data.last_name}",
+        "first_name": driver_data.first_name,
+        "last_name": driver_data.last_name,
+        "email": driver_data.email,
+        "phone": driver_data.phone,
+        "status": "offline",
+        "is_available": False,
+        "is_active": True,
+        # Vehicle
+        "vehicle_type": driver_data.vehicle_type,
+        "vehicle_make": driver_data.vehicle_make,
+        "vehicle_model": driver_data.vehicle_model,
+        "vehicle_color": driver_data.vehicle_color,
+        "vehicle_year": driver_data.vehicle_year,
+        "license_plate": driver_data.license_plate,
+        # License info
+        "drivers_license_number": driver_data.drivers_license_number,
+        "taxi_permit_number": driver_data.taxi_permit_number,
+        "drivers_license_status": "pending",
+        "taxi_license_status": "pending",
+        # Quebec tax info
+        "tax_info": {
+            "gst_number": driver_data.gst_number,
+            "qst_number": driver_data.qst_number,
+            "srs_code": driver_data.srs_code
+        },
+        # Services
+        "services": driver_data.services,
+        # Stats
+        "rating": 5.0,
+        "total_rides": 0,
+        "earnings_today": 0,
+        "earnings_total": 0,
+        # Verification
+        "verification_status": "pending",
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.drivers.insert_one(new_driver)
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="driver_created",
+        entity_type="driver",
+        entity_id=driver_id,
+        after_snapshot={"email": new_driver["email"], "name": new_driver["name"]}
+    )
+    
+    return {"message": "Driver created successfully", "driver": new_driver, "user_id": driver_id}
+
+@api_router.put("/admin/drivers/{driver_id}")
+async def admin_update_driver(
+    driver_id: str,
+    updates: AdminUpdateDriver,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a driver from admin panel."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not check_admin_permission(current_user, "manage_drivers"):
+        raise HTTPException(status_code=403, detail="manage_drivers permission required")
+    
+    driver = await db.drivers.find_one({"user_id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    before_snapshot = {k: v for k, v in driver.items() if k != "_id"}
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    
+    if "first_name" in update_data or "last_name" in update_data:
+        update_data["name"] = f"{update_data.get('first_name', driver.get('first_name', ''))} {update_data.get('last_name', driver.get('last_name', ''))}".strip()
+    
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        update_data["updated_by"] = current_user["id"]
+        await db.drivers.update_one({"user_id": driver_id}, {"$set": update_data})
+        
+        # Audit log
+        await create_audit_log(
+            actor_id=current_user["id"],
+            actor_role=current_user.get("admin_role", "admin"),
+            action_type="driver_updated",
+            entity_type="driver",
+            entity_id=driver_id,
+            before_snapshot=before_snapshot,
+            after_snapshot=update_data
+        )
+    
+    return {"message": "Driver updated successfully"}
+
+@api_router.post("/admin/drivers/{driver_id}/suspend")
+async def admin_suspend_driver(
+    driver_id: str,
+    reason: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Suspend a driver."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not check_admin_permission(current_user, "suspend_drivers"):
+        raise HTTPException(status_code=403, detail="suspend_drivers permission required")
+    
+    driver = await db.drivers.find_one({"user_id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    await db.drivers.update_one(
+        {"user_id": driver_id},
+        {"$set": {
+            "status": "suspended",
+            "is_active": False,
+            "is_available": False,
+            "suspension_reason": reason,
+            "suspended_by": current_user["id"],
+            "suspended_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Also update user account
+    await db.users.update_one(
+        {"id": driver_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="driver_suspended",
+        entity_type="driver",
+        entity_id=driver_id,
+        notes=f"Reason: {reason}"
+    )
+    
+    return {"message": "Driver suspended"}
+
+@api_router.post("/admin/drivers/{driver_id}/reactivate")
+async def admin_reactivate_driver(
+    driver_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Reactivate a suspended driver."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    driver = await db.drivers.find_one({"user_id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    await db.drivers.update_one(
+        {"user_id": driver_id},
+        {"$set": {
+            "status": "offline",
+            "is_active": True,
+            "reactivated_by": current_user["id"],
+            "reactivated_at": datetime.now(timezone.utc).isoformat()
+        },
+        "$unset": {
+            "suspension_reason": ""
+        }}
+    )
+    
+    # Also update user account
+    await db.users.update_one(
+        {"id": driver_id},
+        {"$set": {"is_active": True}}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="driver_reactivated",
+        entity_type="driver",
+        entity_id=driver_id
+    )
+    
+    return {"message": "Driver reactivated"}
+
+@api_router.post("/admin/drivers/{driver_id}/approve")
+async def admin_approve_driver(
+    driver_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Fully approve a driver (all documents verified)."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not check_admin_permission(current_user, "approve_drivers"):
+        raise HTTPException(status_code=403, detail="approve_drivers permission required")
+    
+    driver = await db.drivers.find_one({"user_id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    await db.drivers.update_one(
+        {"user_id": driver_id},
+        {"$set": {
+            "verification_status": "approved",
+            "drivers_license_status": "approved",
+            "taxi_license_status": "approved",
+            "profile_photo_status": "approved",
+            "approved_by": current_user["id"],
+            "approved_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="driver_approved",
+        entity_type="driver",
+        entity_id=driver_id
+    )
+    
+    return {"message": "Driver approved"}
 
 @api_router.get("/admin/drivers/pending-verification")
 async def get_pending_verifications(current_user: dict = Depends(get_current_user)):
