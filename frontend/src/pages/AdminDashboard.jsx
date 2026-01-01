@@ -2370,6 +2370,257 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Trip Detail Modal */}
+      <AnimatePresence>
+        {showTripDetailModal && selectedTrip && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-2xl bg-white rounded-xl p-6 my-8"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Trip Details</h2>
+                <button onClick={() => setShowTripDetailModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Trip Status */}
+                <div className="flex items-center gap-4">
+                  <Badge className={
+                    selectedTrip.status === 'completed' ? 'bg-green-100 text-green-700 text-lg px-4 py-1' :
+                    selectedTrip.status === 'running' ? 'bg-blue-100 text-blue-700 text-lg px-4 py-1' :
+                    'bg-gray-100 text-gray-700 text-lg px-4 py-1'
+                  }>{selectedTrip.status?.toUpperCase()}</Badge>
+                  <span className="text-gray-500">Trip ID: {selectedTrip.id}</span>
+                </div>
+
+                {/* Driver Section */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <Car className="w-4 h-4" /> Driver Information
+                  </h3>
+                  {selectedTrip.driver_info ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm text-gray-500">Name</div>
+                        <div className="font-medium">{selectedTrip.driver_info.name}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Phone</div>
+                        <div className="font-medium">{selectedTrip.driver_info.phone || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Email</div>
+                        <div className="font-medium">{selectedTrip.driver_info.email || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Rating</div>
+                        <div className="font-medium flex items-center gap-1">
+                          <span className="text-yellow-500">★</span>
+                          {selectedTrip.driver_info.rating?.toFixed(1) || '5.0'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Vehicle</div>
+                        <div className="font-medium">{selectedTrip.driver_info.vehicle || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">License Plate</div>
+                        <div className="font-medium">{selectedTrip.driver_info.license_plate || 'N/A'}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500">No driver information available</div>
+                  )}
+                </div>
+
+                {/* Customer Section */}
+                {selectedTrip.customer_info && (
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Customer Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm text-gray-500">Name</div>
+                        <div className="font-medium">{selectedTrip.customer_info.name}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Contact</div>
+                        <div className="font-medium">{selectedTrip.customer_info.phone || selectedTrip.customer_info.email || 'N/A'}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fare Breakdown */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" /> Fare Breakdown
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Base Fare</span>
+                      <span>${selectedTrip.final_fare?.base_fare?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Distance ({selectedTrip.final_fare?.distance?.toFixed(2) || '0'} km)</span>
+                      <span>${selectedTrip.final_fare?.distance_cost?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Waiting Time ({selectedTrip.final_fare?.total_waiting_minutes?.toFixed(0) || '0'} min)</span>
+                      <span>${selectedTrip.final_fare?.waiting_cost?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Government Fee</span>
+                      <span>${selectedTrip.final_fare?.government_fee?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    {selectedTrip.final_fare?.tip_amount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Tip</span>
+                        <span>${selectedTrip.final_fare?.tip_amount?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t pt-2 font-bold text-lg">
+                      <span>Total</span>
+                      <span className="text-green-600">${selectedTrip.final_fare?.total_final?.toFixed(2) || '0.00'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add Note Section */}
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-3">Add Admin Note</h3>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={tripNote}
+                      onChange={(e) => setTripNote(e.target.value)}
+                      placeholder="Add a note about this trip..."
+                      className="flex-1"
+                    />
+                    <Button onClick={addTripNote} disabled={!tripNote.trim()}>
+                      <Plus className="w-4 h-4 mr-1" />Add Note
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => setShowTripDetailModal(false)}>
+                  Close
+                </Button>
+                <Button 
+                  className="flex-1 bg-orange-500 hover:bg-orange-600"
+                  onClick={() => {
+                    setShowTripDetailModal(false);
+                    setShowComplaintModal(true);
+                  }}
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />File Complaint
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Complaint Modal */}
+      <AnimatePresence>
+        {showComplaintModal && selectedTrip && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-md bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-500" />
+                  File Complaint
+                </h2>
+                <button onClick={() => setShowComplaintModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Trip Info Summary */}
+              <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                <div className="text-sm text-gray-500">Trip ID: {selectedTrip.id?.slice(0, 12)}...</div>
+                {selectedTrip.driver_info && (
+                  <div className="font-medium">Driver: {selectedTrip.driver_info.name}</div>
+                )}
+                <div className="text-sm">{new Date(selectedTrip.start_time).toLocaleString()}</div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label>Complaint Type *</Label>
+                  <select 
+                    value={complaintType}
+                    onChange={(e) => setComplaintType(e.target.value)}
+                    className="w-full mt-1 p-2 border rounded-md"
+                  >
+                    <option value="service">Service Quality</option>
+                    <option value="driver_behavior">Driver Behavior</option>
+                    <option value="vehicle">Vehicle Condition</option>
+                    <option value="billing">Billing/Fare Issue</option>
+                    <option value="safety">Safety Concern</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label>Description *</Label>
+                  <Textarea 
+                    value={complaintDescription}
+                    onChange={(e) => setComplaintDescription(e.target.value)}
+                    placeholder="Please describe the issue in detail..."
+                    className="mt-1"
+                    rows={5}
+                  />
+                </div>
+
+                <div className="bg-yellow-50 p-3 rounded-lg text-sm">
+                  <p className="font-medium text-yellow-800">Note:</p>
+                  <p className="text-yellow-700">This complaint will be logged and can be reviewed in the Disputes section. The driver may be contacted for follow-up.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => {
+                  setShowComplaintModal(false);
+                  setComplaintDescription('');
+                }}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1 bg-orange-500 hover:bg-orange-600"
+                  onClick={createTripComplaint}
+                  disabled={!complaintDescription.trim()}
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />Submit Complaint
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
