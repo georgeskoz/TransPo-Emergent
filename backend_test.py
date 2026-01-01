@@ -391,6 +391,161 @@ class TranspoAPITester:
             print(f"   Total Rides: {response.get('total_rides', 0)}")
             print(f"   Rating: {response.get('rating', 0)}")
 
+    def test_admin_endpoints(self):
+        """Test admin user and driver creation endpoints"""
+        print("\n" + "="*50)
+        print("👑 ADMIN ENDPOINTS TESTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin tests - no admin token")
+            return
+        
+        # Test admin create user
+        user_data = {
+            "email": "testuser@example.com",
+            "password": "testpass123",
+            "first_name": "Test",
+            "last_name": "User",
+            "phone": "+1234567890",
+            "address": "123 Test Street, Montreal, QC"
+        }
+        
+        success, response = self.run_test(
+            "Admin Create User", 
+            "POST", 
+            "admin/users", 
+            200,
+            user_data,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            print(f"   Created user: {response.get('user', {}).get('name', 'N/A')}")
+            print(f"   User ID: {response.get('user', {}).get('id', 'N/A')}")
+            print(f"   Email: {response.get('user', {}).get('email', 'N/A')}")
+            print(f"   Role: {response.get('user', {}).get('role', 'N/A')}")
+            
+            # Verify user data structure
+            user = response.get('user', {})
+            if 'password' in user:
+                print("❌ Password field should not be returned in response")
+            else:
+                print("✅ Password field correctly excluded from response")
+        
+        # Test admin create driver
+        driver_data = {
+            "email": "testdriver@example.com",
+            "password": "testpass123",
+            "first_name": "Test",
+            "last_name": "Driver",
+            "phone": "+1234567891",
+            "vehicle_type": "sedan",
+            "vehicle_make": "Toyota",
+            "vehicle_model": "Camry",
+            "vehicle_color": "Blue",
+            "vehicle_year": 2020,
+            "license_plate": "ABC123",
+            "drivers_license_number": "DL123456789",
+            "taxi_permit_number": "TP987654321",
+            "gst_number": "GST123456789",
+            "qst_number": "QST987654321",
+            "srs_code": "SRS123",
+            "services": ["taxi", "courier"]
+        }
+        
+        success, response = self.run_test(
+            "Admin Create Driver", 
+            "POST", 
+            "admin/drivers", 
+            200,
+            driver_data,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            print(f"   Created driver: {response.get('driver', {}).get('name', 'N/A')}")
+            print(f"   Driver ID: {response.get('driver', {}).get('id', 'N/A')}")
+            print(f"   User ID: {response.get('user_id', 'N/A')}")
+            print(f"   Email: {response.get('driver', {}).get('email', 'N/A')}")
+            print(f"   Vehicle: {response.get('driver', {}).get('vehicle_color', '')} {response.get('driver', {}).get('vehicle_make', '')} {response.get('driver', {}).get('vehicle_model', '')}")
+            print(f"   License Plate: {response.get('driver', {}).get('license_plate', 'N/A')}")
+            print(f"   Services: {response.get('driver', {}).get('services', [])}")
+            print(f"   GST Number: {response.get('driver', {}).get('tax_info', {}).get('gst_number', 'N/A')}")
+            print(f"   QST Number: {response.get('driver', {}).get('tax_info', {}).get('qst_number', 'N/A')}")
+            
+            # Verify driver data structure
+            driver = response.get('driver', {})
+            if 'password' not in driver:
+                print("✅ Password field correctly excluded from driver response")
+            
+            # Verify both user and driver profile were created
+            if response.get('user_id') and response.get('driver', {}).get('user_id'):
+                print("✅ Both user account and driver profile created successfully")
+        
+        # Test admin create user with duplicate email (should fail)
+        duplicate_user_data = {
+            "email": "testuser@example.com",  # Same email as above
+            "password": "testpass123",
+            "first_name": "Duplicate",
+            "last_name": "User"
+        }
+        
+        self.run_test(
+            "Admin Create User - Duplicate Email", 
+            "POST", 
+            "admin/users", 
+            400,  # Should fail with 400
+            duplicate_user_data,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        # Test admin create driver with duplicate email (should fail)
+        duplicate_driver_data = {
+            "email": "testdriver@example.com",  # Same email as above
+            "password": "testpass123",
+            "first_name": "Duplicate",
+            "last_name": "Driver",
+            "phone": "+1234567892"
+        }
+        
+        self.run_test(
+            "Admin Create Driver - Duplicate Email", 
+            "POST", 
+            "admin/drivers", 
+            400,  # Should fail with 400
+            duplicate_driver_data,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        # Test admin endpoints without auth (should fail)
+        self.run_test(
+            "Admin Create User - No Auth", 
+            "POST", 
+            "admin/users", 
+            401,  # Should fail with 401
+            user_data
+        )
+        
+        self.run_test(
+            "Admin Create Driver - No Auth", 
+            "POST", 
+            "admin/drivers", 
+            401,  # Should fail with 401
+            driver_data
+        )
+        
+        # Test admin endpoints with user token (should fail)
+        if self.user_token:
+            self.run_test(
+                "Admin Create User - User Token", 
+                "POST", 
+                "admin/users", 
+                403,  # Should fail with 403
+                user_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+
     def run_focused_tests(self):
         """Run focused tests based on test_result.md requirements"""
         print("🚀 Starting Transpo Backend API Focused Test Suite")
