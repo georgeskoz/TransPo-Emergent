@@ -56,6 +56,19 @@ export default function AdminDashboard() {
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [showCreateDocModal, setShowCreateDocModal] = useState(false);
   const [showEditDocModal, setShowEditDocModal] = useState(false);
+  const [showCreateCaseModal, setShowCreateCaseModal] = useState(false);
+  const [showCaseDetailModal, setShowCaseDetailModal] = useState(false);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [caseFilter, setCaseFilter] = useState('all');
+  const [newCase, setNewCase] = useState({
+    case_type: 'incident',
+    title: '',
+    description: '',
+    priority: 'medium',
+    driver_id: '',
+    user_id: '',
+    booking_id: ''
+  });
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [newDoc, setNewDoc] = useState({
     title: '',
