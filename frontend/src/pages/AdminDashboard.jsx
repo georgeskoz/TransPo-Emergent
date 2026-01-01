@@ -101,7 +101,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (activeSection === "documents") loadPendingDocs();
+    if (activeSection === "documents") { loadPendingDocs(); loadPlatformDocs(); }
     if (activeSection === "cases") { loadCases(); loadDisputes(); }
     if (activeSection === "payouts") { loadPayouts(); loadPendingPayouts(); }
     if (activeSection === "contracts") { loadContracts(); loadContractTemplate(); }
