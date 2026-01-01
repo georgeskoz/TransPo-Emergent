@@ -1258,6 +1258,306 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Create User Modal */}
+      <AnimatePresence>
+        {showCreateUserModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-md bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Add New User</h2>
+                <button onClick={() => setShowCreateUserModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>First Name *</Label>
+                    <Input 
+                      value={newUser.first_name}
+                      onChange={(e) => setNewUser({...newUser, first_name: e.target.value})}
+                      className="mt-1"
+                      placeholder="John"
+                    />
+                  </div>
+                  <div>
+                    <Label>Last Name *</Label>
+                    <Input 
+                      value={newUser.last_name}
+                      onChange={(e) => setNewUser({...newUser, last_name: e.target.value})}
+                      className="mt-1"
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Email *</Label>
+                  <Input 
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                    className="mt-1"
+                    placeholder="john@example.com"
+                  />
+                </div>
+                <div>
+                  <Label>Password *</Label>
+                  <Input 
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    className="mt-1"
+                    placeholder="Min 6 characters"
+                  />
+                </div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input 
+                    value={newUser.phone}
+                    onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
+                    className="mt-1"
+                    placeholder="+1 514 555 0100"
+                  />
+                </div>
+                <div>
+                  <Label>Address</Label>
+                  <Input 
+                    value={newUser.address}
+                    onChange={(e) => setNewUser({...newUser, address: e.target.value})}
+                    className="mt-1"
+                    placeholder="123 Main Street, Montreal"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => setShowCreateUserModal(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  onClick={createUser}
+                  disabled={!newUser.email || !newUser.password || !newUser.first_name || !newUser.last_name}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />Create User
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Driver Modal */}
+      <AnimatePresence>
+        {showCreateDriverModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-2xl bg-white rounded-xl p-6 my-8"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Add New Driver</h2>
+                <button onClick={() => setShowCreateDriverModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Personal Info */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Personal Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>First Name *</Label>
+                      <Input 
+                        value={newDriver.first_name}
+                        onChange={(e) => setNewDriver({...newDriver, first_name: e.target.value})}
+                        className="mt-1"
+                        placeholder="John"
+                      />
+                    </div>
+                    <div>
+                      <Label>Last Name *</Label>
+                      <Input 
+                        value={newDriver.last_name}
+                        onChange={(e) => setNewDriver({...newDriver, last_name: e.target.value})}
+                        className="mt-1"
+                        placeholder="Doe"
+                      />
+                    </div>
+                    <div>
+                      <Label>Email *</Label>
+                      <Input 
+                        type="email"
+                        value={newDriver.email}
+                        onChange={(e) => setNewDriver({...newDriver, email: e.target.value})}
+                        className="mt-1"
+                        placeholder="driver@example.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>Password *</Label>
+                      <Input 
+                        type="password"
+                        value={newDriver.password}
+                        onChange={(e) => setNewDriver({...newDriver, password: e.target.value})}
+                        className="mt-1"
+                        placeholder="Min 6 characters"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Phone *</Label>
+                      <Input 
+                        value={newDriver.phone}
+                        onChange={(e) => setNewDriver({...newDriver, phone: e.target.value})}
+                        className="mt-1"
+                        placeholder="+1 514 555 0100"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vehicle Info */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Vehicle Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Vehicle Type *</Label>
+                      <select 
+                        value={newDriver.vehicle_type}
+                        onChange={(e) => setNewDriver({...newDriver, vehicle_type: e.target.value})}
+                        className="w-full mt-1 p-2 border rounded-md"
+                      >
+                        <option value="sedan">Sedan</option>
+                        <option value="suv">SUV</option>
+                        <option value="van">Van</option>
+                        <option value="bike">Bike</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Make</Label>
+                      <Input 
+                        value={newDriver.vehicle_make}
+                        onChange={(e) => setNewDriver({...newDriver, vehicle_make: e.target.value})}
+                        className="mt-1"
+                        placeholder="Toyota"
+                      />
+                    </div>
+                    <div>
+                      <Label>Model</Label>
+                      <Input 
+                        value={newDriver.vehicle_model}
+                        onChange={(e) => setNewDriver({...newDriver, vehicle_model: e.target.value})}
+                        className="mt-1"
+                        placeholder="Camry"
+                      />
+                    </div>
+                    <div>
+                      <Label>Color</Label>
+                      <Input 
+                        value={newDriver.vehicle_color}
+                        onChange={(e) => setNewDriver({...newDriver, vehicle_color: e.target.value})}
+                        className="mt-1"
+                        placeholder="Black"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>License Plate</Label>
+                      <Input 
+                        value={newDriver.license_plate}
+                        onChange={(e) => setNewDriver({...newDriver, license_plate: e.target.value})}
+                        className="mt-1"
+                        placeholder="ABC 123"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* License Info */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">License Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Driver's License #</Label>
+                      <Input 
+                        value={newDriver.drivers_license_number}
+                        onChange={(e) => setNewDriver({...newDriver, drivers_license_number: e.target.value})}
+                        className="mt-1"
+                        placeholder="License number"
+                      />
+                    </div>
+                    <div>
+                      <Label>Taxi Permit #</Label>
+                      <Input 
+                        value={newDriver.taxi_permit_number}
+                        onChange={(e) => setNewDriver({...newDriver, taxi_permit_number: e.target.value})}
+                        className="mt-1"
+                        placeholder="Permit number"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Services */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Services</h3>
+                  <div className="flex gap-4">
+                    {['taxi', 'courier', 'food'].map((service) => (
+                      <label key={service} className="flex items-center gap-2">
+                        <input 
+                          type="checkbox"
+                          checked={newDriver.services.includes(service)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewDriver({...newDriver, services: [...newDriver.services, service]});
+                            } else {
+                              setNewDriver({...newDriver, services: newDriver.services.filter(s => s !== service)});
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="capitalize">{service}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => setShowCreateDriverModal(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  onClick={createDriver}
+                  disabled={!newDriver.email || !newDriver.password || !newDriver.first_name || !newDriver.last_name || !newDriver.phone}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />Create Driver
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
