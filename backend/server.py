@@ -3125,6 +3125,7 @@ async def create_payout(
     }
     
     await db.payouts.insert_one(payout)
+    payout.pop("_id", None)
     return payout
 
 @api_router.put("/admin/payouts/{payout_id}/process")
