@@ -3768,6 +3768,300 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Create Case Modal */}
+      <AnimatePresence>
+        {showCreateCaseModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-lg bg-white rounded-xl p-6 my-8"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-500" />
+                  Create Support Case
+                </h2>
+                <button onClick={() => setShowCreateCaseModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Case Type *</Label>
+                    <select 
+                      value={newCase.case_type}
+                      onChange={(e) => setNewCase({...newCase, case_type: e.target.value})}
+                      className="w-full mt-1 p-2 border rounded-md"
+                    >
+                      <option value="incident">🚨 Incident</option>
+                      <option value="complaint">📢 Complaint</option>
+                      <option value="dispute">⚖️ Dispute</option>
+                      <option value="refund">💰 Refund Request</option>
+                      <option value="other">📝 Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label>Priority *</Label>
+                    <select 
+                      value={newCase.priority}
+                      onChange={(e) => setNewCase({...newCase, priority: e.target.value})}
+                      className="w-full mt-1 p-2 border rounded-md"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">🚨 Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Title *</Label>
+                  <Input 
+                    value={newCase.title}
+                    onChange={(e) => setNewCase({...newCase, title: e.target.value})}
+                    className="mt-1"
+                    placeholder="Brief summary of the issue"
+                  />
+                </div>
+
+                <div>
+                  <Label>Description *</Label>
+                  <Textarea 
+                    value={newCase.description}
+                    onChange={(e) => setNewCase({...newCase, description: e.target.value})}
+                    className="mt-1"
+                    placeholder="Detailed description of the case..."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Driver ID (optional)</Label>
+                    <Input 
+                      value={newCase.driver_id}
+                      onChange={(e) => setNewCase({...newCase, driver_id: e.target.value})}
+                      className="mt-1"
+                      placeholder="Driver ID"
+                    />
+                  </div>
+                  <div>
+                    <Label>User ID (optional)</Label>
+                    <Input 
+                      value={newCase.user_id}
+                      onChange={(e) => setNewCase({...newCase, user_id: e.target.value})}
+                      className="mt-1"
+                      placeholder="User ID"
+                    />
+                  </div>
+                  <div>
+                    <Label>Trip ID (optional)</Label>
+                    <Input 
+                      value={newCase.booking_id}
+                      onChange={(e) => setNewCase({...newCase, booking_id: e.target.value})}
+                      className="mt-1"
+                      placeholder="Trip/Booking ID"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => setShowCreateCaseModal(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  onClick={createCase}
+                  disabled={!newCase.title || !newCase.description}
+                >
+                  <Plus className="w-4 h-4 mr-2" />Create Case
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Case Detail Modal */}
+      <AnimatePresence>
+        {showCaseDetailModal && selectedCase && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-2xl bg-white rounded-xl p-6 my-8"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-bold">{selectedCase.case_number}</h2>
+                  <Badge className={
+                    selectedCase.status === 'open' ? 'bg-red-100 text-red-700' :
+                    selectedCase.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                    selectedCase.status === 'resolved' ? 'bg-green-100 text-green-700' :
+                    'bg-gray-100 text-gray-700'
+                  }>{selectedCase.status?.replace('_', ' ')}</Badge>
+                </div>
+                <button onClick={() => {
+                  setShowCaseDetailModal(false);
+                  setSelectedCase(null);
+                }}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Case Info */}
+                <div className={`p-4 rounded-lg ${
+                  selectedCase.priority === 'urgent' ? 'bg-red-50 border border-red-200' :
+                  selectedCase.priority === 'high' ? 'bg-orange-50 border border-orange-200' :
+                  'bg-gray-50'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className={
+                      selectedCase.case_type === 'incident' ? 'bg-red-100 text-red-700' :
+                      selectedCase.case_type === 'complaint' ? 'bg-orange-100 text-orange-700' :
+                      selectedCase.case_type === 'dispute' ? 'bg-purple-100 text-purple-700' :
+                      selectedCase.case_type === 'refund' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }>{selectedCase.case_type}</Badge>
+                    <Badge variant="outline" className={
+                      selectedCase.priority === 'urgent' ? 'border-red-500 text-red-600' :
+                      selectedCase.priority === 'high' ? 'border-orange-500 text-orange-600' :
+                      ''
+                    }>
+                      {selectedCase.priority === 'urgent' && '🚨 '}{selectedCase.priority} priority
+                    </Badge>
+                  </div>
+                  <h3 className="font-semibold text-lg">{selectedCase.title}</h3>
+                  <p className="text-gray-700 mt-2">{selectedCase.description}</p>
+                </div>
+
+                {/* Related Entities */}
+                <div className="grid grid-cols-3 gap-4">
+                  {selectedCase.driver_id && (
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="text-xs text-gray-500">Driver</div>
+                      <div className="font-mono text-sm">{selectedCase.driver_id.slice(0, 12)}...</div>
+                    </div>
+                  )}
+                  {selectedCase.user_id && (
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <div className="text-xs text-gray-500">User</div>
+                      <div className="font-mono text-sm">{selectedCase.user_id.slice(0, 12)}...</div>
+                    </div>
+                  )}
+                  {selectedCase.booking_id && (
+                    <div className="p-3 bg-purple-50 rounded-lg">
+                      <div className="text-xs text-gray-500">Trip</div>
+                      <div className="font-mono text-sm">{selectedCase.booking_id.slice(0, 12)}...</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Resolution */}
+                {selectedCase.resolution && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-sm font-semibold text-green-800 mb-1">Resolution</div>
+                    <p className="text-green-700">{selectedCase.resolution}</p>
+                  </div>
+                )}
+
+                {/* History */}
+                {selectedCase.history && selectedCase.history.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Case History</h4>
+                    <div className="space-y-2">
+                      {selectedCase.history.map((h, idx) => (
+                        <div key={idx} className="text-sm border-l-2 border-gray-300 pl-3">
+                          <div className="text-gray-500">{new Date(h.timestamp).toLocaleString()}</div>
+                          <div>{h.action}: {h.details}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Note */}
+                <div>
+                  <Label>Add Note</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input 
+                      id="caseNoteInput"
+                      placeholder="Add a note to this case..."
+                      className="flex-1"
+                    />
+                    <Button onClick={() => {
+                      const note = document.getElementById('caseNoteInput').value;
+                      if (note) {
+                        addCaseNote(selectedCase.id, note);
+                        document.getElementById('caseNoteInput').value = '';
+                      }
+                    }}>
+                      Add Note
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Timestamps */}
+                <div className="text-xs text-gray-500 border-t pt-4">
+                  Created: {new Date(selectedCase.created_at).toLocaleString()}
+                  {selectedCase.updated_at && ` | Updated: ${new Date(selectedCase.updated_at).toLocaleString()}`}
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => {
+                  setShowCaseDetailModal(false);
+                  setSelectedCase(null);
+                }}>
+                  Close
+                </Button>
+                {selectedCase.status === 'open' && (
+                  <Button 
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-600"
+                    onClick={() => updateCaseStatus(selectedCase.id, 'in_progress')}
+                  >
+                    Start Working
+                  </Button>
+                )}
+                {selectedCase.status === 'in_progress' && (
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => {
+                      const resolution = prompt('Enter resolution:');
+                      if (resolution) {
+                        updateCaseStatus(selectedCase.id, 'resolved', resolution);
+                        setShowCaseDetailModal(false);
+                        setSelectedCase(null);
+                      }
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />Resolve Case
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
