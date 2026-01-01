@@ -429,6 +429,52 @@ export default function AdminDashboard() {
     }
   };
 
+  const createTripComplaint = async () => {
+    if (!selectedTrip || !complaintDescription.trim()) {
+      toast.error('Please enter complaint details');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/admin/trips/${selectedTrip.id}/complaint?complaint_type=${complaintType}&description=${encodeURIComponent(complaintDescription)}&reporter_type=admin`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success('Complaint created successfully');
+        setShowComplaintModal(false);
+        setComplaintDescription('');
+        setComplaintType('service');
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create complaint');
+      }
+    } catch (e) {
+      toast.error('Failed to create complaint');
+    }
+  };
+
+  const addTripNote = async () => {
+    if (!selectedTrip || !tripNote.trim()) {
+      toast.error('Please enter a note');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/admin/trips/${selectedTrip.id}/note?note=${encodeURIComponent(tripNote)}`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success('Note added successfully');
+        setTripNote('');
+        loadTrips();
+      } else {
+        toast.error('Failed to add note');
+      }
+    } catch (e) {
+      toast.error('Failed to add note');
+    }
+  };
+
   const activateTaxiConfig = async (configId) => {
     try {
       const res = await fetch(`${API_URL}/admin/taxi-configs/${configId}/activate`, {
