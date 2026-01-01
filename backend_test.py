@@ -671,6 +671,228 @@ class TranspoAPITester:
                 contract = contracts[0]
                 print(f"   Sample contract: {contract.get('driver_name', 'N/A')} - {contract.get('signed_date', 'N/A')}")
 
+    def test_admin_merchants(self):
+        """Test admin merchants/platform earnings APIs"""
+        print("\n" + "="*50)
+        print("🏪 ADMIN MERCHANTS TESTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin merchants tests - no admin token")
+            return
+        
+        # Test get merchants overview
+        success, response = self.run_test(
+            "Get Merchants Overview", 
+            "GET", 
+            "admin/merchants/overview", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            overview = response.get('overview', {})
+            print(f"   Total Collected: ${overview.get('total_collected', 0)}")
+            print(f"   Total Commission: ${overview.get('total_commission', 0)}")
+            print(f"   Available Balance: ${overview.get('available_balance', 0)}")
+            print(f"   Commission Rate: {overview.get('commission_rate', 0)}%")
+            print(f"   This Month Collected: ${overview.get('this_month_collected', 0)}")
+            print(f"   This Month Commission: ${overview.get('this_month_commission', 0)}")
+            print(f"   Bank Connected: {response.get('bank_connected', False)}")
+            
+            # Verify structure
+            required_fields = ['total_collected', 'total_commission', 'available_balance', 'commission_rate']
+            for field in required_fields:
+                if field in overview:
+                    print(f"✅ {field} field present")
+                else:
+                    print(f"❌ {field} field missing")
+        
+        # Test get merchants transactions
+        success, response = self.run_test(
+            "Get Merchants Transactions", 
+            "GET", 
+            "admin/merchants/transactions", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            transactions = response.get('transactions', [])
+            pagination = response.get('pagination', {})
+            print(f"   Found {len(transactions)} transactions")
+            print(f"   Pagination: Page {pagination.get('page', 1)} of {pagination.get('pages', 1)}")
+            print(f"   Total transactions: {pagination.get('total', 0)}")
+            
+            if transactions:
+                transaction = transactions[0]
+                print(f"   Sample transaction: {transaction.get('type', 'N/A')} - ${transaction.get('amount', 0)}")
+                print(f"   Transaction ID: {transaction.get('id', 'N/A')}")
+        
+        # Test get merchants transactions with pagination
+        success, response = self.run_test(
+            "Get Merchants Transactions - Page 2", 
+            "GET", 
+            "admin/merchants/transactions?page=2&limit=10", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            pagination = response.get('pagination', {})
+            print(f"   Page 2 pagination working: Page {pagination.get('page', 1)}")
+        
+        # Test get merchants settings
+        success, response = self.run_test(
+            "Get Merchants Settings", 
+            "GET", 
+            "admin/merchants/settings", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            settings = response.get('settings', {})
+            print(f"   Settings ID: {settings.get('id', 'N/A')}")
+            print(f"   Bank Name: {settings.get('bank_name', 'Not set')}")
+            print(f"   Payout Schedule: {settings.get('payout_schedule', 'N/A')}")
+            print(f"   Auto Payout: {settings.get('auto_payout_enabled', False)}")
+            print(f"   Min Payout Amount: ${settings.get('min_payout_amount', 0)}")
+            print(f"   Stripe Connected: {settings.get('stripe_connected', False)}")
+        
+        # Test update merchants settings (Super Admin only)
+        settings_update = {
+            "bank_account_name": "Transpo Platform Inc",
+            "bank_account_number": "****1234",
+            "bank_routing_number": "****5678", 
+            "bank_name": "Royal Bank of Canada",
+            "payout_schedule": "weekly",
+            "auto_payout_enabled": True,
+            "min_payout_amount": 100.0
+        }
+        
+        success, response = self.run_test(
+            "Update Merchants Settings", 
+            "PUT", 
+            "admin/merchants/settings", 
+            200,
+            settings_update,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            print("✅ Merchant settings updated successfully")
+        
+        # Test get withdrawals history
+        success, response = self.run_test(
+            "Get Platform Withdrawals", 
+            "GET", 
+            "admin/merchants/withdrawals", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            withdrawals = response.get('withdrawals', [])
+            print(f"   Found {len(withdrawals)} withdrawals")
+            if withdrawals:
+                withdrawal = withdrawals[0]
+                print(f"   Sample withdrawal: ${withdrawal.get('amount', 0)} - {withdrawal.get('status', 'N/A')}")
+        
+        # Test create withdrawal (should fail without bank connected initially)
+        withdrawal_data = {
+            "amount": 50.0,
+            "notes": "Test withdrawal"
+        }
+        
+        # First test should fail if no bank connected
+        success, response = self.run_test(
+            "Create Withdrawal - No Bank", 
+            "POST", 
+            "admin/merchants/withdraw", 
+            400,  # Should fail without bank
+            withdrawal_data,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if not success:
+            print("✅ Withdrawal correctly rejected without bank account")
+        
+        # Now test with bank connected (after settings update)
+        # Get updated overview to check available balance
+        success, overview_response = self.run_test(
+            "Get Overview for Withdrawal Test", 
+            "GET", 
+            "admin/merchants/overview", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            available_balance = overview_response.get('overview', {}).get('available_balance', 0)
+            bank_connected = overview_response.get('bank_connected', False)
+            
+            if bank_connected and available_balance > 0:
+                # Test withdrawal with valid amount
+                test_amount = min(25.0, available_balance)
+                withdrawal_data["amount"] = test_amount
+                
+                success, response = self.run_test(
+                    "Create Withdrawal - Valid", 
+                    "POST", 
+                    "admin/merchants/withdraw", 
+                    200,
+                    withdrawal_data,
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                if success:
+                    withdrawal = response.get('withdrawal', {})
+                    withdrawal_id = withdrawal.get('id')
+                    print(f"✅ Withdrawal created: ${withdrawal.get('amount', 0)}")
+                    print(f"   Withdrawal ID: {withdrawal_id}")
+                    print(f"   Status: {withdrawal.get('status', 'N/A')}")
+                    
+                    # Test update withdrawal status
+                    if withdrawal_id:
+                        success, response = self.run_test(
+                            "Update Withdrawal Status", 
+                            "PUT", 
+                            f"admin/merchants/withdrawals/{withdrawal_id}?status=completed&transaction_ref=TXN123456", 
+                            200,
+                            headers=self.get_auth_headers(self.admin_token)
+                        )
+                        
+                        if success:
+                            print("✅ Withdrawal status updated successfully")
+                
+                # Test withdrawal with amount exceeding balance
+                excessive_amount = available_balance + 1000
+                withdrawal_data["amount"] = excessive_amount
+                
+                success, response = self.run_test(
+                    "Create Withdrawal - Excessive Amount", 
+                    "POST", 
+                    "admin/merchants/withdraw", 
+                    400,
+                    withdrawal_data,
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                if not success:
+                    print("✅ Excessive withdrawal amount correctly rejected")
+            else:
+                print(f"⚠️ Skipping withdrawal tests - Bank connected: {bank_connected}, Balance: ${available_balance}")
+        
+        # Test invalid withdrawal status update
+        success, response = self.run_test(
+            "Update Withdrawal Status - Invalid", 
+            "PUT", 
+            "admin/merchants/withdrawals/invalid-id?status=invalid_status", 
+            400,  # Should fail with invalid status or ID
+            headers=self.get_auth_headers(self.admin_token)
+        )
+
     def test_admin_endpoints(self):
         """Test admin user and driver creation endpoints"""
         print("\n" + "="*50)
