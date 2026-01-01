@@ -1376,6 +1376,673 @@ async def get_admin_activity_log(
     
     return {"logs": logs}
 
+# ============== COMPREHENSIVE AUDIT LOGGING ==============
+
+async def create_audit_log(
+    actor_id: str,
+    actor_role: str,
+    action_type: str,
+    entity_type: str,
+    entity_id: str,
+    before_snapshot: dict = None,
+    after_snapshot: dict = None,
+    notes: str = None,
+    request: Request = None
+):
+    """Create a comprehensive audit log entry."""
+    log_entry = {
+        "id": str(uuid.uuid4()),
+        "actor_id": actor_id,
+        "actor_role": actor_role,
+        "action_type": action_type,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "before_snapshot": before_snapshot,
+        "after_snapshot": after_snapshot,
+        "notes": notes
+    }
+    
+    if request:
+        log_entry["ip_address"] = request.client.host if request.client else None
+        log_entry["user_agent"] = request.headers.get("user-agent")
+    
+    await db.audit_logs.insert_one(log_entry)
+    return log_entry
+
+@api_router.get("/admin/audit-logs")
+async def get_audit_logs(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    action_type: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    limit: int = 100,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get comprehensive audit logs. Only super_admin can see all."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    
+    query = {}
+    if entity_type:
+        query["entity_type"] = entity_type
+    if entity_id:
+        query["entity_id"] = entity_id
+    if action_type:
+        query["action_type"] = action_type
+    if actor_id:
+        query["actor_id"] = actor_id
+    
+    logs = await db.audit_logs.find(query, {"_id": 0}).sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    return {"logs": logs, "total": len(logs)}
+
+# ============== TAXI CONFIG VERSIONING ==============
+
+from models.taxi_config import TaxiConfigCreate, TaxiConfigUpdate, DEFAULT_QUEBEC_CONFIG, ConfigStatus
+
+@api_router.get("/admin/taxi-configs")
+async def get_taxi_configs(
+    status: Optional[str] = None,
+    region: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all taxi configurations. Admins can view, only super_admin can manage."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    if region:
+        query["region"] = region
+    
+    configs = await db.taxi_configs.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # If no configs exist, create default
+    if not configs:
+        default_config = {
+            "id": str(uuid.uuid4()),
+            "version": "1.0.0",
+            "status": ConfigStatus.ACTIVE,
+            **DEFAULT_QUEBEC_CONFIG,
+            "day_rates": {
+                "base_fare": DEFAULT_QUEBEC_CONFIG["day_base_fare"],
+                "per_km_rate": DEFAULT_QUEBEC_CONFIG["day_per_km_rate"],
+                "waiting_per_min": DEFAULT_QUEBEC_CONFIG["day_waiting_per_min"]
+            },
+            "night_rates": {
+                "base_fare": DEFAULT_QUEBEC_CONFIG["night_base_fare"],
+                "per_km_rate": DEFAULT_QUEBEC_CONFIG["night_per_km_rate"],
+                "waiting_per_min": DEFAULT_QUEBEC_CONFIG["night_waiting_per_min"]
+            },
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": "system",
+            "activated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.taxi_configs.insert_one(default_config)
+        configs = [default_config]
+    
+    return {"configs": configs}
+
+@api_router.get("/admin/taxi-configs/active")
+async def get_active_taxi_config(
+    region: str = "quebec",
+    current_user: dict = Depends(get_current_user)
+):
+    """Get the currently active taxi configuration for a region."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    config = await db.taxi_configs.find_one(
+        {"status": ConfigStatus.ACTIVE, "region": region},
+        {"_id": 0}
+    )
+    
+    if not config:
+        # Return default
+        return {"config": DEFAULT_QUEBEC_CONFIG, "is_default": True}
+    
+    return {"config": config, "is_default": False}
+
+@api_router.post("/admin/taxi-configs")
+async def create_taxi_config(
+    config_data: TaxiConfigCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new taxi configuration version. Only super_admin."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can create taxi configurations")
+    
+    # Get latest version number
+    latest = await db.taxi_configs.find_one(
+        {"region": config_data.region},
+        sort=[("created_at", -1)]
+    )
+    
+    if latest:
+        version_parts = latest.get("version", "1.0.0").split(".")
+        new_version = f"{version_parts[0]}.{int(version_parts[1]) + 1}.0"
+    else:
+        new_version = "1.0.0"
+    
+    config = {
+        "id": str(uuid.uuid4()),
+        "version": new_version,
+        "status": ConfigStatus.DRAFT,
+        **config_data.dict(),
+        "day_rates": {
+            "base_fare": config_data.day_base_fare,
+            "per_km_rate": config_data.day_per_km_rate,
+            "waiting_per_min": config_data.day_waiting_per_min
+        },
+        "night_rates": {
+            "base_fare": config_data.night_base_fare,
+            "per_km_rate": config_data.night_per_km_rate,
+            "waiting_per_min": config_data.night_waiting_per_min
+        },
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user["id"]
+    }
+    
+    await db.taxi_configs.insert_one(config)
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="taxi_config_created",
+        entity_type="taxi_config",
+        entity_id=config["id"],
+        after_snapshot=config
+    )
+    
+    return {"message": "Taxi configuration created", "config": config}
+
+@api_router.put("/admin/taxi-configs/{config_id}")
+async def update_taxi_config(
+    config_id: str,
+    updates: TaxiConfigUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a taxi configuration. Only super_admin. Cannot update locked configs."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can update taxi configurations")
+    
+    config = await db.taxi_configs.find_one({"id": config_id})
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    
+    if config.get("status") == ConfigStatus.LOCKED:
+        raise HTTPException(status_code=400, detail="Cannot modify locked configuration")
+    
+    before_snapshot = {k: v for k, v in config.items() if k != "_id"}
+    
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    
+    # Update rates if any rate field changed
+    if any(k.startswith("day_") for k in update_data):
+        update_data["day_rates"] = {
+            "base_fare": update_data.get("day_base_fare", config["day_rates"]["base_fare"]),
+            "per_km_rate": update_data.get("day_per_km_rate", config["day_rates"]["per_km_rate"]),
+            "waiting_per_min": update_data.get("day_waiting_per_min", config["day_rates"]["waiting_per_min"])
+        }
+    
+    if any(k.startswith("night_") for k in update_data):
+        update_data["night_rates"] = {
+            "base_fare": update_data.get("night_base_fare", config["night_rates"]["base_fare"]),
+            "per_km_rate": update_data.get("night_per_km_rate", config["night_rates"]["per_km_rate"]),
+            "waiting_per_min": update_data.get("night_waiting_per_min", config["night_rates"]["waiting_per_min"])
+        }
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = current_user["id"]
+    
+    await db.taxi_configs.update_one({"id": config_id}, {"$set": update_data})
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="taxi_config_updated",
+        entity_type="taxi_config",
+        entity_id=config_id,
+        before_snapshot=before_snapshot,
+        after_snapshot=update_data
+    )
+    
+    return {"message": "Configuration updated"}
+
+@api_router.post("/admin/taxi-configs/{config_id}/activate")
+async def activate_taxi_config(
+    config_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Activate a taxi configuration. Deactivates current active config."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can activate configurations")
+    
+    config = await db.taxi_configs.find_one({"id": config_id})
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    
+    # Deactivate current active config
+    await db.taxi_configs.update_many(
+        {"status": ConfigStatus.ACTIVE, "region": config["region"]},
+        {"$set": {"status": ConfigStatus.ARCHIVED, "archived_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Activate new config
+    await db.taxi_configs.update_one(
+        {"id": config_id},
+        {"$set": {
+            "status": ConfigStatus.ACTIVE,
+            "activated_at": datetime.now(timezone.utc).isoformat(),
+            "activated_by": current_user["id"]
+        }}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="taxi_config_activated",
+        entity_type="taxi_config",
+        entity_id=config_id,
+        notes=f"Configuration v{config['version']} activated for {config['region']}"
+    )
+    
+    return {"message": f"Configuration v{config['version']} activated"}
+
+@api_router.post("/admin/taxi-configs/{config_id}/lock")
+async def lock_taxi_config(
+    config_id: str,
+    reason: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lock a taxi configuration (legal hold). Cannot be modified after."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super admin can lock configurations")
+    
+    config = await db.taxi_configs.find_one({"id": config_id})
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    
+    await db.taxi_configs.update_one(
+        {"id": config_id},
+        {"$set": {
+            "status": ConfigStatus.LOCKED,
+            "locked_at": datetime.now(timezone.utc).isoformat(),
+            "locked_by": current_user["id"],
+            "locked_reason": reason
+        }}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="taxi_config_locked",
+        entity_type="taxi_config",
+        entity_id=config_id,
+        notes=f"Locked: {reason}"
+    )
+    
+    return {"message": "Configuration locked"}
+
+# ============== DISPUTE RESOLUTION ==============
+
+from models.admin_models import DisputeCreate, DisputeResolution
+
+@api_router.get("/admin/disputes")
+async def get_disputes(
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all disputes."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    disputes = await db.disputes.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with trip data
+    for dispute in disputes:
+        trip = await db.meter_sessions.find_one({"id": dispute.get("trip_id")}, {"_id": 0})
+        if trip:
+            dispute["trip"] = trip
+    
+    return {"disputes": disputes}
+
+@api_router.post("/admin/disputes")
+async def create_dispute(
+    dispute_data: DisputeCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new dispute for a trip."""
+    if current_user.get("role") not in ["admin", "super_admin", "user", "driver"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Verify trip exists
+    trip = await db.meter_sessions.find_one({"id": dispute_data.trip_id})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    dispute = {
+        "id": str(uuid.uuid4()),
+        "dispute_number": f"DSP-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}",
+        **dispute_data.dict(),
+        "status": "open",
+        "trip_snapshot": {
+            "config_version": trip.get("config_version"),
+            "fare": trip.get("final_fare"),
+            "start_time": trip.get("start_time"),
+            "end_time": trip.get("end_time")
+        },
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "history": []
+    }
+    
+    await db.disputes.insert_one(dispute)
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", current_user.get("role")),
+        action_type="dispute_created",
+        entity_type="dispute",
+        entity_id=dispute["id"],
+        notes=f"Dispute opened: {dispute_data.reason}"
+    )
+    
+    return {"message": "Dispute created", "dispute": dispute}
+
+@api_router.get("/admin/disputes/{dispute_id}")
+async def get_dispute_details(
+    dispute_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get detailed dispute information including trip data."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    dispute = await db.disputes.find_one({"id": dispute_id}, {"_id": 0})
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Dispute not found")
+    
+    # Get full trip data
+    trip = await db.meter_sessions.find_one({"id": dispute.get("trip_id")}, {"_id": 0})
+    
+    # Get config version used
+    config = None
+    if trip and trip.get("config_version"):
+        config = await db.taxi_configs.find_one({"version": trip["config_version"]}, {"_id": 0})
+    
+    return {
+        "dispute": dispute,
+        "trip": trip,
+        "config_used": config
+    }
+
+@api_router.post("/admin/disputes/{dispute_id}/resolve")
+async def resolve_dispute(
+    dispute_id: str,
+    resolution: DisputeResolution,
+    current_user: dict = Depends(get_current_user)
+):
+    """Resolve a dispute. Only admin/super_admin with resolve_disputes permission."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Check permission
+    if not check_admin_permission(current_user, "resolve_disputes"):
+        raise HTTPException(status_code=403, detail="resolve_disputes permission required")
+    
+    dispute = await db.disputes.find_one({"id": dispute_id})
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Dispute not found")
+    
+    if dispute.get("status") == "resolved":
+        raise HTTPException(status_code=400, detail="Dispute already resolved")
+    
+    before_snapshot = {k: v for k, v in dispute.items() if k != "_id"}
+    
+    resolution_data = {
+        "status": "resolved",
+        "resolution": resolution.dict(),
+        "resolved_by": current_user["id"],
+        "resolved_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Add to history
+    history_entry = {
+        "action": "resolved",
+        "by": current_user["id"],
+        "at": datetime.now(timezone.utc).isoformat(),
+        "decision": resolution.decision,
+        "notes": resolution.notes
+    }
+    
+    await db.disputes.update_one(
+        {"id": dispute_id},
+        {
+            "$set": resolution_data,
+            "$push": {"history": history_entry}
+        }
+    )
+    
+    # Process refund if applicable
+    if resolution.decision in ["partial_refund", "full_refund"] and resolution.refund_amount:
+        await db.refunds.insert_one({
+            "id": str(uuid.uuid4()),
+            "dispute_id": dispute_id,
+            "trip_id": dispute.get("trip_id"),
+            "amount": resolution.refund_amount,
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="dispute_resolved",
+        entity_type="dispute",
+        entity_id=dispute_id,
+        before_snapshot=before_snapshot,
+        after_snapshot=resolution_data,
+        notes=f"Decision: {resolution.decision}"
+    )
+    
+    return {"message": "Dispute resolved", "decision": resolution.decision}
+
+@api_router.post("/admin/disputes/{dispute_id}/note")
+async def add_dispute_note(
+    dispute_id: str,
+    note: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Add an internal note to a dispute. Support agents can add notes."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    dispute = await db.disputes.find_one({"id": dispute_id})
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Dispute not found")
+    
+    history_entry = {
+        "action": "note_added",
+        "by": current_user["id"],
+        "by_role": current_user.get("admin_role", "admin"),
+        "at": datetime.now(timezone.utc).isoformat(),
+        "note": note
+    }
+    
+    await db.disputes.update_one(
+        {"id": dispute_id},
+        {"$push": {"history": history_entry}}
+    )
+    
+    return {"message": "Note added"}
+
+# ============== TRIP MANAGEMENT (ADMIN) ==============
+
+@api_router.get("/admin/trips")
+async def get_admin_trips(
+    status: Optional[str] = None,
+    driver_id: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = 100,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get trips with admin details including config version and GPS summary."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    if driver_id:
+        query["driver_id"] = driver_id
+    if date_from:
+        query["start_time"] = {"$gte": date_from}
+    if date_to:
+        query.setdefault("start_time", {})["$lte"] = date_to
+    
+    trips = await db.meter_sessions.find(query, {"_id": 0}).sort("start_time", -1).limit(limit).to_list(limit)
+    
+    return {"trips": trips, "total": len(trips)}
+
+@api_router.get("/admin/trips/{trip_id}")
+async def get_admin_trip_details(
+    trip_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get detailed trip information for admin view."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    trip = await db.meter_sessions.find_one({"id": trip_id}, {"_id": 0})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Get driver info
+    driver = await db.drivers.find_one({"user_id": trip.get("driver_id")}, {"_id": 0})
+    driver_user = await db.users.find_one({"id": trip.get("driver_id")}, {"_id": 0, "password": 0})
+    
+    # Get config used
+    config = None
+    if trip.get("config_version"):
+        config = await db.taxi_configs.find_one({"version": trip["config_version"]}, {"_id": 0})
+    
+    return {
+        "trip": trip,
+        "driver": driver,
+        "driver_user": driver_user,
+        "config_used": config,
+        "gps_summary": {
+            "total_snapshots": len(trip.get("fare_snapshots", [])),
+            "start_location": trip.get("start_location"),
+            "end_location": trip.get("end_location")
+        }
+    }
+
+@api_router.post("/admin/trips/{trip_id}/cancel")
+async def admin_cancel_trip(
+    trip_id: str,
+    reason: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Cancel a trip (admin action). Requires cancel_trips permission."""
+    if not check_admin_permission(current_user, "cancel_trips"):
+        raise HTTPException(status_code=403, detail="cancel_trips permission required")
+    
+    trip = await db.meter_sessions.find_one({"id": trip_id})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    if trip.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Cannot cancel completed trip")
+    
+    await db.meter_sessions.update_one(
+        {"id": trip_id},
+        {"$set": {
+            "status": "cancelled",
+            "cancelled_by": current_user["id"],
+            "cancelled_at": datetime.now(timezone.utc).isoformat(),
+            "cancellation_reason": reason
+        }}
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="trip_cancelled",
+        entity_type="trip",
+        entity_id=trip_id,
+        notes=f"Reason: {reason}"
+    )
+    
+    return {"message": "Trip cancelled"}
+
+@api_router.post("/admin/trips/{trip_id}/fare-adjustment")
+async def apply_fare_adjustment(
+    trip_id: str,
+    adjustment_amount: float,
+    reason: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Apply a one-time fare adjustment. Admins only, logged and auditable."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Support agents cannot adjust fares
+    if current_user.get("admin_role") == "support_agent":
+        raise HTTPException(status_code=403, detail="Support agents cannot adjust fares")
+    
+    trip = await db.meter_sessions.find_one({"id": trip_id})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    before_snapshot = {"final_fare": trip.get("final_fare")}
+    
+    adjustment = {
+        "id": str(uuid.uuid4()),
+        "amount": adjustment_amount,
+        "reason": reason,
+        "applied_by": current_user["id"],
+        "applied_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update trip with adjustment
+    await db.meter_sessions.update_one(
+        {"id": trip_id},
+        {
+            "$push": {"fare_adjustments": adjustment},
+            "$inc": {"final_fare.total_final": adjustment_amount}
+        }
+    )
+    
+    # Audit log with before/after
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="fare_adjustment",
+        entity_type="trip",
+        entity_id=trip_id,
+        before_snapshot=before_snapshot,
+        after_snapshot={"adjustment": adjustment},
+        notes=f"Adjustment: ${adjustment_amount} - {reason}"
+    )
+    
+    return {"message": "Fare adjustment applied", "adjustment": adjustment}
+
 # ============== ADMIN ROUTES ==============
 
 @api_router.get("/admin/stats")
