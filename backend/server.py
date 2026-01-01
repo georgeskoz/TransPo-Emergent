@@ -3731,7 +3731,7 @@ async def update_merchant_settings(
     current_user: dict = Depends(get_current_user)
 ):
     """Update merchant/platform payout settings."""
-    if current_user.get("role") != "super_admin":
+    if current_user.get("admin_role") != "super_admin":
         raise HTTPException(status_code=403, detail="Super Admin access required")
     
     update_data = {k: v for k, v in updates.dict().items() if v is not None}
