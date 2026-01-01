@@ -391,6 +391,284 @@ class TranspoAPITester:
             print(f"   Total Rides: {response.get('total_rides', 0)}")
             print(f"   Rating: {response.get('rating', 0)}")
 
+    def test_password_management(self):
+        """Test password management APIs"""
+        print("\n" + "="*50)
+        print("🔐 PASSWORD MANAGEMENT TESTS")
+        print("="*50)
+        
+        if not self.user_token:
+            print("❌ Skipping password management tests - no user token")
+            return
+        
+        # Test change password
+        change_password_data = {
+            "current_password": "demo123",
+            "new_password": "newdemo123"
+        }
+        
+        success, response = self.run_test(
+            "Change Password", 
+            "POST", 
+            "auth/change-password", 
+            200,
+            change_password_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if success:
+            print("✅ Password changed successfully")
+            
+            # Change back to original password
+            change_back_data = {
+                "current_password": "newdemo123",
+                "new_password": "demo123"
+            }
+            
+            success_back, _ = self.run_test(
+                "Change Password Back", 
+                "POST", 
+                "auth/change-password", 
+                200,
+                change_back_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if success_back:
+                print("✅ Password changed back to original")
+        
+        # Test forgot password
+        forgot_password_data = {
+            "email": "user@demo.com"
+        }
+        
+        success, response = self.run_test(
+            "Forgot Password", 
+            "POST", 
+            "auth/forgot-password", 
+            200,
+            forgot_password_data
+        )
+        
+        if success:
+            print("✅ Forgot password request sent (check backend logs for reset token)")
+        
+        # Test verify reset token with invalid token
+        success, response = self.run_test(
+            "Verify Reset Token - Invalid", 
+            "GET", 
+            "auth/verify-reset-token?token=invalid-token", 
+            200
+        )
+        
+        if success and not response.get('valid', True):
+            print("✅ Invalid token correctly rejected")
+        
+        # Test reset password with invalid token
+        reset_password_data = {
+            "token": "invalid-token",
+            "new_password": "newpassword123"
+        }
+        
+        self.run_test(
+            "Reset Password - Invalid Token", 
+            "POST", 
+            "auth/reset-password", 
+            400,
+            reset_password_data
+        )
+
+    def test_admin_payouts(self):
+        """Test admin payouts APIs"""
+        print("\n" + "="*50)
+        print("💰 ADMIN PAYOUTS TESTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin payouts tests - no admin token")
+            return
+        
+        # Test get all payouts
+        success, response = self.run_test(
+            "Get All Payouts", 
+            "GET", 
+            "admin/payouts", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            payouts = response.get('payouts', [])
+            print(f"   Found {len(payouts)} payouts")
+            if payouts:
+                payout = payouts[0]
+                print(f"   Sample payout: ${payout.get('amount', 0)} to {payout.get('driver_name', 'N/A')}")
+        
+        # Test get pending payouts
+        success, response = self.run_test(
+            "Get Pending Payouts", 
+            "GET", 
+            "admin/payouts/pending", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            pending_drivers = response.get('drivers', [])
+            print(f"   Found {len(pending_drivers)} drivers with pending payouts")
+            if pending_drivers:
+                driver = pending_drivers[0]
+                print(f"   Sample pending: {driver.get('name', 'N/A')} - ${driver.get('pending_amount', 0)}")
+        
+        # Test create new payout
+        payout_data = {
+            "driver_id": "test-driver-id",
+            "amount": 150.00,
+            "period_start": "2024-01-01",
+            "period_end": "2024-01-07",
+            "notes": "Weekly payout test"
+        }
+        
+        success, response = self.run_test(
+            "Create New Payout", 
+            "POST", 
+            "admin/payouts", 
+            200,
+            payout_data,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            payout_id = response.get('payout', {}).get('id')
+            print(f"   Created payout ID: {payout_id}")
+            
+            # Test process payout if we got an ID
+            if payout_id:
+                success_process, _ = self.run_test(
+                    "Process Payout", 
+                    "PUT", 
+                    f"admin/payouts/{payout_id}/process?status=completed", 
+                    200,
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                if success_process:
+                    print("✅ Payout processed successfully")
+
+    def test_admin_taxes(self):
+        """Test admin taxes APIs"""
+        print("\n" + "="*50)
+        print("📊 ADMIN TAXES TESTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin taxes tests - no admin token")
+            return
+        
+        # Test get tax report (default current year)
+        success, response = self.run_test(
+            "Get Tax Report - Current Year", 
+            "GET", 
+            "admin/taxes/report", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            report = response.get('report', {})
+            print(f"   Year: {report.get('year', 'N/A')}")
+            print(f"   Total Revenue: ${report.get('total_revenue', 0)}")
+            print(f"   GST Collected: ${report.get('gst_collected', 0)}")
+            print(f"   QST Collected: ${report.get('qst_collected', 0)}")
+            print(f"   Total Rides: {report.get('total_rides', 0)}")
+            
+            # Check quarterly breakdown
+            quarters = report.get('quarterly_breakdown', [])
+            if quarters:
+                print(f"   Quarterly data available: {len(quarters)} quarters")
+                for q in quarters:
+                    print(f"     Q{q.get('quarter', 'N/A')}: ${q.get('revenue', 0)} revenue")
+        
+        # Test get tax report for specific year and quarter
+        success, response = self.run_test(
+            "Get Tax Report - Q1 2026", 
+            "GET", 
+            "admin/taxes/report?year=2026&quarter=1", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            report = response.get('report', {})
+            print(f"   Q1 2026 Revenue: ${report.get('total_revenue', 0)}")
+            print(f"   Q1 2026 GST: ${report.get('gst_collected', 0)}")
+            print(f"   Q1 2026 QST: ${report.get('qst_collected', 0)}")
+
+    def test_admin_contracts(self):
+        """Test admin contracts APIs"""
+        print("\n" + "="*50)
+        print("📄 ADMIN CONTRACTS TESTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin contracts tests - no admin token")
+            return
+        
+        # Test get current contract template
+        success, response = self.run_test(
+            "Get Contract Template", 
+            "GET", 
+            "admin/contracts/template", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            template = response.get('template', {})
+            print(f"   Template ID: {template.get('id', 'N/A')}")
+            print(f"   Version: {template.get('version', 'N/A')}")
+            print(f"   Title: {template.get('title', 'N/A')}")
+            content_length = len(template.get('content', ''))
+            print(f"   Content length: {content_length} characters")
+        
+        # Test update contract template
+        template_update = {
+            "title": "Updated Driver Service Agreement",
+            "content": "This is an updated test contract template for driver services...",
+            "version": "2.1",
+            "effective_date": "2024-02-01"
+        }
+        
+        success, response = self.run_test(
+            "Update Contract Template", 
+            "PUT", 
+            "admin/contracts/template", 
+            200,
+            template_update,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            print("✅ Contract template updated successfully")
+            updated_template = response.get('template', {})
+            print(f"   New version: {updated_template.get('version', 'N/A')}")
+        
+        # Test get signed contracts
+        success, response = self.run_test(
+            "Get Signed Contracts", 
+            "GET", 
+            "admin/contracts/signed", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            contracts = response.get('contracts', [])
+            print(f"   Found {len(contracts)} signed contracts")
+            if contracts:
+                contract = contracts[0]
+                print(f"   Sample contract: {contract.get('driver_name', 'N/A')} - {contract.get('signed_date', 'N/A')}")
+
     def test_admin_endpoints(self):
         """Test admin user and driver creation endpoints"""
         print("\n" + "="*50)
