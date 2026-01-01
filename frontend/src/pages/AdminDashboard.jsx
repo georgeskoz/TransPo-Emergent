@@ -510,6 +510,66 @@ export default function AdminDashboard() {
     }
   };
 
+  const unlockTaxiConfig = async (configId) => {
+    const reason = prompt('Enter reason for unlocking:');
+    if (!reason) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/taxi-configs/${configId}/unlock?reason=${encodeURIComponent(reason)}`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success('Configuration unlocked for editing');
+        loadTaxiConfigs();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to unlock');
+      }
+    } catch (e) {
+      toast.error('Failed to unlock configuration');
+    }
+  };
+
+  const openEditConfig = (config) => {
+    setSelectedConfig(config);
+    setEditConfigData({
+      name: config.name,
+      description: config.description,
+      day_base_fare: config.day_rates?.base_fare,
+      day_per_km_rate: config.day_rates?.per_km_rate,
+      day_waiting_per_min: config.day_rates?.waiting_per_min,
+      night_base_fare: config.night_rates?.base_fare,
+      night_per_km_rate: config.night_rates?.per_km_rate,
+      night_waiting_per_min: config.night_rates?.waiting_per_min,
+      government_fee: config.government_fee,
+      speed_threshold_kmh: config.speed_threshold_kmh
+    });
+    setShowEditConfigModal(true);
+  };
+
+  const updateTaxiConfig = async () => {
+    if (!selectedConfig || !editConfigData) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/taxi-configs/${selectedConfig.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(editConfigData)
+      });
+      if (res.ok) {
+        toast.success('Configuration updated successfully');
+        setShowEditConfigModal(false);
+        setSelectedConfig(null);
+        setEditConfigData(null);
+        loadTaxiConfigs();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to update');
+      }
+    } catch (e) {
+      toast.error('Failed to update configuration');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
