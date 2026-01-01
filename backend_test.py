@@ -33,6 +33,11 @@ class TranspoAPITester:
             "email": "driver@demo.com", 
             "password": "demo123"
         }
+        
+        self.demo_admin = {
+            "email": "admin@demo.com",
+            "password": "demo123"
+        }
 
     def run_test(self, name: str, method: str, endpoint: str, expected_status: int, 
                  data: Optional[Dict] = None, headers: Optional[Dict] = None, files: Optional[Dict] = None) -> tuple:
