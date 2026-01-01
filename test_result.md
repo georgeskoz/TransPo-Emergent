@@ -169,6 +169,21 @@ backend:
         agent: "testing"
         comment: "✅ TESTED: All contract endpoints working correctly. GET /api/admin/contracts/template, PUT /api/admin/contracts/template, and GET /api/admin/contracts/signed all return 200 status. Template update functionality working."
 
+  - task: "Admin Merchants API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/admin/merchants/overview, GET /api/admin/merchants/transactions, GET/PUT /api/admin/merchants/settings, POST /api/admin/merchants/withdraw, GET /api/admin/merchants/withdrawals, PUT /api/admin/merchants/withdrawals/{id} - platform earnings management"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: All merchants endpoints working correctly. Overview returns proper structure with total_collected, total_commission, available_balance, commission_rate. Transactions endpoint with pagination working. Settings CRUD operations working. Withdrawal creation and status updates working. Fixed backend bug: changed role check from 'role' to 'admin_role' for super_admin endpoints."
+
 frontend:
   - task: "Forgot Password Page"
     implemented: true
