@@ -50,6 +50,15 @@ function AppRouter() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={isAuthenticated ? <Navigate to={getDashboardPath(user?.role)} replace /> : <AuthPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      
+      {/* Change Password - Protected */}
+      <Route path="/change-password" element={
+        <ProtectedRoute>
+          <ChangePassword />
+        </ProtectedRoute>
+      } />
       
       {/* User Routes */}
       <Route path="/dashboard" element={
