@@ -858,10 +858,10 @@ class TranspoAPITester:
             self.test_health_check()
             self.test_authentication()
             self.test_password_management()
-            self.test_admin_payouts()
             self.test_admin_taxes()
             self.test_admin_contracts()
             self.test_admin_endpoints()
+            self.test_admin_payouts()
             self.test_fare_estimation()
             self.test_driver_profile_api()
         except KeyboardInterrupt:
