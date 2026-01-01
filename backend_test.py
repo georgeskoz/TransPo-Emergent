@@ -714,7 +714,7 @@ class TranspoAPITester:
         
         # Test admin create driver
         driver_data = {
-            "email": "testdriver@example.com",
+            "email": f"testdriver{timestamp}@example.com",
             "password": "testpass123",
             "first_name": "Test",
             "last_name": "Driver",
