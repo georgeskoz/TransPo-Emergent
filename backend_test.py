@@ -764,7 +764,7 @@ class TranspoAPITester:
         
         # Test admin create user with duplicate email (should fail)
         duplicate_user_data = {
-            "email": "testuser@example.com",  # Same email as above
+            "email": f"testuser{timestamp}@example.com",  # Same email as above
             "password": "testpass123",
             "first_name": "Duplicate",
             "last_name": "User"
