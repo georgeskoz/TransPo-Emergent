@@ -1025,8 +1025,151 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Other sections - Documents, Payouts, Taxes, Contracts, Merchants, Users, Drivers, Settings */}
+        {/* Other sections - Documents, Payouts, Taxes, Contracts, Merchants, Settings */}
         {/* ... keeping existing implementations for brevity ... */}
+
+        {/* Users Section */}
+        {activeSection === "users" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">{users.length} registered users</div>
+              <Button onClick={() => setShowCreateUserModal(true)}>
+                <UserPlus className="w-4 h-4 mr-2" />Add User
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Users</CardTitle>
+                <CardDescription>Manage registered users</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {users.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No users found</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">User</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Email</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Phone</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Created</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((u) => (
+                          <tr key={u.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <Users className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="font-medium">{u.name || `${u.first_name || ''} ${u.last_name || ''}`}</div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{u.email}</td>
+                            <td className="py-3 px-4 text-sm text-gray-600">{u.phone || '-'}</td>
+                            <td className="py-3 px-4">
+                              <Badge className={u.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                                {u.is_active !== false ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-500">
+                              {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Drivers Section */}
+        {activeSection === "drivers" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">{drivers.length} registered drivers</div>
+              <Button onClick={() => setShowCreateDriverModal(true)}>
+                <UserPlus className="w-4 h-4 mr-2" />Add Driver
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Drivers</CardTitle>
+                <CardDescription>Manage registered drivers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {drivers.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No drivers found</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Driver</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Vehicle</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rating</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rides</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Verification</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {drivers.map((d) => (
+                          <tr key={d.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                  <Car className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div>
+                                  <div className="font-medium">{d.name || `${d.first_name || ''} ${d.last_name || ''}`}</div>
+                                  <div className="text-xs text-gray-500">{d.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="text-sm">{d.vehicle_color} {d.vehicle_make} {d.vehicle_model}</div>
+                              <div className="text-xs text-gray-500">{d.license_plate}</div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge className={
+                                d.status === 'online' ? 'bg-green-100 text-green-700' :
+                                d.status === 'busy' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-gray-100 text-gray-700'
+                              }>{d.status || 'offline'}</Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-1">
+                                <span className="text-yellow-500">★</span>
+                                <span>{d.rating?.toFixed(1) || '5.0'}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-sm">{d.total_rides || 0}</td>
+                            <td className="py-3 px-4">
+                              <Badge className={
+                                d.verification_status === 'approved' ? 'bg-green-100 text-green-700' :
+                                d.verification_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
+                              }>{d.verification_status || 'pending'}</Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
       </main>
 
