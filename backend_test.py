@@ -781,7 +781,7 @@ class TranspoAPITester:
         
         # Test admin create driver with duplicate email (should fail)
         duplicate_driver_data = {
-            "email": "testdriver@example.com",  # Same email as above
+            "email": f"testdriver{timestamp}@example.com",  # Same email as above
             "password": "testpass123",
             "first_name": "Duplicate",
             "last_name": "Driver",
