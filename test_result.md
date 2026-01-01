@@ -111,11 +111,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "POST /api/admin/users creates new user - tested with curl, returns success with user data"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - POST /api/admin/users tested successfully. Creates user with required fields (email, password, first_name, last_name) and optional fields (phone, address). Returns user data without password. Requires admin auth (admin@demo.com/demo123). Properly handles duplicate email validation (400 error). Correctly restricts access (401 without auth, 403 with user token)."
 
   - task: "Admin Create Driver API"
     implemented: true
