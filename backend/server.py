@@ -2084,7 +2084,130 @@ async def get_admin_trips(
     
     trips = await db.meter_sessions.find(query, {"_id": 0}).sort("start_time", -1).limit(limit).to_list(limit)
     
-    return {"trips": trips, "total": len(trips)}
+    # Enrich trips with driver and customer info
+    enriched_trips = []
+    for trip in trips:
+        driver_info = None
+        customer_info = None
+        
+        if trip.get("driver_id"):
+            driver = await db.drivers.find_one({"user_id": trip["driver_id"]}, {"_id": 0})
+            driver_user = await db.users.find_one({"id": trip["driver_id"]}, {"_id": 0, "password": 0})
+            if driver or driver_user:
+                driver_info = {
+                    "id": trip["driver_id"],
+                    "name": driver_user.get("name") if driver_user else (driver.get("name") if driver else "Unknown"),
+                    "email": driver_user.get("email") if driver_user else None,
+                    "phone": driver_user.get("phone") if driver_user else (driver.get("phone") if driver else None),
+                    "vehicle": f"{driver.get('vehicle_color', '')} {driver.get('vehicle_make', '')} {driver.get('vehicle_model', '')}".strip() if driver else None,
+                    "license_plate": driver.get("license_plate") if driver else None,
+                    "rating": driver.get("rating", 5.0) if driver else 5.0
+                }
+        
+        if trip.get("customer_id"):
+            customer = await db.users.find_one({"id": trip["customer_id"]}, {"_id": 0, "password": 0})
+            if customer:
+                customer_info = {
+                    "id": trip["customer_id"],
+                    "name": customer.get("name", "Guest"),
+                    "email": customer.get("email"),
+                    "phone": customer.get("phone")
+                }
+        
+        trip["driver_info"] = driver_info
+        trip["customer_info"] = customer_info
+        enriched_trips.append(trip)
+    
+    return {"trips": enriched_trips, "total": len(enriched_trips)}
+
+@api_router.post("/admin/trips/{trip_id}/complaint")
+async def create_trip_complaint(
+    trip_id: str,
+    complaint_type: str,  # service, driver_behavior, vehicle, billing, other
+    description: str,
+    reporter_type: str = "admin",  # admin, customer
+    reporter_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a complaint/note for a specific trip."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    trip = await db.meter_sessions.find_one({"id": trip_id}, {"_id": 0})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    complaint = {
+        "id": str(uuid.uuid4()),
+        "trip_id": trip_id,
+        "driver_id": trip.get("driver_id"),
+        "customer_id": trip.get("customer_id") or reporter_id,
+        "type": complaint_type,
+        "description": description,
+        "reporter_type": reporter_type,
+        "reporter_id": reporter_id or current_user["id"],
+        "status": "open",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user["id"],
+        "notes": [],
+        "resolution": None
+    }
+    
+    await db.trip_complaints.insert_one(complaint)
+    complaint.pop("_id", None)
+    
+    # Also create audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role=current_user.get("admin_role", "admin"),
+        action_type="complaint_created",
+        entity_type="trip",
+        entity_id=trip_id,
+        notes=f"Complaint type: {complaint_type}"
+    )
+    
+    return {"message": "Complaint created", "complaint": complaint}
+
+@api_router.get("/admin/trips/{trip_id}/complaints")
+async def get_trip_complaints(
+    trip_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all complaints for a specific trip."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    complaints = await db.trip_complaints.find({"trip_id": trip_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return {"complaints": complaints}
+
+@api_router.post("/admin/trips/{trip_id}/note")
+async def add_trip_note(
+    trip_id: str,
+    note: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Add an admin note to a trip."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    trip = await db.meter_sessions.find_one({"id": trip_id})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    note_entry = {
+        "id": str(uuid.uuid4()),
+        "note": note,
+        "created_by": current_user["id"],
+        "created_by_name": current_user.get("name", "Admin"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.meter_sessions.update_one(
+        {"id": trip_id},
+        {"$push": {"admin_notes": note_entry}}
+    )
+    
+    return {"message": "Note added", "note": note_entry}
 
 @api_router.get("/admin/trips/{trip_id}")
 async def get_admin_trip_details(
