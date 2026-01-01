@@ -22,6 +22,7 @@ class TranspoAPITester:
         self.tests_passed = 0
         self.failed_tests = []
         self.booking_id = None
+        self.created_driver_id = None
         
         # Demo credentials from review request
         self.demo_user = {
