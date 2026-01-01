@@ -139,6 +139,7 @@ export default function AdminDashboard() {
     if (activeSection === "taxi-config") loadTaxiConfigs();
     if (activeSection === "audit-logs") loadAuditLogs();
     if (activeSection === "trips") loadTrips();
+    if (activeSection === "merchants") { loadMerchantOverview(); loadMerchantTransactions(); loadMerchantWithdrawals(); }
   }, [activeSection]);
 
   const loadAdminProfile = async () => {
