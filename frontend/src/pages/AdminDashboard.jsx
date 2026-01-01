@@ -4459,6 +4459,191 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Withdrawal Modal */}
+      <AnimatePresence>
+        {showWithdrawalModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-md bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Withdraw Funds</h2>
+                <button onClick={() => setShowWithdrawalModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-blue-600">Available Balance</div>
+                  <div className="text-2xl font-bold text-blue-700">
+                    ${merchantOverview?.available_balance?.toFixed(2) || '0.00'}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Withdrawal Amount ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={merchantOverview?.available_balance || 0}
+                    value={withdrawalAmount}
+                    onChange={(e) => setWithdrawalAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label>Notes (Optional)</Label>
+                  <Input
+                    value={withdrawalNotes}
+                    onChange={(e) => setWithdrawalNotes(e.target.value)}
+                    placeholder="e.g., Monthly withdrawal"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="p-3 bg-gray-50 rounded-lg text-sm">
+                  <div className="font-medium mb-1">Withdrawal to:</div>
+                  <div className="text-gray-600">
+                    {merchantSettings?.bank_name || 'Bank'} ****{merchantSettings?.bank_account_number?.slice(-4) || 'XXXX'}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setShowWithdrawalModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    onClick={createWithdrawal}
+                    disabled={!withdrawalAmount || parseFloat(withdrawalAmount) <= 0}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Withdraw
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bank Settings Modal */}
+      <AnimatePresence>
+        {showBankSettingsModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-md bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Building className="w-5 h-5" />
+                  Bank Account Settings
+                </h2>
+                <button onClick={() => setShowBankSettingsModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                  <AlertCircle className="w-4 h-4 inline mr-1" />
+                  For security, only the last 4 digits of account numbers are stored.
+                </div>
+
+                <div>
+                  <Label>Bank Name</Label>
+                  <Input
+                    value={bankSettings.bank_name}
+                    onChange={(e) => setBankSettings({...bankSettings, bank_name: e.target.value})}
+                    placeholder="e.g., TD Bank, RBC, Desjardins"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label>Account Holder Name</Label>
+                  <Input
+                    value={bankSettings.bank_account_name}
+                    onChange={(e) => setBankSettings({...bankSettings, bank_account_name: e.target.value})}
+                    placeholder="Name on account"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label>Account Number (Last 4 digits)</Label>
+                  <Input
+                    maxLength={4}
+                    value={bankSettings.bank_account_number}
+                    onChange={(e) => setBankSettings({...bankSettings, bank_account_number: e.target.value.replace(/\D/g, '')})}
+                    placeholder="e.g., 1234"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label>Routing Number (Last 4 digits)</Label>
+                  <Input
+                    maxLength={4}
+                    value={bankSettings.bank_routing_number}
+                    onChange={(e) => setBankSettings({...bankSettings, bank_routing_number: e.target.value.replace(/\D/g, '')})}
+                    placeholder="e.g., 5678"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  <strong>Note:</strong> Full bank account integration requires connecting with Stripe Connect. 
+                  These settings are for display purposes and manual withdrawal tracking.
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setShowBankSettingsModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    onClick={saveBankSettings}
+                    disabled={!bankSettings.bank_name || !bankSettings.bank_account_number}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Settings
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
