@@ -152,6 +152,20 @@ class TranspoAPITester:
             print(f"   Demo driver token obtained: {self.driver_token[:20]}...")
             print(f"   Driver role: {response.get('user', {}).get('role', 'unknown')}")
         
+        # Test demo admin login (admin@demo.com/demo123)
+        success, response = self.run_test(
+            "Demo Admin Login", 
+            "POST", 
+            "auth/login", 
+            200,
+            self.demo_admin
+        )
+        if success and 'access_token' in response:
+            self.admin_token = response['access_token']
+            print(f"   Demo admin token obtained: {self.admin_token[:20]}...")
+            print(f"   Admin role: {response.get('user', {}).get('role', 'unknown')}")
+            print(f"   Admin permissions: {response.get('user', {}).get('admin_role', 'unknown')}")
+        
         # Test invalid login
         self.run_test(
             "Invalid Login", 
