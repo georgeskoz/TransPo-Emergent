@@ -3213,6 +3213,254 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Create Document Modal */}
+      <AnimatePresence>
+        {showCreateDocModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-2xl bg-white rounded-xl p-6 my-8"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  Create Platform Document
+                </h2>
+                <button onClick={() => setShowCreateDocModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Document Title *</Label>
+                    <Input 
+                      value={newDoc.title}
+                      onChange={(e) => setNewDoc({...newDoc, title: e.target.value})}
+                      className="mt-1"
+                      placeholder="e.g., Terms & Conditions"
+                    />
+                  </div>
+                  <div>
+                    <Label>Document Type *</Label>
+                    <select 
+                      value={newDoc.doc_type}
+                      onChange={(e) => setNewDoc({...newDoc, doc_type: e.target.value})}
+                      className="w-full mt-1 p-2 border rounded-md"
+                    >
+                      <option value="terms">Terms & Conditions</option>
+                      <option value="privacy">Privacy Policy</option>
+                      <option value="refund">Refund Policy</option>
+                      <option value="policy">General Policy</option>
+                      <option value="driver_guide">Driver Guide</option>
+                      <option value="customer_letter">Customer Letter</option>
+                      <option value="driver_popup">Driver Popup Notice</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Target Audience *</Label>
+                  <select 
+                    value={newDoc.target_audience}
+                    onChange={(e) => setNewDoc({...newDoc, target_audience: e.target.value})}
+                    className="w-full mt-1 p-2 border rounded-md"
+                  >
+                    <option value="all">👥 Everyone (Users, Drivers, Admins)</option>
+                    <option value="users">👤 Users Only</option>
+                    <option value="drivers">🚗 Drivers Only</option>
+                    <option value="admins">🔒 Admins Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label>Content *</Label>
+                  <Textarea 
+                    value={newDoc.content}
+                    onChange={(e) => setNewDoc({...newDoc, content: e.target.value})}
+                    className="mt-1 min-h-[200px]"
+                    placeholder="Enter the document content here..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="checkbox"
+                      checked={newDoc.is_active}
+                      onChange={(e) => setNewDoc({...newDoc, is_active: e.target.checked})}
+                    />
+                    <span className="text-sm">Active</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="checkbox"
+                      checked={newDoc.requires_acceptance}
+                      onChange={(e) => setNewDoc({...newDoc, requires_acceptance: e.target.checked})}
+                    />
+                    <span className="text-sm">Requires Acceptance</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="checkbox"
+                      checked={newDoc.popup_enabled}
+                      onChange={(e) => setNewDoc({...newDoc, popup_enabled: e.target.checked})}
+                    />
+                    <span className="text-sm">Enable as Popup</span>
+                  </label>
+                </div>
+
+                {newDoc.popup_enabled && (
+                  <div>
+                    <Label>Popup Title (optional)</Label>
+                    <Input 
+                      value={newDoc.popup_title}
+                      onChange={(e) => setNewDoc({...newDoc, popup_title: e.target.value})}
+                      className="mt-1"
+                      placeholder="Custom popup title (defaults to document title)"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => setShowCreateDocModal(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  onClick={createPlatformDoc}
+                  disabled={!newDoc.title || !newDoc.content}
+                >
+                  <Plus className="w-4 h-4 mr-2" />Create Document
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Document Modal */}
+      <AnimatePresence>
+        {showEditDocModal && selectedDoc && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-2xl bg-white rounded-xl p-6 my-8"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Edit className="w-5 h-5 text-blue-500" />
+                  Edit Document
+                </h2>
+                <button onClick={() => {
+                  setShowEditDocModal(false);
+                  setSelectedDoc(null);
+                }}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Doc Info */}
+              <div className="bg-blue-50 p-3 rounded-lg mb-4 flex items-center justify-between">
+                <div>
+                  <Badge variant="outline" className="capitalize">{selectedDoc.doc_type?.replace('_', ' ')}</Badge>
+                  <span className="text-sm text-gray-500 ml-2">v{selectedDoc.version || 1}</span>
+                </div>
+                <Badge className={selectedDoc.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                  {selectedDoc.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label>Document Title</Label>
+                  <Input 
+                    value={selectedDoc.title || ''}
+                    onChange={(e) => setSelectedDoc({...selectedDoc, title: e.target.value})}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label>Content</Label>
+                  <Textarea 
+                    value={selectedDoc.content || ''}
+                    onChange={(e) => setSelectedDoc({...selectedDoc, content: e.target.value})}
+                    className="mt-1 min-h-[250px]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="checkbox"
+                      checked={selectedDoc.is_active}
+                      onChange={(e) => setSelectedDoc({...selectedDoc, is_active: e.target.checked})}
+                    />
+                    <span className="text-sm">Active</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="checkbox"
+                      checked={selectedDoc.requires_acceptance}
+                      onChange={(e) => setSelectedDoc({...selectedDoc, requires_acceptance: e.target.checked})}
+                    />
+                    <span className="text-sm">Requires Acceptance</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input 
+                      type="checkbox"
+                      checked={selectedDoc.popup_enabled}
+                      onChange={(e) => setSelectedDoc({...selectedDoc, popup_enabled: e.target.checked})}
+                    />
+                    <span className="text-sm">Enable as Popup</span>
+                  </label>
+                </div>
+
+                {selectedDoc.popup_enabled && (
+                  <div>
+                    <Label>Popup Title</Label>
+                    <Input 
+                      value={selectedDoc.popup_title || ''}
+                      onChange={(e) => setSelectedDoc({...selectedDoc, popup_title: e.target.value})}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => {
+                  setShowEditDocModal(false);
+                  setSelectedDoc(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={updatePlatformDoc}>
+                  <Save className="w-4 h-4 mr-2" />Save Changes
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
