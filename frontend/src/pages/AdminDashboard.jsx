@@ -1474,8 +1474,210 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Other sections - Documents, Payouts, Taxes, Contracts, Merchants, Settings */}
-        {/* ... keeping existing implementations for brevity ... */}
+        {/* Documents Section */}
+        {activeSection === "documents" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">
+                {platformDocs.length} platform documents | {pendingDocs.length} pending driver documents
+              </div>
+              {isSuperAdmin && (
+                <Button onClick={() => setShowCreateDocModal(true)}>
+                  <Plus className="w-4 h-4 mr-2" />Create Document
+                </Button>
+              )}
+            </div>
+
+            {/* Pending Driver Documents */}
+            {pendingDocs.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-yellow-500" />
+                    Pending Driver Documents
+                  </CardTitle>
+                  <CardDescription>Documents awaiting review and approval</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {pendingDocs.map((doc, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div>
+                          <div className="font-medium">{doc.driver_name || 'Driver'}</div>
+                          <div className="text-sm text-gray-500">{doc.document_type} - Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : 'Recently'}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => approveDocument(doc.driver_id, doc.document_type, true)}>
+                            <CheckCircle className="w-4 h-4 mr-1" />Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-600" onClick={() => approveDocument(doc.driver_id, doc.document_type, false)}>
+                            <XCircle className="w-4 h-4 mr-1" />Reject
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Platform Documents */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  Platform Documents
+                </CardTitle>
+                <CardDescription>Terms, policies, guides, and notifications for users, drivers, and admins</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {platformDocs.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No platform documents yet</p>
+                    <p className="text-sm mt-2">Create documents like Terms & Conditions, Privacy Policy, Driver Guides, etc.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Document Type Filters */}
+                    <div className="flex flex-wrap gap-2 pb-4 border-b">
+                      {['all', 'terms', 'privacy', 'refund', 'policy', 'driver_guide', 'customer_letter', 'driver_popup'].map(type => (
+                        <Badge 
+                          key={type} 
+                          variant="outline" 
+                          className="cursor-pointer hover:bg-gray-100 capitalize"
+                        >
+                          {type.replace('_', ' ')}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    {/* Documents List */}
+                    {platformDocs.map((doc) => (
+                      <div key={doc.id} className={`p-4 border rounded-lg ${doc.is_active ? 'bg-white' : 'bg-gray-50 opacity-75'}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold">{doc.title}</span>
+                              <Badge variant="outline" className="capitalize">{doc.doc_type?.replace('_', ' ')}</Badge>
+                              <Badge className={doc.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                                {doc.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                              <Badge variant="outline" className="capitalize">
+                                {doc.target_audience === 'all' ? '👥 All' : 
+                                 doc.target_audience === 'drivers' ? '🚗 Drivers' : 
+                                 doc.target_audience === 'users' ? '👤 Users' : '🔒 Admins'}
+                              </Badge>
+                              {doc.requires_acceptance && (
+                                <Badge className="bg-purple-100 text-purple-700">Requires Acceptance</Badge>
+                              )}
+                              {doc.popup_enabled && (
+                                <Badge className="bg-orange-100 text-orange-700">📢 Popup Enabled</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500 mt-2 line-clamp-2">{doc.content?.slice(0, 200)}...</p>
+                            <div className="text-xs text-gray-400 mt-2">
+                              v{doc.version || 1} | Created: {new Date(doc.created_at).toLocaleDateString()}
+                              {doc.updated_at && ` | Updated: ${new Date(doc.updated_at).toLocaleDateString()}`}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedDoc({...doc});
+                                setShowEditDocModal(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            {doc.target_audience === 'drivers' && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="text-orange-600"
+                                onClick={() => sendDocNotification(doc.id, 'popup')}
+                              >
+                                📢 Send Popup
+                              </Button>
+                            )}
+                            {isSuperAdmin && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="text-red-600"
+                                onClick={() => deletePlatformDoc(doc.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Create</CardTitle>
+                <CardDescription>Quickly create common document types</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewDoc({...newDoc, doc_type: 'terms', title: 'Terms & Conditions', target_audience: 'all'});
+                      setShowCreateDocModal(true);
+                    }}
+                  >
+                    <FileText className="w-6 h-6" />
+                    <span className="text-sm">Terms & Conditions</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewDoc({...newDoc, doc_type: 'privacy', title: 'Privacy Policy', target_audience: 'all'});
+                      setShowCreateDocModal(true);
+                    }}
+                  >
+                    <Shield className="w-6 h-6" />
+                    <span className="text-sm">Privacy Policy</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewDoc({...newDoc, doc_type: 'driver_popup', title: 'Driver Notice', target_audience: 'drivers', popup_enabled: true});
+                      setShowCreateDocModal(true);
+                    }}
+                  >
+                    <AlertCircle className="w-6 h-6" />
+                    <span className="text-sm">Driver Popup</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-auto py-4 flex flex-col gap-2"
+                    onClick={() => {
+                      setNewDoc({...newDoc, doc_type: 'customer_letter', title: 'Customer Letter', target_audience: 'users'});
+                      setShowCreateDocModal(true);
+                    }}
+                  >
+                    <Mail className="w-6 h-6" />
+                    <span className="text-sm">Customer Letter</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Users Section */}
         {activeSection === "users" && (
