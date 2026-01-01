@@ -2053,6 +2053,154 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Create Payout Modal */}
+      <AnimatePresence>
+        {showCreatePayoutModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-md bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Create Payout</h2>
+                <button onClick={() => {
+                  setShowCreatePayoutModal(false);
+                  setSelectedPayoutDriver(null);
+                }}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {selectedPayoutDriver && (
+                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <p className="text-sm text-gray-600">Paying driver:</p>
+                  <p className="font-bold">{selectedPayoutDriver.user?.name || 'Driver'}</p>
+                  <p className="text-sm text-gray-500">Balance due: ${selectedPayoutDriver.balance_due?.toFixed(2)}</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <Label>Amount ($) *</Label>
+                  <Input 
+                    type="number"
+                    step="0.01"
+                    value={payoutAmount}
+                    onChange={(e) => setPayoutAmount(e.target.value)}
+                    className="mt-1"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label>Payment Method</Label>
+                  <select 
+                    value={payoutMethod}
+                    onChange={(e) => setPayoutMethod(e.target.value)}
+                    className="w-full mt-1 p-2 border rounded-md"
+                  >
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="interac">Interac e-Transfer</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="cash">Cash</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Notes (optional)</Label>
+                  <Textarea 
+                    value={payoutNotes}
+                    onChange={(e) => setPayoutNotes(e.target.value)}
+                    className="mt-1"
+                    placeholder="Add any notes about this payout"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => {
+                  setShowCreatePayoutModal(false);
+                  setSelectedPayoutDriver(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  onClick={createPayout}
+                  disabled={!payoutAmount || parseFloat(payoutAmount) <= 0}
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />Create Payout
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Contract Template Modal */}
+      <AnimatePresence>
+        {showEditContractModal && contractTemplate && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-2xl bg-white rounded-xl p-6 my-8"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Edit Contract Template</h2>
+                <button onClick={() => setShowEditContractModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label>Contract Title</Label>
+                  <Input 
+                    value={contractTemplate.title || ''}
+                    onChange={(e) => setContractTemplate({...contractTemplate, title: e.target.value})}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Contract Content</Label>
+                  <Textarea 
+                    value={contractTemplate.content || ''}
+                    onChange={(e) => setContractTemplate({...contractTemplate, content: e.target.value})}
+                    className="mt-1 font-mono text-sm"
+                    rows={20}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Use placeholders: [COMMISSION_RATE], [PAYOUT_FREQUENCY], [MIN_PAYOUT]
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="outline" className="flex-1" onClick={() => setShowEditContractModal(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={updateContractTemplate}>
+                  <Save className="w-4 h-4 mr-2" />Save Template
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
