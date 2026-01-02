@@ -47,7 +47,7 @@ export default function UserTrips() {
   };
 
   const filteredTrips = trips.filter(trip => {
-    if (filter === "active") return ["pending", "accepted", "in_progress"].includes(trip.status);
+    if (filter === "active") return ["pending", "scheduled", "accepted", "in_progress"].includes(trip.status);
     if (filter === "completed") return ["completed", "cancelled", "cancelled_by_driver", "no_show"].includes(trip.status);
     return true;
   });
