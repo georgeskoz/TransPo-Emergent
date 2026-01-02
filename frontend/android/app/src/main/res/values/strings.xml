@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Transpo</string>
+    <string name="title_activity_main">Transpo</string>
+    <string name="package_name">com.transpo.app</string>
+    <string name="custom_url_scheme">com.transpo.app</string>
+</resources>
