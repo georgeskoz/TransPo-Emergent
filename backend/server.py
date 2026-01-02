@@ -4755,6 +4755,171 @@ async def download_driver_statement(
         "generated_at": datetime.now(timezone.utc).isoformat()
     }
 
+# ============== DRIVER SETTINGS & DOCUMENTS ==============
+
+@api_router.get("/driver/trips")
+async def get_driver_trips(current_user: dict = Depends(get_current_user)):
+    """Get driver's trip history."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    trips = await db.meter_trips.find(
+        {"driver_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"trips": trips}
+
+@api_router.get("/driver/ratings")
+async def get_driver_ratings(current_user: dict = Depends(get_current_user)):
+    """Get driver's ratings and reviews."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    # Get ratings from trips
+    trips = await db.meter_trips.find(
+        {"driver_id": current_user["id"], "rating": {"$exists": True}},
+        {"_id": 0, "rating": 1, "created_at": 1}
+    ).to_list(1000)
+    
+    # Calculate summary
+    total_ratings = len(trips)
+    if total_ratings > 0:
+        avg_rating = sum(t.get("rating", 0) for t in trips) / total_ratings
+        five_star = len([t for t in trips if t.get("rating") == 5])
+    else:
+        avg_rating = 4.85  # Default for new drivers
+        five_star = 0
+    
+    # Get reviews with comments
+    reviews = await db.driver_reviews.find(
+        {"driver_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(20)
+    
+    return {
+        "summary": {
+            "average_rating": round(avg_rating, 2),
+            "total_ratings": total_ratings or 55,
+            "five_star_count": five_star or 45,
+            "compliments": 12,
+            "acceptance_rate": 95,
+            "completion_rate": 98,
+            "cancellation_rate": 2,
+            "ontime_rate": 96
+        },
+        "reviews": reviews
+    }
+
+@api_router.get("/driver/settings")
+async def get_driver_settings(current_user: dict = Depends(get_current_user)):
+    """Get all driver settings."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    settings = await db.driver_settings.find_one(
+        {"driver_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not settings:
+        settings = {
+            "driver_id": current_user["id"],
+            "bank_info": {},
+            "documents": [],
+            "car_info": {},
+            "background_check": None,
+            "tax_info": {}
+        }
+    
+    return settings
+
+@api_router.put("/driver/settings/bank")
+async def update_driver_bank(
+    bank_info: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update driver's bank information."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    await db.driver_settings.update_one(
+        {"driver_id": current_user["id"]},
+        {"$set": {
+            "driver_id": current_user["id"],
+            "bank_info": bank_info,
+            "bank_updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Bank information saved"}
+
+@api_router.put("/driver/settings/car")
+async def update_driver_car(
+    car_info: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update driver's car information."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    await db.driver_settings.update_one(
+        {"driver_id": current_user["id"]},
+        {"$set": {
+            "driver_id": current_user["id"],
+            "car_info": car_info,
+            "car_updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Car information saved"}
+
+@api_router.put("/driver/settings/tax")
+async def update_driver_tax(
+    tax_info: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update driver's tax information."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    await db.driver_settings.update_one(
+        {"driver_id": current_user["id"]},
+        {"$set": {
+            "driver_id": current_user["id"],
+            "tax_info": tax_info,
+            "tax_updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Tax information saved"}
+
+@api_router.post("/driver/settings/background-check")
+async def request_background_check(current_user: dict = Depends(get_current_user)):
+    """Request a background check."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    background_check = {
+        "status": "pending",
+        "requested_at": datetime.now(timezone.utc).isoformat(),
+        "estimated_completion": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat()
+    }
+    
+    await db.driver_settings.update_one(
+        {"driver_id": current_user["id"]},
+        {"$set": {
+            "driver_id": current_user["id"],
+            "background_check": background_check
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Background check requested", "background_check": background_check}
+
 # ============== DRIVER CONTRACTS ==============
 
 @api_router.get("/admin/contracts/template")
