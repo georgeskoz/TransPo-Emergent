@@ -280,12 +280,28 @@ async def find_nearby_drivers(lat: float, lng: float, radius_km: float = 5.0, ve
         query["vehicle_type"] = vehicle_type
     drivers = await db.drivers.find(query, {"_id": 0}).to_list(100)
     scored_drivers = []
+    now = datetime.now(timezone.utc)
+    
     for driver in drivers:
         if "location" not in driver:
             continue
+        
+        # Skip suspended drivers
+        suspended_until = driver.get("suspended_until")
+        if suspended_until:
+            try:
+                suspended_dt = datetime.fromisoformat(suspended_until.replace('Z', '+00:00'))
+                if suspended_dt.tzinfo is None:
+                    suspended_dt = suspended_dt.replace(tzinfo=timezone.utc)
+                if suspended_dt > now:
+                    continue  # Driver is still suspended, skip
+            except:
+                pass
+        
         driver_lat = driver["location"].get("latitude", 0)
         driver_lng = driver["location"].get("longitude", 0)
         distance = calculate_distance_km(lat, lng, driver_lat, driver_lng)
+        
         if distance <= radius_km:
             rating = driver.get("rating", 4.5)
             acceptance_rate = driver.get("acceptance_rate", 0.85)
@@ -293,13 +309,27 @@ async def find_nearby_drivers(lat: float, lng: float, radius_km: float = 5.0, ve
             rating_score = (rating / 5.0) * 0.3
             acceptance_score = acceptance_rate * 0.1
             total_score = distance_score + rating_score + acceptance_score
+            
+            # Priority boost for no-show drivers in same area
+            if driver.get("priority_boost"):
+                boost_location = driver.get("priority_boost_location", {})
+                boost_lat = boost_location.get("latitude", 0)
+                boost_lng = boost_location.get("longitude", 0)
+                # Check if pickup is within 2km of where driver got the no-show
+                if boost_lat and boost_lng:
+                    distance_from_boost = calculate_distance_km(lat, lng, boost_lat, boost_lng)
+                    if distance_from_boost <= 2.0:  # Within 2km of original area
+                        total_score += 0.5  # Significant boost to priority
+            
             eta_minutes = estimate_duration_minutes(distance, traffic_factor=1.2)
             scored_drivers.append({
                 **driver,
                 "distance_km": round(distance, 2),
                 "eta_minutes": round(eta_minutes, 1),
-                "match_score": round(total_score, 3)
+                "match_score": round(total_score, 3),
+                "has_priority_boost": driver.get("priority_boost", False)
             })
+    
     scored_drivers.sort(key=lambda x: x["match_score"], reverse=True)
     return scored_drivers[:limit]
 
