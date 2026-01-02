@@ -167,8 +167,9 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <BrowserRouter>
         <AppRouter />
+        <MobileNav />
       </BrowserRouter>
-      <Toaster position="top-right" richColors />
+      <Toaster position="top-center" richColors />
     </div>
   );
 }
