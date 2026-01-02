@@ -104,6 +104,11 @@ function AppRouter() {
           <DriverMeter />
         </ProtectedRoute>
       } />
+      <Route path="/driver/earnings" element={
+        <ProtectedRoute allowedRoles={['driver']}>
+          <DriverEarnings />
+        </ProtectedRoute>
+      } />
 
       {/* Admin Routes */}
       <Route path="/admin" element={
