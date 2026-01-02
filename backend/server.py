@@ -3401,9 +3401,9 @@ async def get_platform_settings(current_user: dict = Depends(get_current_user)):
                 "government_fee": 0.90
             },
             "meter_settings": {
-                "day_base_fare": 4.10,
+                "day_base_fare": 5.15,
                 "day_per_km": 2.05,
-                "night_base_fare": 4.70,
+                "night_base_fare": 5.75,
                 "night_per_km": 2.35
             },
             "updated_at": datetime.now(timezone.utc).isoformat()
