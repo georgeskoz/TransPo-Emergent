@@ -22,7 +22,12 @@ const DRIVER_NAV_ITEMS = [
 export default function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  
+  // Don't show if not authenticated
+  if (!isAuthenticated || !user) {
+    return null;
+  }
   
   const isDriver = user?.role === "driver";
   const navItems = isDriver ? DRIVER_NAV_ITEMS : USER_NAV_ITEMS;
