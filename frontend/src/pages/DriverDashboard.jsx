@@ -374,6 +374,10 @@ export default function DriverDashboard() {
   };
 
   const declineJob = () => {
+    // Stop any playing sounds
+    stopRideAlert();
+    playDeclineSound();
+    
     // Notify via Socket.io if it's a real-time alert
     if (incomingRideAlert && selectedJob) {
       declineRide(profile?.id || user?.id, selectedJob.id);
@@ -381,6 +385,8 @@ export default function DriverDashboard() {
     setShowJobModal(false);
     setSelectedJob(null);
     setIncomingRideAlert(null);
+    setIsScheduledAlert(false);
+    setMinutesUntilPickup(null);
     toast.info('Trip declined');
   };
 
