@@ -779,7 +779,7 @@ export default function DriverDashboard() {
         className="fixed bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl shadow-2xl"
         initial={{ y: 0 }}
         animate={{ 
-          y: bottomSheetExpanded ? 0 : 'calc(100% - 220px)'
+          y: bottomSheetExpanded ? 0 : 'calc(100% - 80px)'
         }}
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
         drag="y"
@@ -795,29 +795,42 @@ export default function DriverDashboard() {
         }}
         style={{ maxHeight: 'calc(100vh - 100px)' }}
       >
-        {/* Drag Handle */}
+        {/* Drag Handle - Always Visible */}
         <div 
           className="flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
           onPointerDown={(e) => dragControls.start(e)}
+          onClick={() => setBottomSheetExpanded(!bottomSheetExpanded)}
         >
-          <div className="w-12 h-1.5 bg-gray-300 rounded-full mb-2" />
-          <div className="flex items-center gap-1 text-xs text-gray-400">
-            {bottomSheetExpanded ? (
-              <>
-                <ChevronDown className="w-3 h-3" />
-                <span>Drag down to minimize</span>
-              </>
-            ) : (
-              <>
-                <ChevronUp className="w-3 h-3" />
-                <span>Drag up for more</span>
-              </>
-            )}
-          </div>
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full mb-1" />
+          
+          {/* Mini status when collapsed */}
+          {!bottomSheetExpanded && (
+            <div className="flex items-center gap-3 py-2">
+              <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-sm font-medium text-gray-700">
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+              <ChevronUp className="w-4 h-4 text-gray-400" />
+            </div>
+          )}
+          
+          {/* Expanded hint */}
+          {bottomSheetExpanded && (
+            <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
+              <ChevronDown className="w-3 h-3" />
+              <span>Drag down to minimize</span>
+            </div>
+          )}
         </div>
 
-        {/* Scrollable Content */}
-        <div className={`overflow-y-auto ${bottomSheetExpanded ? 'max-h-[calc(100vh-180px)]' : 'max-h-[160px]'} transition-all duration-300`}>
+        {/* Content - Only visible when expanded */}
+        <motion.div 
+          className={`overflow-y-auto transition-all duration-300`}
+          style={{ 
+            maxHeight: bottomSheetExpanded ? 'calc(100vh - 180px)' : '0px',
+            opacity: bottomSheetExpanded ? 1 : 0
+          }}
+        >
           {/* Online/Offline Toggle */}
           <div className="px-6 pb-4">
             <div className="flex items-center justify-between">
@@ -829,13 +842,9 @@ export default function DriverDashboard() {
               </div>
               <button 
                 className="p-2"
-                onClick={() => setBottomSheetExpanded(!bottomSheetExpanded)}
+                onClick={() => setBottomSheetExpanded(false)}
               >
-                {bottomSheetExpanded ? (
-                  <ChevronDown className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <ChevronUp className="w-5 h-5 text-gray-400" />
-                )}
+                <ChevronDown className="w-5 h-5 text-gray-400" />
               </button>
             </div>
             
