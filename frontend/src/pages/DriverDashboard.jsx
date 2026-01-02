@@ -300,6 +300,13 @@ export default function DriverDashboard() {
   const acceptJob = async (bookingId) => {
     setLoading(true);
     try {
+      // First try via Socket.io for real-time acceptance
+      if (incomingRideAlert && incomingRideAlert.bookingId === bookingId) {
+        acceptRide(profile?.id || user?.id, bookingId);
+        // The success/failure will be handled by socket events
+      }
+      
+      // Also call the REST API for database update
       const res = await fetch(`${API_URL}/driver/accept/${bookingId}`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -309,6 +316,7 @@ export default function DriverDashboard() {
         toast.success('Trip accepted!');
         setShowJobModal(false);
         setSelectedJob(null);
+        setIncomingRideAlert(null);
         loadJobs();
       } else {
         const data = await res.json();
@@ -322,8 +330,13 @@ export default function DriverDashboard() {
   };
 
   const declineJob = () => {
+    // Notify via Socket.io if it's a real-time alert
+    if (incomingRideAlert && selectedJob) {
+      declineRide(profile?.id || user?.id, selectedJob.id);
+    }
     setShowJobModal(false);
     setSelectedJob(null);
+    setIncomingRideAlert(null);
     toast.info('Trip declined');
   };
 
