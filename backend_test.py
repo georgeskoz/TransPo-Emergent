@@ -1465,7 +1465,7 @@ class TranspoAPITester:
         
         booking_id_3 = None
         if success:
-            booking_id_3 = response.get('booking', {}).get('id')
+            booking_id_3 = response.get('booking_id')
             print(f"   Created third booking ID: {booking_id_3}")
             
             # Accept third booking (should work even if suspended, for testing)
