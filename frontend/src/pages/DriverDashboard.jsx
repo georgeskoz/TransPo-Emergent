@@ -188,6 +188,30 @@ export default function DriverDashboard() {
       toast.error(data.message || 'Failed to accept ride');
       setShowJobModal(false);
       setIncomingRideAlert(null);
+      setIsScheduledAlert(false);
+      setMinutesUntilPickup(null);
+    });
+
+    // Listen for scheduled ride alerts (30 min before pickup)
+    const unsubScheduledAlert = onScheduledRideAlert((data) => {
+      console.log('📅 Scheduled ride alert:', data);
+      setIncomingRideAlert(data);
+      setIsScheduledAlert(true);
+      setMinutesUntilPickup(data.minutesUntilPickup);
+      setShowJobModal(true);
+      setSelectedJob({
+        id: data.bookingId,
+        pickup: data.pickup,
+        dropoff: data.dropoff,
+        fare: data.fare,
+        user_name: data.userName,
+        scheduled_time: data.scheduledTime
+      });
+      // Play looping notification sound
+      playRideAlert();
+      toast.info(`Scheduled ride in ${data.minutesUntilPickup} minutes!`, {
+        duration: 10000
+      });
     });
 
     return () => {
@@ -198,6 +222,7 @@ export default function DriverDashboard() {
       unsubConnected();
       unsubAcceptSuccess();
       unsubAcceptFailed();
+      unsubScheduledAlert();
     };
   }, [incomingRideAlert]);
 
