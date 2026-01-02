@@ -1076,7 +1076,7 @@ export default function AdminDashboard() {
       { id: "taxi-config", label: "Taxi Config", icon: Gauge, permission: "view_taxi_config", superOnly: !isSuperAdmin },
       { id: "documents", label: "Documents", icon: FileCheck, permission: "view_documents", badge: pendingDocs.length },
       { id: "cases", label: "Cases & Disputes", icon: AlertTriangle, permission: "view_cases", badge: disputes.filter(d => d.status === 'open').length },
-      { id: "merchants", label: "Merchants", icon: CreditCard, permission: "manage_merchants" },
+      { id: "merchants", label: "💳 Stripe / Payments", icon: CreditCard, permission: "manage_merchants" },
       { id: "payouts", label: "Payouts", icon: Wallet, permission: "view_reports" },
       { id: "taxes", label: "Taxes", icon: Receipt, permission: "view_reports" },
       { id: "contracts", label: "Contracts", icon: FileText, permission: "view_dashboard" },
