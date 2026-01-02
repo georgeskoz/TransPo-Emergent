@@ -1299,7 +1299,7 @@ async def update_trip_status(booking_id: str, request: TripStatusUpdate, current
 
 @api_router.post("/driver/trips/{booking_id}/cancel")
 async def driver_cancel_trip(booking_id: str, request: TripCancellationRequest, current_user: dict = Depends(get_current_user)):
-    """Driver cancels a trip with a reason. Certain reasons result in a 5-minute suspension."""
+    """Driver cancels a trip with a reason. Certain reasons result in point deductions affecting driver tier."""
     if current_user["role"] != "driver":
         raise HTTPException(status_code=403, detail="Not a driver")
     
@@ -1323,27 +1323,33 @@ async def driver_cancel_trip(booking_id: str, request: TripCancellationRequest, 
         }}
     )
     
-    # Make driver available again
-    driver_update = {"is_available": True}
+    # Get point penalty for this reason
+    point_penalty = CANCELLATION_POINT_PENALTIES.get(request.reason, 0)
     
-    # Check if this reason results in a penalty (5-minute suspension)
-    is_penalized = request.reason in PENALIZED_CANCELLATION_REASONS
+    # Get current driver points
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    current_points = driver.get("points", 0)
+    new_points = max(0, current_points - point_penalty)  # Don't go below 0
     
-    if is_penalized:
-        suspended_until = now + timedelta(minutes=5)
-        driver_update["suspended_until"] = suspended_until.isoformat()
-        driver_update["suspension_reason"] = f"Trip cancellation: {request.reason}"
-    
+    # Update driver: make available and deduct points
     await db.drivers.update_one(
         {"user_id": current_user["id"]},
-        {"$set": driver_update}
+        {"$set": {
+            "is_available": True,
+            "points": new_points
+        }}
     )
+    
+    # Get new tier info
+    tier_info = get_driver_tier(new_points)
     
     return {
         "message": "Trip cancelled",
         "reason": request.reason,
-        "is_penalized": is_penalized,
-        "suspension_minutes": 5 if is_penalized else 0
+        "points_deducted": point_penalty,
+        "new_points": new_points,
+        "tier": tier_info["tier"],
+        "tier_progress": tier_info["progress_percent"]
     }
 
 @api_router.post("/driver/trips/{booking_id}/no-show")
