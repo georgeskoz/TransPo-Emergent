@@ -106,6 +106,16 @@ export default function UserProfile() {
         });
         setPhotoPreview(data.profile_photo);
         setPaymentMethods(data.payment_methods || []);
+        // Load rating info
+        setUserRating(data.rating || 5.0);
+        setNoShowCount(data.no_show_count || 0);
+        setLateCancelCount(data.late_cancellation_count || 0);
+        // Load notifications
+        if (data.notifications) {
+          setNotifications(data.notifications);
+        }
+        // Load saved addresses
+        setSavedAddresses(data.saved_addresses || []);
       }
     } catch (e) {
       console.log('Error loading profile:', e);
