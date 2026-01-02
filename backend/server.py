@@ -1388,13 +1388,27 @@ async def driver_mark_no_show(booking_id: str, current_user: dict = Depends(get_
     
     now = datetime.now(timezone.utc)
     
-    # Update booking status
+    # Update booking status with no-show fee
     await db.bookings.update_one(
         {"id": booking_id},
         {"$set": {
             "status": "no_show",
-            "no_show_at": now.isoformat()
+            "no_show_at": now.isoformat(),
+            "no_show_fee": USER_RATING_CONFIG["no_show_fee"]
         }}
+    )
+    
+    # Deduct user's rating for no-show
+    user = await db.users.find_one({"id": booking["user_id"]}, {"_id": 0})
+    current_rating = user.get("rating", USER_RATING_CONFIG["initial_rating"])
+    new_rating = max(1.0, current_rating - USER_RATING_CONFIG["no_show_penalty"])  # Don't go below 1.0
+    
+    await db.users.update_one(
+        {"id": booking["user_id"]},
+        {
+            "$set": {"rating": new_rating},
+            "$inc": {"no_show_count": 1}
+        }
     )
     
     # Get driver's current location for priority boost area
@@ -1418,7 +1432,9 @@ async def driver_mark_no_show(booking_id: str, current_user: dict = Depends(get_
     return {
         "message": "Customer marked as no-show",
         "priority_boost_active": True,
-        "note": "You have priority for the next ride in this area"
+        "note": "You have priority for the next ride in this area",
+        "user_rating_deducted": USER_RATING_CONFIG["no_show_penalty"],
+        "no_show_fee": USER_RATING_CONFIG["no_show_fee"]
     }
 
 @api_router.get("/driver/status/tier")
