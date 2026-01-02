@@ -349,6 +349,11 @@ export default function UserDashboard() {
   // User rating state
   const [userRating, setUserRating] = useState(5.0);
   
+  // Real-time ride tracking
+  const [rideStatus, setRideStatus] = useState(null); // 'searching', 'driver_found', null
+  const [driversNotified, setDriversNotified] = useState(0);
+  const [acceptedDriver, setAcceptedDriver] = useState(null);
+  
   const pickupRef = useRef(null);
   const dropoffRef = useRef(null);
 
@@ -357,6 +362,42 @@ export default function UserDashboard() {
     loadNearbyDrivers();
     loadUserRating();
   }, []);
+
+  // Socket.io event listeners for ride status
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Listen for driver acceptance
+    const unsubAccepted = onRideAccepted(user.id, (data) => {
+      console.log('🚗 Driver accepted:', data);
+      setRideStatus('driver_found');
+      setAcceptedDriver(data);
+      toast.success(`${data.driverName || 'A driver'} accepted your ride!`);
+      loadBookings();
+    });
+
+    // Listen for drivers notified count
+    const unsubNotified = onDriversNotified((data) => {
+      console.log('📢 Drivers notified:', data);
+      setDriversNotified(data.driversNotified);
+      if (data.driversNotified > 0) {
+        toast.info(`${data.driversNotified} driver(s) notified`);
+      }
+    });
+
+    // Listen for no drivers available
+    const unsubNoDrivers = onNoDrivers((data) => {
+      console.log('❌ No drivers:', data);
+      setRideStatus(null);
+      toast.error('No drivers available nearby. Please try again.');
+    });
+
+    return () => {
+      unsubAccepted();
+      unsubNotified();
+      unsubNoDrivers();
+    };
+  }, [user?.id]);
 
   // Load user rating
   const loadUserRating = async () => {
