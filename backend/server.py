@@ -1055,6 +1055,83 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
         })
     }
 
+
+# ============== SAVED ADDRESSES ROUTES ==============
+
+class SavedAddress(BaseModel):
+    label: str  # home, work, or custom name
+    address: str
+    latitude: float
+    longitude: float
+    is_default: bool = False
+
+
+@api_router.get("/user/saved-addresses")
+async def get_saved_addresses(current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    return {"addresses": user.get("saved_addresses", [])}
+
+
+@api_router.post("/user/saved-addresses")
+async def add_saved_address(address: SavedAddress, current_user: dict = Depends(get_current_user)):
+    address_doc = {
+        "id": str(uuid.uuid4()),
+        "label": address.label,
+        "address": address.address,
+        "latitude": address.latitude,
+        "longitude": address.longitude,
+        "is_default": address.is_default,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$push": {"saved_addresses": address_doc}}
+    )
+    
+    return {"message": "Address saved", "address": address_doc}
+
+
+@api_router.delete("/user/saved-addresses/{address_id}")
+async def delete_saved_address(address_id: str, current_user: dict = Depends(get_current_user)):
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$pull": {"saved_addresses": {"id": address_id}}}
+    )
+    return {"message": "Address deleted"}
+
+
+# ============== NOTIFICATION PREFERENCES ROUTES ==============
+
+class NotificationPreferences(BaseModel):
+    push_enabled: bool = True
+    email_enabled: bool = True
+    sms_enabled: bool = False
+    ride_updates: bool = True
+    promotions: bool = True
+
+
+@api_router.get("/user/notifications")
+async def get_notification_preferences(current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    return user.get("notifications", {
+        "push_enabled": True,
+        "email_enabled": True,
+        "sms_enabled": False,
+        "ride_updates": True,
+        "promotions": True
+    })
+
+
+@api_router.put("/user/notifications")
+async def update_notification_preferences(prefs: NotificationPreferences, current_user: dict = Depends(get_current_user)):
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$set": {"notifications": prefs.dict()}}
+    )
+    return {"message": "Notifications updated", "notifications": prefs.dict()}
+
+
 # ============== PAYMENT METHODS ROUTES ==============
 
 @api_router.post("/user/payment-methods")
