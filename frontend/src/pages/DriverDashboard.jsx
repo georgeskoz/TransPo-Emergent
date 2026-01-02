@@ -638,7 +638,7 @@ export default function DriverDashboard() {
         </div>
 
         {/* Go Online Button */}
-        {!isOnline && (
+        {!isOnline && !isSuspended && (
           <div className="px-6 pb-4 space-y-3">
             <Button 
               onClick={toggleOnlineStatus}
@@ -661,15 +661,64 @@ export default function DriverDashboard() {
           </div>
         )}
 
+        {/* Suspension Banner */}
+        {isSuspended && (
+          <div className="px-6 pb-4">
+            <Card className="bg-red-50 border-red-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <Timer className="w-6 h-6 text-red-500" />
+                  <div>
+                    <h3 className="font-semibold text-red-700">Temporarily Suspended</h3>
+                    <p className="text-sm text-red-600">You cannot go online until the suspension ends</p>
+                  </div>
+                </div>
+                <div className="text-center mt-3">
+                  <span className="text-3xl font-bold text-red-600">{formatTime(suspensionRemaining)}</span>
+                  <p className="text-xs text-red-500 mt-1">Time remaining</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Active Trip */}
         {isOnline && activeJobs.length > 0 && (
           <div className="px-6 pb-4">
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-4">
+                {/* Header with Status and Phone Icon */}
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-medium text-blue-700">Active Trip</span>
-                  <Badge className="bg-blue-500 text-white">{activeJobs[0].status}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-blue-500 text-white capitalize">{activeJobs[0].status}</Badge>
+                    <button 
+                      onClick={() => setShowCancellationModal(true)}
+                      className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 transition-colors"
+                      data-testid="cancel-menu-btn"
+                    >
+                      <Phone className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Arrived Timer - Shows waiting time */}
+                {activeJobs[0].status === 'arrived' && (
+                  <div className="bg-yellow-100 rounded-lg p-3 mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-yellow-600" />
+                      <span className="text-sm font-medium text-yellow-700">Waiting for passenger</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-lg font-bold text-yellow-700">{formatTime(noShowTimerSeconds)}</span>
+                      {!canMarkNoShow && (
+                        <p className="text-xs text-yellow-600">No-show in {formatTime(300 - noShowTimerSeconds)}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Route Info */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm">
                     <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -680,16 +729,64 @@ export default function DriverDashboard() {
                     <span className="text-gray-600 truncate">{activeJobs[0].dropoff?.address}</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
+
+                {/* Fare */}
+                <div className="flex items-center justify-between mb-4">
                   <span className="text-xl font-bold text-gray-800">${activeJobs[0].fare?.total?.toFixed(2)}</span>
-                  <Button 
-                    onClick={() => completeJob(activeJobs[0].id)}
-                    className="btn-success"
-                    disabled={loading}
-                    data-testid="complete-trip-btn"
-                  >
-                    Complete Trip
-                  </Button>
+                </div>
+
+                {/* Status-based Action Buttons */}
+                <div className="space-y-2">
+                  {/* Accepted -> Arrived */}
+                  {activeJobs[0].status === 'accepted' && (
+                    <Button 
+                      onClick={() => updateTripStatus(activeJobs[0].id, 'arrived')}
+                      className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-white"
+                      disabled={loading}
+                      data-testid="arrived-btn"
+                    >
+                      <MapPin className="w-4 h-4 mr-2" />
+                      I've Arrived
+                    </Button>
+                  )}
+
+                  {/* Arrived -> In Progress or No-Show */}
+                  {activeJobs[0].status === 'arrived' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        onClick={() => updateTripStatus(activeJobs[0].id, 'in_progress')}
+                        className="py-3 bg-green-500 hover:bg-green-600 text-white"
+                        disabled={loading}
+                        data-testid="start-trip-btn"
+                      >
+                        <Car className="w-4 h-4 mr-2" />
+                        Start Trip
+                      </Button>
+                      <Button 
+                        onClick={handleNoShow}
+                        variant="outline"
+                        className={`py-3 border-2 ${canMarkNoShow ? 'border-red-500 text-red-600 hover:bg-red-50' : 'border-gray-300 text-gray-400'}`}
+                        disabled={loading || !canMarkNoShow}
+                        data-testid="no-show-btn"
+                      >
+                        <UserX className="w-4 h-4 mr-2" />
+                        No-Show
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* In Progress -> Complete */}
+                  {activeJobs[0].status === 'in_progress' && (
+                    <Button 
+                      onClick={() => completeJob(activeJobs[0].id)}
+                      className="w-full py-3 btn-success"
+                      disabled={loading}
+                      data-testid="complete-trip-btn"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Complete Trip
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
