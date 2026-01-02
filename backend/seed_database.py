@@ -82,8 +82,8 @@ async def seed_database():
                 {"id": str(uuid4()), "label": "Work", "address": "500 Place d'Armes, Montreal, QC", "latitude": 45.5045, "longitude": -73.5580},
             ],
             "notification_preferences": {"push": True, "email": True, "sms": True},
-            "created_at": now - timedelta(days=90),
-            "updated_at": now,
+            "created_at": now.isoformat() - timedelta(days=90),
+            "updated_at": now.isoformat(),
             "is_active": True,
             "is_verified": True
         },
@@ -104,8 +104,8 @@ async def seed_database():
                 {"id": str(uuid4()), "label": "Home", "address": "789 Avenue du Parc, Montreal, QC", "latitude": 45.5195, "longitude": -73.5885},
             ],
             "notification_preferences": {"push": True, "email": True, "sms": False},
-            "created_at": now - timedelta(days=60),
-            "updated_at": now,
+            "created_at": now.isoformat() - timedelta(days=60),
+            "updated_at": now.isoformat(),
             "is_active": True,
             "is_verified": True
         },
@@ -124,8 +124,8 @@ async def seed_database():
             "profile_photo": None,
             "saved_addresses": [],
             "notification_preferences": {"push": True, "email": False, "sms": False},
-            "created_at": now - timedelta(days=30),
-            "updated_at": now,
+            "created_at": now.isoformat() - timedelta(days=30),
+            "updated_at": now.isoformat(),
             "is_active": True,
             "is_verified": True
         }
@@ -147,8 +147,8 @@ async def seed_database():
         "phone": "+1-514-555-0001",
         "role": "admin",
         "permissions": ["all"],
-        "created_at": now - timedelta(days=365),
-        "updated_at": now,
+        "created_at": now.isoformat() - timedelta(days=365),
+        "updated_at": now.isoformat(),
         "is_active": True,
         "is_verified": True
     }
@@ -254,8 +254,8 @@ async def seed_database():
                 "background_check": {"status": "approved", "url": None}
             },
             "verification_status": "approved",
-            "created_at": now - timedelta(days=random.randint(30, 365)),
-            "updated_at": now,
+            "created_at": now.isoformat() - timedelta(days=random.randint(30, 365)),
+            "updated_at": now.isoformat(),
             "is_active": True,
             "is_verified": True
         }
@@ -397,8 +397,8 @@ async def seed_database():
             "booking_for_self": True,
             "special_instructions": "Please call when arriving",
             "pet_policy": "none",
-            "created_at": now.isoformat(),
-            "updated_at": now.isoformat()
+            "created_at": now.isoformat().isoformat(),
+            "updated_at": now.isoformat().isoformat()
         }
         bookings.append(booking)
     
@@ -431,8 +431,8 @@ async def seed_database():
         "service_areas": ["Montreal", "Laval", "Longueuil"],
         "support_email": "support@transpo.com",
         "support_phone": "+1-514-555-0000",
-        "created_at": now.isoformat(),
-        "updated_at": now.isoformat()
+        "created_at": now.isoformat().isoformat(),
+        "updated_at": now.isoformat().isoformat()
     }
     
     await db.platform_settings.insert_one(settings)
