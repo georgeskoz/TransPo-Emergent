@@ -216,6 +216,7 @@ export default function DriverSettings() {
 
   const menuItems = [
     { id: 'bank', icon: Building, label: 'Bank Account', description: 'Set up direct deposit', status: bankSaved ? 'configured' : 'required' },
+    { id: 'licenses', icon: FileText, label: 'Licenses', description: "Driver's & Taxi License", status: licenses.drivers_license_number ? 'configured' : 'required' },
     { id: 'documents', icon: FileText, label: 'Car Documents', description: 'Insurance, Registration', status: documents.length > 0 ? 'uploaded' : 'required' },
     { id: 'car', icon: Car, label: 'Car Information', description: 'Vehicle details', status: carInfo.license_plate ? 'configured' : 'required' },
     { id: 'background', icon: Shield, label: 'Background Check', description: 'Verification status', status: backgroundCheck?.status || 'pending' },
