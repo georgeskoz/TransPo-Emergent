@@ -389,10 +389,9 @@ export default function DriverDashboard() {
   // Check if no-show button should be enabled (5 minutes after arrival)
   const canMarkNoShow = noShowTimerSeconds >= 300; // 5 minutes = 300 seconds
 
-  // Calculate points progress (mock data)
-  const currentPoints = 174;
-  const targetPoints = 600;
-  const pointsProgress = (currentPoints / targetPoints) * 100;
+  // Get current tier config
+  const currentTierConfig = TIER_CONFIG[driverTier.tier] || TIER_CONFIG.silver;
+  const nextTierConfig = driverTier.next_tier ? TIER_CONFIG[driverTier.next_tier] : null;
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 relative overflow-hidden">
