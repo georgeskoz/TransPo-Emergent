@@ -309,11 +309,11 @@ export default function DriverDashboard() {
                   </li>
                   <li>
                     <button 
-                      onClick={() => setShowMenu(false)}
+                      onClick={() => { navigate('/driver/earnings'); setShowMenu(false); }}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
                     >
                       <Wallet className="w-5 h-5" />
-                      <span>Earnings</span>
+                      <span>Earnings & Payouts</span>
                       <span className="ml-auto text-green-600 font-semibold">${(earnings?.today || 0).toFixed(2)}</span>
                     </button>
                   </li>
