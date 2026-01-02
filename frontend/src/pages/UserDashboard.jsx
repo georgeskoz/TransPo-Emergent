@@ -850,6 +850,85 @@ export default function UserDashboard() {
                         </div>
                       </div>
 
+                      {/* Booking For Toggle */}
+                      <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <UserPlus className="w-5 h-5 text-gray-600" />
+                          <div>
+                            <p className="font-medium text-gray-800">Booking for someone else?</p>
+                            <p className="text-xs text-gray-500">We&apos;ll contact them for pickup</p>
+                          </div>
+                        </div>
+                        <Switch 
+                          checked={!bookingForSelf}
+                          onCheckedChange={(checked) => {
+                            setBookingForSelf(!checked);
+                            if (checked) setShowOrderForSomeone(true);
+                          }}
+                        />
+                      </div>
+
+                      {/* Recipient Info (shown when booking for someone else) */}
+                      {!bookingForSelf && orderingFor && (
+                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-blue-800">Booking for: {orderingFor.name}</p>
+                              <p className="text-sm text-blue-600">{orderingFor.phone}</p>
+                            </div>
+                            <button 
+                              onClick={() => setShowOrderForSomeone(true)}
+                              className="text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              Change
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Pet Policy */}
+                      <div className="space-y-2">
+                        <Label className="text-gray-700 font-medium flex items-center gap-2">
+                          <PawPrint className="w-4 h-4" />
+                          Pet Policy
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: 'none', label: 'No Pet' },
+                            { id: 'small_pet', label: 'Small Pet (carrier)' },
+                            { id: 'large_pet', label: 'Large Pet' },
+                            { id: 'service_animal', label: 'Service Animal' }
+                          ].map((opt) => (
+                            <button
+                              key={opt.id}
+                              onClick={() => setPetPolicy(opt.id)}
+                              className={`p-3 rounded-lg border text-center text-sm transition-all ${
+                                petPolicy === opt.id 
+                                  ? 'border-gray-900 bg-gray-900 text-white' 
+                                  : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Special Instructions */}
+                      <div className="space-y-2">
+                        <Label className="text-gray-700 font-medium flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          Special Instructions (optional)
+                        </Label>
+                        <Textarea
+                          value={specialInstructions}
+                          onChange={(e) => setSpecialInstructions(e.target.value)}
+                          placeholder="Gate code, apartment number, 'wait at the corner'..."
+                          className="resize-none bg-white border-gray-200 text-gray-900 placeholder-gray-400"
+                          rows={2}
+                        />
+                      </div>
+
                       {/* Estimate Button */}
                       <Button 
                         onClick={estimateFare}
