@@ -33,6 +33,7 @@ export default function UserProfile() {
   const { user, token, getAuthHeaders } = useAuthStore();
   const fileInputRef = useRef(null);
   
+  const [activeTab, setActiveTab] = useState("profile");
   const [profile, setProfile] = useState({
     first_name: "",
     last_name: "",
@@ -56,6 +57,30 @@ export default function UserProfile() {
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // User rating
+  const [userRating, setUserRating] = useState(5.0);
+  const [noShowCount, setNoShowCount] = useState(0);
+  const [lateCancelCount, setLateCancelCount] = useState(0);
+  
+  // Notifications
+  const [notifications, setNotifications] = useState({
+    push_enabled: true,
+    email_enabled: true,
+    sms_enabled: false,
+    ride_updates: true,
+    promotions: true
+  });
+  
+  // Saved addresses
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [showAddAddress, setShowAddAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    label: "home",
+    address: "",
+    latitude: 0,
+    longitude: 0
+  });
 
   useEffect(() => {
     loadProfile();
