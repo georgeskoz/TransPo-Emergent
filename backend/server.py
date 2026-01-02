@@ -316,23 +316,10 @@ async def find_nearby_drivers(lat: float, lng: float, radius_km: float = 5.0, ve
         query["vehicle_type"] = vehicle_type
     drivers = await db.drivers.find(query, {"_id": 0}).to_list(100)
     scored_drivers = []
-    now = datetime.now(timezone.utc)
     
     for driver in drivers:
         if "location" not in driver:
             continue
-        
-        # Skip suspended drivers
-        suspended_until = driver.get("suspended_until")
-        if suspended_until:
-            try:
-                suspended_dt = datetime.fromisoformat(suspended_until.replace('Z', '+00:00'))
-                if suspended_dt.tzinfo is None:
-                    suspended_dt = suspended_dt.replace(tzinfo=timezone.utc)
-                if suspended_dt > now:
-                    continue  # Driver is still suspended, skip
-            except:
-                pass
         
         driver_lat = driver["location"].get("latitude", 0)
         driver_lng = driver["location"].get("longitude", 0)
@@ -344,7 +331,12 @@ async def find_nearby_drivers(lat: float, lng: float, radius_km: float = 5.0, ve
             distance_score = (1 / max(distance, 0.1)) * 0.6
             rating_score = (rating / 5.0) * 0.3
             acceptance_score = acceptance_rate * 0.1
-            total_score = distance_score + rating_score + acceptance_score
+            
+            # Tier bonus: higher tier drivers get slight priority
+            tier_info = get_driver_tier(driver.get("points", 0))
+            tier_bonus = {"silver": 0, "gold": 0.05, "platinum": 0.1, "diamond": 0.15}.get(tier_info["tier"], 0)
+            
+            total_score = distance_score + rating_score + acceptance_score + tier_bonus
             
             # Priority boost for no-show drivers in same area
             if driver.get("priority_boost"):
@@ -363,7 +355,8 @@ async def find_nearby_drivers(lat: float, lng: float, radius_km: float = 5.0, ve
                 "distance_km": round(distance, 2),
                 "eta_minutes": round(eta_minutes, 1),
                 "match_score": round(total_score, 3),
-                "has_priority_boost": driver.get("priority_boost", False)
+                "has_priority_boost": driver.get("priority_boost", False),
+                "tier": tier_info["tier"]
             })
     
     scored_drivers.sort(key=lambda x: x["match_score"], reverse=True)
