@@ -474,6 +474,156 @@ export default function AdminDashboard() {
     }
   };
 
+  // Payment/Stripe functions
+  const loadPaymentTransactions = async (page = 1) => {
+    try {
+      const params = new URLSearchParams({ page: page.toString(), limit: '25' });
+      if (transactionFilters.driver_id) params.append('driver_id', transactionFilters.driver_id);
+      if (transactionFilters.start_date) params.append('start_date', transactionFilters.start_date);
+      if (transactionFilters.end_date) params.append('end_date', transactionFilters.end_date);
+      
+      const res = await fetch(`${API_URL}/admin/payments/transactions?${params}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentTransactions(data.transactions || []);
+        setPaymentsPagination(data.pagination || { page: 1, total: 0 });
+      }
+    } catch (e) { console.log(e); }
+  };
+
+  const loadDriverPayouts = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/payments/driver-payouts`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setDriverPayouts(data.payouts || []);
+        setPayoutsSummary(data.summary || {});
+      }
+    } catch (e) { console.log(e); }
+  };
+
+  const loadPayoutSettings = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/payments/payout-settings`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setPayoutSettings(data.settings);
+      }
+    } catch (e) { console.log(e); }
+  };
+
+  const loadRefunds = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/payments/refunds`, { headers: getAuthHeaders() });
+      if (res.ok) setRefunds((await res.json()).refunds || []);
+    } catch (e) { console.log(e); }
+  };
+
+  const loadDisputes = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/payments/disputes`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setDisputes(data.disputes || []);
+      }
+    } catch (e) { console.log(e); }
+  };
+
+  const createRefund = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/payments/refunds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          trip_id: selectedTripForRefund?.trip_id,
+          refund_type: refundType,
+          amount: refundType === 'partial' ? parseFloat(refundAmount) : null,
+          exclude_tip: excludeTip,
+          reason: refundReason
+        })
+      });
+      if (res.ok) {
+        toast.success('Refund created');
+        setShowRefundModal(false);
+        setSelectedTripForRefund(null);
+        setRefundType('full');
+        setRefundAmount('');
+        setExcludeTip(false);
+        setRefundReason('');
+        loadRefunds();
+        loadPaymentTransactions();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to create refund');
+      }
+    } catch (e) {
+      toast.error('Failed to create refund');
+    }
+  };
+
+  const processRefund = async (refundId, status) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/payments/refunds/${refundId}/process?status=${status}`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success(`Refund ${status}`);
+        loadRefunds();
+      }
+    } catch (e) {
+      toast.error('Failed to process refund');
+    }
+  };
+
+  const retryPayout = async (payoutId) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/payments/driver-payouts/${payoutId}/retry`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        toast.success('Payout queued for retry');
+        loadDriverPayouts();
+      }
+    } catch (e) {
+      toast.error('Failed to retry payout');
+    }
+  };
+
+  const exportTransactions = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (transactionFilters.start_date) params.append('start_date', transactionFilters.start_date);
+      if (transactionFilters.end_date) params.append('end_date', transactionFilters.end_date);
+      
+      const res = await fetch(`${API_URL}/admin/payments/transactions/export?${params}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        // Convert to CSV and download
+        const headers = ['Trip ID', 'Date', 'Base Fare', 'Distance', 'Waiting', 'Tip', 'Quebec Fee', 'GST', 'QST', 'Gross Total', 'Stripe Fee', 'Commission', 'Net to Driver'];
+        const csvContent = [
+          headers.join(','),
+          ...data.data.map(row => [
+            row.trip_id, row.date, row.base_fare, row.distance_fare, row.waiting_fare,
+            row.tip, row.quebec_fee, row.gst, row.qst, row.gross_total,
+            row.stripe_fee, row.platform_commission, row.net_to_driver
+          ].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        toast.success('Export downloaded');
+      }
+    } catch (e) {
+      toast.error('Failed to export');
+    }
+  };
+
   const updateSettings = async (updates) => {
     try {
       const res = await fetch(`${API_URL}/admin/settings`, {
