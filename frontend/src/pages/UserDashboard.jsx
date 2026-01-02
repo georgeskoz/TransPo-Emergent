@@ -755,7 +755,7 @@ export default function UserDashboard() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-6 pb-24 mobile-content">
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left - Booking Panel */}
           <div className="lg:col-span-2 space-y-6">
@@ -763,7 +763,7 @@ export default function UserDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card className="bg-white border-gray-200 shadow-sm">
+              <Card className="bg-white border-gray-200 shadow-sm overflow-visible">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
                     <Navigation className="w-5 h-5 text-gray-700" />
@@ -772,10 +772,10 @@ export default function UserDashboard() {
                 </CardHeader>
                 <CardContent>
                   <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-3 bg-gray-100 mb-6">
+                    <TabsList className="grid w-full grid-cols-3 bg-gray-100 mb-6 h-12">
                       <TabsTrigger 
                         value="taxi" 
-                        className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                        className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm min-h-[44px]"
                         data-testid="taxi-tab"
                       >
                         <Car className="w-4 h-4 mr-2" />
