@@ -1153,7 +1153,10 @@ export default function UserDashboard() {
           <OrderForSomeoneModal
             isOpen={showOrderForSomeone}
             onClose={() => setShowOrderForSomeone(false)}
-            onConfirm={(person) => setOrderingFor(person)}
+            onConfirm={(person) => {
+              setOrderingFor(person);
+              setBookingForSelf(false);
+            }}
           />
         )}
       </AnimatePresence>
