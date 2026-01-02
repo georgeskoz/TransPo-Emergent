@@ -562,11 +562,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Socket.io Real-time Ride Request Service - TESTING COMPLETED"
-    - "User Rating & Accountability APIs - TESTING COMPLETED"
-    - "Enhanced Booking APIs - TESTING COMPLETED"
-    - "Saved Addresses APIs - TESTING COMPLETED"
-    - "Notification Preferences APIs - TESTING COMPLETED"
+    - "Mobile Navigation Hiding Testing - MINOR ISSUE FOUND"
+    - "All other mobile optimization features - TESTING COMPLETED"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
