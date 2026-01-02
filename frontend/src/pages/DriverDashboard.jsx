@@ -1057,8 +1057,20 @@ export default function DriverDashboard() {
               </button>
 
               <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800 mb-1">New Trip Request</h3>
-                <p className="text-gray-500">{selectedJob.vehicle_type} ride</p>
+                {isScheduledAlert ? (
+                  <>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-full mb-3">
+                      <Clock className="w-4 h-4" />
+                      <span className="font-medium">Scheduled Ride - {minutesUntilPickup} min until pickup</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-1">Upcoming Trip</h3>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-1">New Trip Request</h3>
+                  </>
+                )}
+                <p className="text-gray-500">{selectedJob.vehicle_type || 'Standard'} ride</p>
               </div>
 
               {/* Fare */}
