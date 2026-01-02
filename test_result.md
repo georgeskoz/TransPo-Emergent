@@ -322,13 +322,13 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "1.5"
-  test_sequence: 6
+  version: "1.6"
+  test_sequence: 7
   run_ui: true
 
 test_plan:
   current_focus:
-    - "Stripe Dashboard Testing Complete - All APIs Operational"
+    - "Driver Cancellation and No-Show Feature Implementation"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -344,3 +344,5 @@ agent_communication:
     message: "MERCHANTS SECTION TESTING COMPLETED: ✅ All 7 merchants API endpoints working correctly (49/49 tests passed - 100% success rate). Fixed critical backend bug: super_admin role check was using 'role' field instead of 'admin_role' field. All endpoints now working: GET /api/admin/merchants/overview (returns proper earnings structure), GET /api/admin/merchants/transactions (with pagination), GET/PUT /api/admin/merchants/settings (bank account management), POST /api/admin/merchants/withdraw (withdrawal creation), GET /api/admin/merchants/withdrawals (withdrawal history), PUT /api/admin/merchants/withdrawals/{id} (status updates). Test credentials: admin@demo.com/demo123 with super_admin role."
   - agent: "testing"
     message: "STRIPE DASHBOARD TESTING COMPLETED: ✅ 65/66 tests passed (98.5% success rate). ✅ ADMIN PAYMENT APIs: 9/10 endpoints working perfectly - payment transactions with fare breakdown, CSV export, payout settings CRUD, driver payouts tracking, refunds listing, disputes tracking. Minor: refund creation validates trip existence (expected behavior). ✅ DRIVER EARNINGS APIs: 8/8 endpoints working perfectly - complete Stripe Connect flow (status→onboarding→completion), earnings summaries for all periods, payout history, statements listing. All commission calculations, fees, and data structures working correctly. NEW Stripe Dashboard feature fully operational."
+  - agent: "main"
+    message: "NEW FEATURE: Driver Cancellation and No-Show System implemented. BACKEND: 4 new endpoints added - POST /api/driver/trips/{id}/update-status (arrived/in_progress), POST /api/driver/trips/{id}/cancel (with reason), POST /api/driver/trips/{id}/no-show (marks customer absent), GET /api/driver/status/suspension (check suspension). BUSINESS LOGIC: Penalized reasons (car_issue, wrong_address, no_car_seat, pickup_too_far) = 5-min suspension. No penalty reasons (safety_concern, too_many_passengers). No-show gives driver priority_boost for next ride in same area. FRONTEND: Updated DriverDashboard.jsx with cancellation modal (6 reasons), phone icon for cancel menu, I've Arrived button, Start Trip/No-Show buttons on arrived status, suspension banner with countdown timer. Test credentials: driver@demo.com/demo123"
