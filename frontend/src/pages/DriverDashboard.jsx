@@ -996,19 +996,6 @@ export default function DriverDashboard() {
                 </button>
               </div>
 
-              {/* Warning */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-800">Points Deduction Policy</p>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      Some reasons result in point deductions that affect your driver tier. Safety concerns and passenger issues have no penalty.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* Cancellation Reasons */}
               <div className="space-y-2 mb-6">
                 <p className="text-sm font-medium text-gray-600 mb-3">Select a reason:</p>
