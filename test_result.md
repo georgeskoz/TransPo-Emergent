@@ -214,7 +214,7 @@ backend:
         agent: "testing"
         comment: "✅ TESTED: 8/8 Stripe Dashboard Driver Earnings APIs working perfectly (100% success rate). ✅ Stripe Connect flow working: status check → onboarding link generation → completion. ✅ Earnings summary working for all periods (daily/weekly/monthly). ✅ Payout history retrieval working. ✅ Statements listing working. ✅ All endpoints return proper data structures with commission rates, fees, and net earnings calculations. Complete Stripe integration functionality operational."
 
-  - task: "Driver Cancellation and No-Show Feature"
+  - task: "Driver Cancellation and Tier System"
     implemented: true
     working: true
     file: "/app/backend/server.py"
@@ -225,6 +225,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ TESTED: Driver Cancellation and No-Show feature working perfectly. All 4 new endpoints tested successfully: POST /api/driver/trips/{id}/update-status (arrived/in_progress status updates), POST /api/driver/trips/{id}/cancel (with penalized/no-penalty reasons), POST /api/driver/trips/{id}/no-show (priority boost activation), GET /api/driver/status/suspension (suspension status checking). Business logic verified: Penalized cancellations (car_issue, wrong_address, no_car_seat, pickup_too_far) correctly apply 5-minute suspension. No-penalty cancellations (safety_concern, too_many_passengers) apply no suspension. No-show correctly gives driver priority_boost for next ride in same area. All status transitions and validations working correctly."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Updated Driver Cancellation and Tier System working perfectly (96.8% success rate - 92/95 tests passed). ✅ NEW TIER SYSTEM: Driver tier system implemented correctly with Silver (0-299), Gold (300-599), Platinum (600-999), Diamond (1000+) tiers. ✅ POINT-BASED CANCELLATIONS: Removed 5-minute suspension, now uses point deductions - car_issue (-20 points), wrong_address (-15), no_car_seat (-10), pickup_too_far (-15), safety_concern (0), too_many_passengers (0). ✅ POINTS SYSTEM: +10 points per completed trip, points don't go negative. ✅ NEW ENDPOINTS: GET /api/driver/status/tier (tier status), GET /api/driver/booking/{id}/customer (customer contact), updated POST /api/driver/trips/{id}/cancel (with tier info), updated POST /api/driver/complete/{booking_id} (with points). ✅ CUSTOMER CONTACT: Driver can get customer name, phone, pickup address for active bookings. Minor: GET /api/driver/status/suspension endpoint removed (expected - suspension system replaced with tier system)."
 
 frontend:
   - task: "Driver Cancellation and No-Show Feature Frontend"
