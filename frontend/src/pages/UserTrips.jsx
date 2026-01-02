@@ -12,6 +12,7 @@ const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STATUS_CONFIG = {
   pending: { label: "Searching", color: "bg-yellow-100 text-yellow-700", icon: Clock },
+  scheduled: { label: "Scheduled", color: "bg-purple-100 text-purple-700", icon: Calendar },
   accepted: { label: "Driver Found", color: "bg-blue-100 text-blue-700", icon: Car },
   in_progress: { label: "In Progress", color: "bg-purple-100 text-purple-700", icon: Car },
   completed: { label: "Completed", color: "bg-green-100 text-green-700", icon: CheckCircle },
