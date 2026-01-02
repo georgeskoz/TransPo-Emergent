@@ -213,7 +213,8 @@ class TaxiMeter:
                 current_waiting_cost = current_waiting_minutes * self.rates["waiting_per_min"]
         
         # Base fare already includes government fee, so no need to add it again
-        total_before_tip = base_fare + self.distance_cost + current_waiting_cost
+        subtotal = base_fare + self.distance_cost + current_waiting_cost
+        total_before_tip = subtotal  # Same as subtotal since gov fee is already in base
         
         return {
             "rate_period": self.rates["period"],
