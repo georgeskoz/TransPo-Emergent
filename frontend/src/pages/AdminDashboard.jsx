@@ -2938,6 +2938,7 @@ export default function AdminDashboard() {
             {/* Tabs Navigation */}
             <div className="flex gap-2 border-b pb-2 overflow-x-auto">
               {[
+                { id: 'settings', label: '⚙️ Stripe Setup', icon: Settings },
                 { id: 'transactions', label: 'Transactions', icon: Receipt },
                 { id: 'payouts', label: 'Payouts', icon: Wallet },
                 { id: 'commissions', label: 'Commissions', icon: Percent },
@@ -2955,6 +2956,109 @@ export default function AdminDashboard() {
                 </Button>
               ))}
             </div>
+
+            {/* Stripe Setup Tab */}
+            {paymentsTab === 'settings' && (
+              <div className="space-y-4">
+                {/* Connection Status */}
+                <Card className={stripeConfigSaved ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${stripeConfigSaved ? 'bg-green-100' : 'bg-orange-100'}`}>
+                        <CreditCard className={`w-6 h-6 ${stripeConfigSaved ? 'text-green-600' : 'text-orange-600'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className={`font-semibold ${stripeConfigSaved ? 'text-green-800' : 'text-orange-800'}`}>
+                          {stripeConfigSaved ? '✓ Stripe Connected' : 'Stripe Not Configured'}
+                        </h3>
+                        <p className={`text-sm mt-1 ${stripeConfigSaved ? 'text-green-700' : 'text-orange-700'}`}>
+                          {stripeConfigSaved 
+                            ? 'Your Stripe account is connected and ready to process payments.' 
+                            : 'Configure your Stripe API keys to enable payment processing for your platform.'}
+                        </p>
+                        {isSuperAdmin && (
+                          <Button 
+                            size="sm" 
+                            className={`mt-3 ${stripeConfigSaved ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+                            onClick={() => setShowStripeConfigModal(true)}
+                          >
+                            <Settings className="w-4 h-4 mr-2" />
+                            {stripeConfigSaved ? 'Update Configuration' : 'Configure Stripe'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Stripe Info Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-purple-500" />
+                      Stripe Integration Guide
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-semibold text-blue-800 mb-2">How to get your Stripe API Keys:</h4>
+                      <ol className="list-decimal list-inside text-sm text-blue-700 space-y-2">
+                        <li>Go to <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">dashboard.stripe.com</a></li>
+                        <li>Sign in or create a Stripe account</li>
+                        <li>Navigate to <strong>Developers → API Keys</strong></li>
+                        <li>Copy your <strong>Publishable key</strong> (starts with pk_)</li>
+                        <li>Copy your <strong>Secret key</strong> (starts with sk_)</li>
+                        <li>For webhooks, go to <strong>Developers → Webhooks</strong> and create an endpoint</li>
+                      </ol>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                            <span className="text-purple-600 font-bold">1</span>
+                          </div>
+                          <h4 className="font-semibold">Publishable Key</h4>
+                        </div>
+                        <p className="text-sm text-gray-600">Used on frontend for secure card collection. Starts with <code className="bg-gray-100 px-1 rounded">pk_test_</code> or <code className="bg-gray-100 px-1 rounded">pk_live_</code></p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                            <span className="text-purple-600 font-bold">2</span>
+                          </div>
+                          <h4 className="font-semibold">Secret Key</h4>
+                        </div>
+                        <p className="text-sm text-gray-600">Used on backend for API calls. Keep this private! Starts with <code className="bg-gray-100 px-1 rounded">sk_test_</code> or <code className="bg-gray-100 px-1 rounded">sk_live_</code></p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-yellow-800">Test vs Live Mode</h4>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            Use <strong>test keys</strong> (pk_test_, sk_test_) during development. Switch to <strong>live keys</strong> (pk_live_, sk_live_) when ready to accept real payments.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {stripeConfigSaved && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 className="font-semibold text-green-800 mb-2">✓ Current Configuration</h4>
+                        <div className="space-y-1 text-sm">
+                          <p><span className="text-green-600">Publishable Key:</span> {stripeConfig.publishable_key ? `${stripeConfig.publishable_key.slice(0, 12)}...` : 'Not set'}</p>
+                          <p><span className="text-green-600">Secret Key:</span> {stripeConfig.secret_key ? '••••••••••••••••' : 'Not set'}</p>
+                          <p><span className="text-green-600">Webhook Secret:</span> {stripeConfig.webhook_secret ? '••••••••••••••••' : 'Not set (optional)'}</p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Transactions Tab */}
             {paymentsTab === 'transactions' && (
