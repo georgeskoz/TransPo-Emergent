@@ -177,10 +177,46 @@ class DocumentVerification(BaseModel):
     status: str  # pending, approved, rejected
     rejection_reason: Optional[str] = None
 
-# Cancellation reasons that result in a 5-minute suspension
-PENALIZED_CANCELLATION_REASONS = ["car_issue", "wrong_address", "no_car_seat", "pickup_too_far"]
-# Cancellation reasons with NO penalty
-NO_PENALTY_CANCELLATION_REASONS = ["safety_concern", "too_many_passengers"]
+# Cancellation reasons and their point penalties
+CANCELLATION_POINT_PENALTIES = {
+    "car_issue": 20,
+    "wrong_address": 15,
+    "no_car_seat": 10,
+    "pickup_too_far": 15,
+    "safety_concern": 0,  # No penalty
+    "too_many_passengers": 0  # No penalty
+}
+
+# Driver tier thresholds
+DRIVER_TIERS = {
+    "silver": {"min": 0, "max": 299, "next": "gold"},
+    "gold": {"min": 300, "max": 599, "next": "platinum"},
+    "platinum": {"min": 600, "max": 999, "next": "diamond"},
+    "diamond": {"min": 1000, "max": float('inf'), "next": None}
+}
+
+# Points for actions
+POINTS_PER_COMPLETED_TRIP = 10
+POINTS_BONUS_FIVE_STAR = 5
+
+def get_driver_tier(points: int) -> dict:
+    """Get driver tier based on points"""
+    for tier_name, tier_info in DRIVER_TIERS.items():
+        if tier_info["min"] <= points <= tier_info["max"]:
+            next_tier = tier_info["next"]
+            if next_tier:
+                next_threshold = DRIVER_TIERS[next_tier]["min"]
+                progress = ((points - tier_info["min"]) / (next_threshold - tier_info["min"])) * 100
+            else:
+                progress = 100
+            return {
+                "tier": tier_name,
+                "points": points,
+                "next_tier": next_tier,
+                "next_tier_threshold": DRIVER_TIERS[next_tier]["min"] if next_tier else None,
+                "progress_percent": round(progress, 1)
+            }
+    return {"tier": "silver", "points": points, "next_tier": "gold", "next_tier_threshold": 300, "progress_percent": 0}
 
 class TripCancellationRequest(BaseModel):
     reason: str  # car_issue, wrong_address, no_car_seat, safety_concern, pickup_too_far, too_many_passengers
