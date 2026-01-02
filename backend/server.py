@@ -5526,7 +5526,7 @@ async def book_taxi(request: TaxiBookingRequest, current_user: dict = Depends(ge
         "user_id": current_user["id"],
         "user_name": current_user.get("name", ""),
         "type": "taxi",
-        "status": "pending",
+        "status": "scheduled" if request.is_scheduled else "pending",
         "pickup": {
             "latitude": request.pickup_lat,
             "longitude": request.pickup_lng,
@@ -5541,7 +5541,7 @@ async def book_taxi(request: TaxiBookingRequest, current_user: dict = Depends(ge
         "fare": fare,
         "driver_id": None,
         "driver_name": None,
-        "matched_drivers": [d["id"] for d in nearby_drivers[:5]],
+        "matched_drivers": [d["id"] for d in nearby_drivers[:5]] if not request.is_scheduled else [],
         "payment_status": "pending",
         "created_at": now,
         "updated_at": now,
@@ -5550,10 +5550,22 @@ async def book_taxi(request: TaxiBookingRequest, current_user: dict = Depends(ge
         "contact_name": contact_name,
         "contact_phone": contact_phone,
         "special_instructions": request.special_instructions,
-        "pet_policy": request.pet_policy
+        "pet_policy": request.pet_policy,
+        # Scheduled ride fields
+        "is_scheduled": request.is_scheduled,
+        "scheduled_time": request.scheduled_time
     }
     
     await db.bookings.insert_one(booking_doc)
+    
+    if request.is_scheduled:
+        return {
+            "booking_id": booking_id,
+            "status": "scheduled",
+            "fare": fare,
+            "scheduled_time": request.scheduled_time,
+            "message": f"Your ride is scheduled! We'll notify you when a driver is assigned."
+        }
     
     return {
         "booking_id": booking_id,
