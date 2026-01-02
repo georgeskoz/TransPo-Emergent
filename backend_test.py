@@ -886,6 +886,381 @@ class TranspoAPITester:
             headers=self.get_auth_headers(self.admin_token)
         )
 
+    def test_stripe_dashboard_admin_payments(self):
+        """Test new Stripe Dashboard Admin Payment APIs"""
+        print("\n" + "="*50)
+        print("💳 STRIPE DASHBOARD - ADMIN PAYMENT TESTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping admin payment tests - no admin token")
+            return
+        
+        # Test 1: Get payment transactions
+        success, response = self.run_test(
+            "Get Payment Transactions", 
+            "GET", 
+            "admin/payments/transactions", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            transactions = response.get('transactions', [])
+            pagination = response.get('pagination', {})
+            summary = response.get('summary', {})
+            print(f"   Found {len(transactions)} transactions")
+            print(f"   Total transactions: {pagination.get('total', 0)}")
+            print(f"   Total revenue: ${summary.get('total_revenue', 0)}")
+            print(f"   Total commission: ${summary.get('total_commission', 0)}")
+            print(f"   Commission rate: {summary.get('commission_rate', 0)}%")
+            
+            if transactions:
+                transaction = transactions[0]
+                print(f"   Sample transaction: {transaction.get('trip_id', 'N/A')} - ${transaction.get('total_amount', 0)}")
+                # Verify fare breakdown structure
+                fare_breakdown = transaction.get('fare_breakdown', {})
+                if fare_breakdown:
+                    print(f"   Fare breakdown: Base ${fare_breakdown.get('base_fare', 0)}, Distance ${fare_breakdown.get('distance_charge', 0)}, Time ${fare_breakdown.get('time_charge', 0)}")
+                    print(f"   Taxes: GST ${fare_breakdown.get('gst', 0)}, QST ${fare_breakdown.get('qst', 0)}")
+        
+        # Test 2: Get payment transactions with filters
+        success, response = self.run_test(
+            "Get Payment Transactions - Filtered", 
+            "GET", 
+            "admin/payments/transactions?page=1&limit=10", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        # Test 3: Export payment transactions
+        success, response = self.run_test(
+            "Export Payment Transactions", 
+            "GET", 
+            "admin/payments/transactions/export?format=csv", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            export_data = response.get('data', [])
+            print(f"   Export data: {len(export_data)} records")
+            print(f"   Generated at: {response.get('generated_at', 'N/A')}")
+        
+        # Test 4: Get payout settings
+        success, response = self.run_test(
+            "Get Payout Settings", 
+            "GET", 
+            "admin/payments/payout-settings", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            settings = response.get('settings', {})
+            print(f"   Payout schedule: {settings.get('schedule', 'N/A')}")
+            print(f"   Early cashout fee: {settings.get('early_cashout_fee_percent', 0)}%")
+            print(f"   Min payout amount: ${settings.get('min_payout_amount', 0)}")
+        
+        # Test 5: Update payout settings
+        payout_settings_update = {
+            "schedule": "weekly",
+            "early_cashout_fee_percent": 2.0,
+            "min_payout_amount": 75.0
+        }
+        
+        success, response = self.run_test(
+            "Update Payout Settings", 
+            "PUT", 
+            "admin/payments/payout-settings", 
+            200,
+            payout_settings_update,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            print("✅ Payout settings updated successfully")
+        
+        # Test 6: Get driver payouts
+        success, response = self.run_test(
+            "Get Driver Payouts", 
+            "GET", 
+            "admin/payments/driver-payouts", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            payouts = response.get('payouts', [])
+            summary = response.get('summary', {})
+            print(f"   Found {len(payouts)} driver payouts")
+            print(f"   Pending: {summary.get('pending', 0)}, Processing: {summary.get('processing', 0)}")
+            print(f"   Completed: {summary.get('completed', 0)}, Failed: {summary.get('failed', 0)}")
+            
+            # Store a payout ID for retry test
+            failed_payout_id = None
+            for payout in payouts:
+                if payout.get('status') == 'failed':
+                    failed_payout_id = payout.get('id')
+                    break
+            
+            # Test 7: Retry failed payout (if we have one)
+            if failed_payout_id:
+                success, response = self.run_test(
+                    "Retry Failed Payout", 
+                    "POST", 
+                    f"admin/payments/driver-payouts/{failed_payout_id}/retry", 
+                    200,
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                if success:
+                    print("✅ Failed payout retry queued successfully")
+            else:
+                print("⚠️ No failed payouts found to test retry functionality")
+        
+        # Test 8: Create refund
+        refund_data = {
+            "trip_id": "test-trip-123",
+            "refund_type": "partial",
+            "exclude_tip": False,
+            "reason": "Customer complaint - service issue"
+        }
+        
+        success, response = self.run_test(
+            "Create Refund", 
+            "POST", 
+            "admin/payments/refunds", 
+            200,
+            refund_data,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        refund_id = None
+        if success:
+            refund = response.get('refund', {})
+            refund_id = refund.get('id')
+            print(f"   Created refund ID: {refund_id}")
+            print(f"   Refund amount: ${refund.get('amount', 0)}")
+            print(f"   Status: {refund.get('status', 'N/A')}")
+        
+        # Test 9: Get all refunds
+        success, response = self.run_test(
+            "Get All Refunds", 
+            "GET", 
+            "admin/payments/refunds", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            refunds = response.get('refunds', [])
+            print(f"   Found {len(refunds)} refunds")
+            if refunds:
+                refund = refunds[0]
+                print(f"   Sample refund: {refund.get('trip_id', 'N/A')} - ${refund.get('amount', 0)} ({refund.get('status', 'N/A')})")
+        
+        # Test 10: Process refund (if we created one)
+        if refund_id:
+            success, response = self.run_test(
+                "Process Refund - Approve", 
+                "PUT", 
+                f"admin/payments/refunds/{refund_id}/process?status=approved", 
+                200,
+                headers=self.get_auth_headers(self.admin_token)
+            )
+            
+            if success:
+                print("✅ Refund approved successfully")
+        
+        # Test 11: Get payment disputes
+        success, response = self.run_test(
+            "Get Payment Disputes", 
+            "GET", 
+            "admin/payments/disputes", 
+            200,
+            headers=self.get_auth_headers(self.admin_token)
+        )
+        
+        if success:
+            disputes = response.get('disputes', [])
+            summary = response.get('summary', {})
+            print(f"   Found {len(disputes)} payment disputes")
+            print(f"   Open: {summary.get('open', 0)}, Under review: {summary.get('under_review', 0)}")
+            print(f"   Won: {summary.get('won', 0)}, Lost: {summary.get('lost', 0)}")
+
+    def test_stripe_dashboard_driver_earnings(self):
+        """Test new Stripe Dashboard Driver Earnings APIs"""
+        print("\n" + "="*50)
+        print("💰 STRIPE DASHBOARD - DRIVER EARNINGS TESTS")
+        print("="*50)
+        
+        if not self.driver_token:
+            print("❌ Skipping driver earnings tests - no driver token")
+            return
+        
+        # Test 1: Get Stripe Connect status
+        success, response = self.run_test(
+            "Get Driver Stripe Status", 
+            "GET", 
+            "driver/stripe/status", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            print(f"   Stripe connected: {response.get('connected', False)}")
+            print(f"   Account ID: {response.get('account_id', 'Not connected')}")
+            print(f"   Payouts enabled: {response.get('payouts_enabled', False)}")
+            print(f"   Charges enabled: {response.get('charges_enabled', False)}")
+        
+        # Test 2: Generate Stripe Connect onboarding link
+        success, response = self.run_test(
+            "Create Stripe Connect Link", 
+            "POST", 
+            "driver/stripe/connect", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        session_id = None
+        if success:
+            session_id = response.get('session_id')
+            print(f"   Onboarding URL: {response.get('url', 'N/A')}")
+            print(f"   Session ID: {session_id}")
+            print(f"   Message: {response.get('message', 'N/A')}")
+        
+        # Test 3: Complete Stripe onboarding (if we have session_id)
+        if session_id:
+            success, response = self.run_test(
+                "Complete Stripe Onboarding", 
+                "POST", 
+                f"driver/stripe/complete-onboarding?session_id={session_id}", 
+                200,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                print(f"   Account connected: {response.get('account_id', 'N/A')}")
+                print("✅ Stripe onboarding completed successfully")
+        
+        # Test 4: Get earnings summary - weekly
+        success, response = self.run_test(
+            "Get Earnings Summary - Weekly", 
+            "GET", 
+            "driver/earnings/summary?period=weekly", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            print(f"   Period: {response.get('period', 'N/A')}")
+            print(f"   Total trips: {response.get('total_trips', 0)}")
+            print(f"   Gross earnings: ${response.get('gross_earnings', 0)}")
+            print(f"   Platform commission: ${response.get('platform_commission', 0)}")
+            print(f"   Stripe fees: ${response.get('stripe_fees', 0)}")
+            print(f"   Net earnings: ${response.get('net_earnings', 0)}")
+            print(f"   Commission rate: {response.get('commission_rate', 0)}%")
+        
+        # Test 5: Get earnings summary - daily
+        success, response = self.run_test(
+            "Get Earnings Summary - Daily", 
+            "GET", 
+            "driver/earnings/summary?period=daily", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test 6: Get earnings summary - monthly
+        success, response = self.run_test(
+            "Get Earnings Summary - Monthly", 
+            "GET", 
+            "driver/earnings/summary?period=monthly", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Test 7: Get driver payouts
+        success, response = self.run_test(
+            "Get Driver Payouts History", 
+            "GET", 
+            "driver/payouts", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            payouts = response.get('payouts', [])
+            pending_balance = response.get('pending_balance', 0)
+            next_payout_date = response.get('next_payout_date', 'N/A')
+            print(f"   Payout history: {len(payouts)} payouts")
+            print(f"   Pending balance: ${pending_balance}")
+            print(f"   Next payout date: {next_payout_date}")
+            
+            if payouts:
+                payout = payouts[0]
+                print(f"   Latest payout: ${payout.get('amount', 0)} - {payout.get('status', 'N/A')}")
+        
+        # Test 8: Request early cashout (if driver has Stripe connected and pending balance)
+        # First check if driver is connected and has balance
+        if pending_balance > 10:  # Only test if there's sufficient balance
+            cashout_amount = min(25.0, pending_balance * 0.5)  # Request half of pending or $25, whichever is smaller
+            
+            success, response = self.run_test(
+                "Request Early Cashout", 
+                "POST", 
+                f"driver/payouts/early-cashout?amount={cashout_amount}", 
+                200,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                payout = response.get('payout', {})
+                fee_applied = response.get('fee_applied', 'N/A')
+                print(f"   Early cashout requested: ${payout.get('amount', 0)}")
+                print(f"   Fee applied: {fee_applied}")
+                print(f"   Net amount: ${payout.get('net_amount', 0)}")
+                print("✅ Early cashout request successful")
+        else:
+            print("⚠️ Skipping early cashout test - insufficient pending balance")
+        
+        # Test 9: Get available statements
+        success, response = self.run_test(
+            "Get Driver Statements", 
+            "GET", 
+            "driver/statements", 
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        statement_id = None
+        if success:
+            statements = response.get('statements', [])
+            print(f"   Available statements: {len(statements)}")
+            
+            if statements:
+                statement = statements[0]
+                statement_id = statement.get('id')
+                print(f"   Latest statement: {statement.get('period', 'N/A')} - {statement.get('status', 'N/A')}")
+                print(f"   Statement ID: {statement_id}")
+        
+        # Test 10: Download statement (if we have one)
+        if statement_id:
+            success, response = self.run_test(
+                "Download Driver Statement", 
+                "GET", 
+                f"driver/statements/{statement_id}/download", 
+                200,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                statement_data = response.get('statement', {})
+                print(f"   Statement period: {statement_data.get('period', 'N/A')}")
+                print(f"   Total earnings: ${statement_data.get('total_earnings', 0)}")
+                print(f"   Total trips: {statement_data.get('total_trips', 0)}")
+                print("✅ Statement download successful")
+
     def test_admin_endpoints(self):
         """Test admin user and driver creation endpoints"""
         print("\n" + "="*50)
