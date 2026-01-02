@@ -298,14 +298,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Merchants Section - Platform Earnings and Bank Account Management"
+    - "Stripe Dashboard - Admin Payment Management and Driver Earnings"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Implemented Merchants section for platform earnings management. Features include: 1) Overview cards (Total Collected, Platform Commission, Available Balance, This Month), 2) Bank Account Settings modal for configuring withdrawal destination, 3) Platform Withdrawals history with status tracking, 4) Commission Transactions from completed trips, 5) Driver Payouts Overview. All backend endpoints tested with curl and working. Frontend UI verified with screenshots. Backend: /api/admin/merchants/overview, /api/admin/merchants/transactions, /api/admin/merchants/settings, /api/admin/merchants/withdraw, /api/admin/merchants/withdrawals. Test credentials: admin@demo.com/demo123"
+    message: "Implemented comprehensive Stripe Dashboard for Admin and Driver. ADMIN: Merchants section with 4 tabs (Transactions, Payouts, Commissions, Refunds & Disputes). Features: Transaction table with full fare breakdown, payout status tracking, payout schedule settings (weekly/daily, early cashout fee), refund creation/processing, chargeback tracking. DRIVER: New Earnings page at /driver/earnings with Stripe Connect onboarding, earnings summary (daily/weekly/monthly), payout history, early cashout with fee, and downloadable statements. Updated Quebec taxi meter base fare to $5.15 (includes $0.90 government fee). Test credentials: admin@demo.com/demo123, driver@demo.com/demo123"
   - agent: "testing"
     message: "BACKEND TESTING COMPLETED: 39/40 tests passed (97.5% success rate). ✅ Password Management APIs working perfectly. ✅ Admin Taxes and Contracts APIs working correctly. ❌ CRITICAL ISSUE: Admin Payouts POST /api/admin/payouts fails with 500 error due to ObjectId serialization bug in backend - needs main agent to fix by excluding _id field or converting ObjectId to string before returning response."
   - agent: "testing"
