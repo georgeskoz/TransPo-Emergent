@@ -55,6 +55,10 @@ export default function DriverDashboard() {
   const [noShowTimerSeconds, setNoShowTimerSeconds] = useState(0);
   const noShowTimerRef = useRef(null);
   
+  // Real-time ride alerts from Socket.io
+  const [incomingRideAlert, setIncomingRideAlert] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  
   // Driver tier/points state
   const [driverTier, setDriverTier] = useState({
     tier: 'silver',
