@@ -787,9 +787,9 @@ export default function DriverDashboard() {
         <div className="px-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Settings className="w-5 h-5 text-gray-400" />
+              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
               <span className="text-lg font-semibold text-gray-800">
-                {isOnline ? 'Finding trips' : 'Go online to find trips'}
+                {isOnline ? 'You are Online' : 'You are Offline'}
               </span>
             </div>
             <button className="p-2">
@@ -805,7 +805,7 @@ export default function DriverDashboard() {
               animate={{ opacity: 1 }}
             >
               <motion.div 
-                className="h-full bg-blue-500"
+                className="h-full bg-green-500"
                 initial={{ width: 0 }}
                 animate={{ width: '100%' }}
                 transition={{ duration: 3, repeat: Infinity }}
@@ -814,19 +814,35 @@ export default function DriverDashboard() {
           )}
         </div>
 
-        {/* Go Online Button */}
-        {!isOnline && (
-          <div className="px-6 pb-4 space-y-3">
-            <Button 
-              onClick={toggleOnlineStatus}
-              className="w-full py-6 text-lg font-semibold bg-gray-800 hover:bg-gray-900 text-white rounded-xl"
-              disabled={loading}
-              data-testid="go-online-btn"
-            >
-              {loading ? <div className="spinner" /> : 'Go Online'}
-            </Button>
-            
-            {/* Street Hail Button */}
+        {/* Go Online/Offline Button - Always visible */}
+        <div className="px-6 pb-4 space-y-3">
+          <Button 
+            onClick={toggleOnlineStatus}
+            className={`w-full py-6 text-lg font-semibold rounded-xl ${
+              isOnline 
+                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                : 'bg-green-500 hover:bg-green-600 text-white'
+            }`}
+            disabled={loading}
+            data-testid="go-online-btn"
+          >
+            {loading ? (
+              <div className="spinner" />
+            ) : isOnline ? (
+              <>
+                <Power className="w-5 h-5 mr-2" />
+                Go Offline
+              </>
+            ) : (
+              <>
+                <Power className="w-5 h-5 mr-2" />
+                Go Online
+              </>
+            )}
+          </Button>
+          
+          {/* Street Hail Button - Only when offline */}
+          {!isOnline && (
             <Button 
               onClick={() => navigate('/driver/meter')}
               variant="outline"
@@ -835,8 +851,8 @@ export default function DriverDashboard() {
               <Flag className="w-5 h-5 mr-2" />
               Street Hail / Flag Mode
             </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Active Trip */}
         {isOnline && activeJobs.length > 0 && (
