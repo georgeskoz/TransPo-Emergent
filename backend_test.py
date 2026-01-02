@@ -2759,7 +2759,7 @@ class TranspoAPITester:
         """Run focused tests based on test_result.md requirements"""
         print("🚀 Starting Transpo Backend API Focused Test Suite")
         print(f"🎯 Testing against: {self.base_url}")
-        print("📋 Focus: NEW Stripe Dashboard APIs (Admin Payments + Driver Earnings), Password Management, Admin Panel, Authentication, Fare Estimation")
+        print("📋 Focus: Socket.io Real-time Service, NEW Stripe Dashboard APIs (Admin Payments + Driver Earnings), Password Management, Admin Panel, Authentication, Fare Estimation")
         
         start_time = datetime.now()
         
@@ -2769,6 +2769,10 @@ class TranspoAPITester:
         try:
             self.test_health_check()
             self.test_authentication()
+            
+            # NEW: Socket.io real-time service tests (from review request)
+            self.test_socket_io_realtime_service()
+            
             self.test_driver_tier_system()  # NEW: Driver Tier System with point-based cancellations
             self.test_driver_cancellation_no_show()  # Driver Cancellation and No-Show feature
             self.test_password_management()
