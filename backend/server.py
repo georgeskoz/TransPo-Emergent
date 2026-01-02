@@ -1260,6 +1260,7 @@ async def complete_booking(booking_id: str, current_user: dict = Depends(get_cur
         {"$set": {"status": "completed", "completed_at": now}}
     )
     
+    # Add points for completed trip
     await db.drivers.update_one(
         {"user_id": current_user["id"]},
         {
@@ -1267,12 +1268,23 @@ async def complete_booking(booking_id: str, current_user: dict = Depends(get_cur
             "$inc": {
                 "total_rides": 1,
                 "earnings_today": fare_total * 0.8,
-                "earnings_total": fare_total * 0.8
+                "earnings_total": fare_total * 0.8,
+                "points": POINTS_PER_COMPLETED_TRIP  # +10 points per completed trip
             }
         }
     )
     
-    return {"message": "Ride completed", "earnings": fare_total * 0.8}
+    # Get updated driver info for tier
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    tier_info = get_driver_tier(driver.get("points", 0))
+    
+    return {
+        "message": "Ride completed", 
+        "earnings": fare_total * 0.8,
+        "points_earned": POINTS_PER_COMPLETED_TRIP,
+        "total_points": driver.get("points", 0),
+        "tier": tier_info["tier"]
+    }
 
 @api_router.post("/driver/trips/{booking_id}/update-status")
 async def update_trip_status(booking_id: str, request: TripStatusUpdate, current_user: dict = Depends(get_current_user)):
