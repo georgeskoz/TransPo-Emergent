@@ -5419,6 +5419,14 @@ async def book_taxi(request: TaxiBookingRequest, current_user: dict = Depends(ge
     booking_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     
+    # Determine contact info based on booking type
+    if request.booking_for_self:
+        contact_name = current_user.get("name", "")
+        contact_phone = current_user.get("phone", "")
+    else:
+        contact_name = request.recipient_name or current_user.get("name", "")
+        contact_phone = request.recipient_phone or current_user.get("phone", "")
+    
     booking_doc = {
         "id": booking_id,
         "user_id": current_user["id"],
@@ -5442,7 +5450,13 @@ async def book_taxi(request: TaxiBookingRequest, current_user: dict = Depends(ge
         "matched_drivers": [d["id"] for d in nearby_drivers[:5]],
         "payment_status": "pending",
         "created_at": now,
-        "updated_at": now
+        "updated_at": now,
+        # Enhanced booking fields
+        "booking_for_self": request.booking_for_self,
+        "contact_name": contact_name,
+        "contact_phone": contact_phone,
+        "special_instructions": request.special_instructions,
+        "pet_policy": request.pet_policy
     }
     
     await db.bookings.insert_one(booking_doc)
