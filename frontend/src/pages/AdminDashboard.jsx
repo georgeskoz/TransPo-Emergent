@@ -167,6 +167,7 @@ export default function AdminDashboard() {
       loadPayoutSettings();
       loadRefunds();
       loadPaymentDisputes();
+      loadStripeConfig();
     }
   }, [activeSection]);
 
