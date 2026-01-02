@@ -328,7 +328,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Stripe Dashboard - Admin Payment Management and Driver Earnings"
+    - "Stripe Dashboard Testing Complete - All APIs Operational"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
