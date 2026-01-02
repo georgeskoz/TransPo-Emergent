@@ -574,8 +574,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Mobile Navigation Hiding Testing - MINOR ISSUE FOUND"
-    - "All other mobile optimization features - TESTING COMPLETED"
+    - "Mobile Transpo App Features Testing - COMPLETED"
+    - "All mobile optimization features - TESTING COMPLETED"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
