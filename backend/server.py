@@ -1196,9 +1196,13 @@ async def accept_booking(booking_id: str, current_user: dict = Depends(get_curre
     if result.modified_count == 0:
         raise HTTPException(status_code=400, detail="Booking no longer available")
     
+    # Clear priority boost and mark as unavailable
     await db.drivers.update_one(
         {"user_id": current_user["id"]},
-        {"$set": {"is_available": False}}
+        {
+            "$set": {"is_available": False},
+            "$unset": {"priority_boost": "", "priority_boost_location": "", "priority_boost_since": ""}
+        }
     )
     
     return {"message": "Booking accepted", "booking_id": booking_id}
