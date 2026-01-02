@@ -2074,7 +2074,8 @@ class TranspoAPITester:
         try:
             self.test_health_check()
             self.test_authentication()
-            self.test_driver_cancellation_no_show()  # NEW: Driver Cancellation and No-Show feature
+            self.test_driver_tier_system()  # NEW: Driver Tier System with point-based cancellations
+            self.test_driver_cancellation_no_show()  # Driver Cancellation and No-Show feature
             self.test_password_management()
             self.test_admin_taxes()
             self.test_admin_contracts()
