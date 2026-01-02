@@ -112,6 +112,21 @@ function AppRouter() {
           <DriverEarnings />
         </ProtectedRoute>
       } />
+      <Route path="/driver/trips" element={
+        <ProtectedRoute allowedRoles={['driver']}>
+          <DriverTripHistory />
+        </ProtectedRoute>
+      } />
+      <Route path="/driver/ratings" element={
+        <ProtectedRoute allowedRoles={['driver']}>
+          <DriverRatings />
+        </ProtectedRoute>
+      } />
+      <Route path="/driver/settings" element={
+        <ProtectedRoute allowedRoles={['driver']}>
+          <DriverSettings />
+        </ProtectedRoute>
+      } />
 
       {/* Admin Routes */}
       <Route path="/admin" element={
