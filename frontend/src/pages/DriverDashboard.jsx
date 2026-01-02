@@ -913,6 +913,94 @@ export default function DriverDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Cancellation Modal */}
+      <AnimatePresence>
+        {showCancellationModal && (
+          <motion.div 
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowCancellationModal(false)}
+          >
+            <motion.div 
+              className="w-full max-w-lg bg-white rounded-t-3xl p-6"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">Cancel Trip</h3>
+                <button 
+                  onClick={() => setShowCancellationModal(false)}
+                  className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Warning */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Cancellation Policy</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Some reasons result in a 5-minute suspension. Safety concerns and too many passengers do not result in penalties.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancellation Reasons */}
+              <div className="space-y-2 mb-6">
+                <p className="text-sm font-medium text-gray-600 mb-3">Select a reason:</p>
+                {CANCELLATION_REASONS.map((reason) => {
+                  const IconComponent = reason.icon;
+                  return (
+                    <button
+                      key={reason.id}
+                      onClick={() => handleCancelTrip(reason.id)}
+                      disabled={loading}
+                      className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all
+                        ${reason.penalty 
+                          ? 'border-orange-200 hover:border-orange-400 hover:bg-orange-50' 
+                          : 'border-green-200 hover:border-green-400 hover:bg-green-50'
+                        }
+                      `}
+                      data-testid={`cancel-reason-${reason.id}`}
+                    >
+                      <div className={`p-2 rounded-lg ${reason.penalty ? 'bg-orange-100' : 'bg-green-100'}`}>
+                        <IconComponent className={`w-5 h-5 ${reason.penalty ? 'text-orange-600' : 'text-green-600'}`} />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="font-medium text-gray-800">{reason.label}</p>
+                        <p className={`text-xs ${reason.penalty ? 'text-orange-600' : 'text-green-600'}`}>
+                          {reason.penalty ? '5 min suspension' : 'No penalty'}
+                        </p>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-gray-400" />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Close Button */}
+              <Button 
+                onClick={() => setShowCancellationModal(false)}
+                variant="outline"
+                className="w-full py-4 border-gray-300"
+              >
+                Keep Trip
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
