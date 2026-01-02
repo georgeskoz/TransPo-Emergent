@@ -1038,7 +1038,21 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
         "payment_methods": current_user.get("payment_methods", []),
         "auth_provider": current_user.get("auth_provider", "email"),
         "role": current_user["role"],
-        "created_at": current_user["created_at"]
+        "created_at": current_user["created_at"],
+        # User rating and accountability
+        "rating": current_user.get("rating", USER_RATING_CONFIG["initial_rating"]),
+        "no_show_count": current_user.get("no_show_count", 0),
+        "late_cancellation_count": current_user.get("late_cancellation_count", 0),
+        # Saved addresses
+        "saved_addresses": current_user.get("saved_addresses", []),
+        # Notification preferences
+        "notifications": current_user.get("notifications", {
+            "push_enabled": True,
+            "email_enabled": True,
+            "sms_enabled": False,
+            "ride_updates": True,
+            "promotions": True
+        })
     }
 
 # ============== PAYMENT METHODS ROUTES ==============
