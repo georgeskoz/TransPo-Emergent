@@ -395,87 +395,11 @@ export default function DriverProfilePage() {
           </Card>
         </motion.div>
 
-        {/* Vehicle Information */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="bg-noir-600 border-noir-300">
-            <CardHeader>
-              <CardTitle className="font-heading text-lg text-white flex items-center gap-2">
-                <Car className="w-5 h-5 text-yellow" />
-                Vehicle Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-noir-100">Vehicle Type</Label>
-                  <Select
-                    value={profile.vehicle_type}
-                    onValueChange={(value) => setProfile({ ...profile, vehicle_type: value })}
-                  >
-                    <SelectTrigger className="bg-noir-500 border-noir-300 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-noir-600 border-noir-300">
-                      <SelectItem value="sedan" className="text-white hover:bg-noir-500">Sedan</SelectItem>
-                      <SelectItem value="suv" className="text-white hover:bg-noir-500">SUV</SelectItem>
-                      <SelectItem value="van" className="text-white hover:bg-noir-500">Van</SelectItem>
-                      <SelectItem value="bike" className="text-white hover:bg-noir-500">Motorcycle</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-noir-100">License Plate</Label>
-                  <Input
-                    value={profile.license_plate}
-                    onChange={(e) => setProfile({ ...profile, license_plate: e.target.value.toUpperCase() })}
-                    placeholder="ABC 123"
-                    className="bg-noir-500 border-noir-300 text-white uppercase"
-                  />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-noir-100">Make</Label>
-                  <Input
-                    value={profile.vehicle_make}
-                    onChange={(e) => setProfile({ ...profile, vehicle_make: e.target.value })}
-                    placeholder="Toyota"
-                    className="bg-noir-500 border-noir-300 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-noir-100">Model</Label>
-                  <Input
-                    value={profile.vehicle_model}
-                    onChange={(e) => setProfile({ ...profile, vehicle_model: e.target.value })}
-                    placeholder="Camry"
-                    className="bg-noir-500 border-noir-300 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-noir-100">Color</Label>
-                  <Input
-                    value={profile.vehicle_color}
-                    onChange={(e) => setProfile({ ...profile, vehicle_color: e.target.value })}
-                    placeholder="White"
-                    className="bg-noir-500 border-noir-300 text-white"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
         {/* Driver's License */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.2 }}
         >
           <Card className="bg-noir-600 border-noir-300">
             <CardHeader>
