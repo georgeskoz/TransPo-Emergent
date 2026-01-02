@@ -22,20 +22,20 @@ class TaxiConfigCreate(BaseModel):
     name: str
     description: Optional[str] = None
     
-    # Day rates (05:00 - 23:00)
-    day_base_fare: float = 4.10
+    # Day rates (05:00 - 23:00) - base includes $0.90 government fee
+    day_base_fare: float = 5.15  # $4.25 + $0.90 gov fee
     day_per_km_rate: float = 2.05
     day_waiting_per_min: float = 0.77
     
-    # Night rates (23:00 - 05:00)
-    night_base_fare: float = 4.70
+    # Night rates (23:00 - 05:00) - base includes $0.90 government fee
+    night_base_fare: float = 5.75  # $4.85 + $0.90 gov fee
     night_per_km_rate: float = 2.35
     night_waiting_per_min: float = 0.89
     
     # Speed threshold (km/h) - below this, waiting charges apply
     speed_threshold_kmh: float = 20.0
     
-    # Government fee (Quebec CTQ)
+    # Government fee (Quebec CTQ) - included in base fare
     government_fee: float = 0.90
     
     # Tax settings
