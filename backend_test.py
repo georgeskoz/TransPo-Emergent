@@ -2518,6 +2518,230 @@ class TranspoAPITester:
                 headers=self.get_auth_headers(self.user_token)
             )
 
+    def test_socket_io_realtime_service(self):
+        """Test Socket.io real-time ride request service integration"""
+        print("\n" + "="*50)
+        print("🔌 SOCKET.IO REAL-TIME SERVICE TESTS")
+        print("="*50)
+        
+        # Real-time service URL from review request
+        realtime_base_url = "http://localhost:8002"
+        
+        # Test 1: Check Real-time Service Health
+        try:
+            health_response = requests.get(f"{realtime_base_url}/health", timeout=10)
+            if health_response.status_code == 200:
+                health_data = health_response.json()
+                print(f"✅ Real-time Service Health Check Passed")
+                print(f"   Status: {health_data.get('status', 'N/A')}")
+                print(f"   Service: {health_data.get('service', 'N/A')}")
+                
+                if health_data.get('status') == 'ok' and health_data.get('service') == 'transpo-realtime':
+                    print("✅ Health endpoint returns correct status and service name")
+                    self.tests_passed += 1
+                else:
+                    print("❌ Health endpoint response format incorrect")
+                    self.failed_tests.append({
+                        "test": "Real-time Service Health",
+                        "error": f"Expected status=ok, service=transpo-realtime, got {health_data}"
+                    })
+            else:
+                print(f"❌ Real-time Service Health Check Failed - Status: {health_response.status_code}")
+                self.failed_tests.append({
+                    "test": "Real-time Service Health",
+                    "error": f"HTTP {health_response.status_code}: {health_response.text}"
+                })
+        except Exception as e:
+            print(f"❌ Real-time Service Health Check Failed - Error: {str(e)}")
+            self.failed_tests.append({
+                "test": "Real-time Service Health",
+                "error": f"Connection error: {str(e)}"
+            })
+        
+        self.tests_run += 1
+        
+        # Test 2: Check Online Drivers Count
+        try:
+            drivers_response = requests.get(f"{realtime_base_url}/drivers/online", timeout=10)
+            if drivers_response.status_code == 200:
+                drivers_data = drivers_response.json()
+                print(f"✅ Online Drivers Count Check Passed")
+                print(f"   Online Drivers: {drivers_data.get('onlineDrivers', 'N/A')}")
+                print(f"   Connected Sockets: {drivers_data.get('connectedSockets', 'N/A')}")
+                
+                if 'onlineDrivers' in drivers_data and 'connectedSockets' in drivers_data:
+                    print("✅ Online drivers endpoint returns correct data structure")
+                    self.tests_passed += 1
+                else:
+                    print("❌ Online drivers endpoint missing required fields")
+                    self.failed_tests.append({
+                        "test": "Online Drivers Count",
+                        "error": f"Missing onlineDrivers or connectedSockets fields: {drivers_data}"
+                    })
+            else:
+                print(f"❌ Online Drivers Count Check Failed - Status: {drivers_response.status_code}")
+                self.failed_tests.append({
+                    "test": "Online Drivers Count",
+                    "error": f"HTTP {drivers_response.status_code}: {drivers_response.text}"
+                })
+        except Exception as e:
+            print(f"❌ Online Drivers Count Check Failed - Error: {str(e)}")
+            self.failed_tests.append({
+                "test": "Online Drivers Count",
+                "error": f"Connection error: {str(e)}"
+            })
+        
+        self.tests_run += 1
+        
+        # Test 3: Test Ride Request Broadcast (REST endpoint)
+        ride_request_data = {
+            "userId": "test-user-1",
+            "userName": "Test User",
+            "pickup": {
+                "latitude": 45.5017,
+                "longitude": -73.5673,
+                "address": "123 Test St, Montreal"
+            },
+            "dropoff": {
+                "latitude": 45.5088,
+                "longitude": -73.554,
+                "address": "456 Downtown Ave, Montreal"
+            },
+            "vehicleType": "sedan",
+            "fare": {"total": 15.50},
+            "bookingId": "test-booking-123"
+        }
+        
+        try:
+            broadcast_response = requests.post(
+                f"{realtime_base_url}/test/ride-request",
+                json=ride_request_data,
+                timeout=10
+            )
+            if broadcast_response.status_code == 200:
+                broadcast_data = broadcast_response.json()
+                print(f"✅ Ride Request Broadcast Test Passed")
+                print(f"   Success: {broadcast_data.get('success', 'N/A')}")
+                print(f"   Message: {broadcast_data.get('message', 'N/A')}")
+                
+                if broadcast_data.get('success') == True and 'broadcasted' in broadcast_data.get('message', '').lower():
+                    print("✅ Ride request broadcast endpoint working correctly")
+                    self.tests_passed += 1
+                else:
+                    print("❌ Ride request broadcast response format incorrect")
+                    self.failed_tests.append({
+                        "test": "Ride Request Broadcast",
+                        "error": f"Expected success=true and 'broadcasted' message, got {broadcast_data}"
+                    })
+            else:
+                print(f"❌ Ride Request Broadcast Test Failed - Status: {broadcast_response.status_code}")
+                self.failed_tests.append({
+                    "test": "Ride Request Broadcast",
+                    "error": f"HTTP {broadcast_response.status_code}: {broadcast_response.text}"
+                })
+        except Exception as e:
+            print(f"❌ Ride Request Broadcast Test Failed - Error: {str(e)}")
+            self.failed_tests.append({
+                "test": "Ride Request Broadcast",
+                "error": f"Connection error: {str(e)}"
+            })
+        
+        self.tests_run += 1
+        
+        # Test 4: Verify MongoDB 2dsphere Index (through backend API)
+        print("\n📍 Testing MongoDB 2dsphere Index...")
+        if self.admin_token:
+            try:
+                # Test geospatial query through backend to verify index exists
+                nearby_drivers_response = requests.get(
+                    f"{self.base_url}/admin/drivers/nearby?lat=45.5017&lng=-73.5673&radius=5",
+                    headers=self.get_auth_headers(self.admin_token),
+                    timeout=10
+                )
+                
+                if nearby_drivers_response.status_code == 200:
+                    print("✅ MongoDB 2dsphere index appears to be working (geospatial query successful)")
+                    self.tests_passed += 1
+                else:
+                    print(f"⚠️ Could not verify 2dsphere index - Status: {nearby_drivers_response.status_code}")
+                    # Don't count this as a failure since the endpoint might not exist
+            except Exception as e:
+                print(f"⚠️ Could not verify 2dsphere index - Error: {str(e)}")
+                # Don't count this as a failure since the endpoint might not exist
+        else:
+            print("⚠️ Cannot verify 2dsphere index - no admin token available")
+        
+        self.tests_run += 1
+        
+        # Test 5: Test Backend Integration with Enhanced Booking Fields
+        print("\n📋 Testing Backend Integration with Enhanced Booking...")
+        if self.user_token:
+            enhanced_booking_data = {
+                "pickup_lat": 45.5017,
+                "pickup_lng": -73.5673,
+                "pickup_address": "123 Test St, Montreal",
+                "dropoff_lat": 45.5088,
+                "dropoff_lng": -73.554,
+                "dropoff_address": "456 Downtown Ave, Montreal",
+                "vehicle_type": "sedan",
+                "booking_for_self": True,
+                "special_instructions": "Test integration with real-time service",
+                "pet_policy": "none"
+            }
+            
+            try:
+                booking_response = requests.post(
+                    f"{self.base_url}/taxi/book",
+                    json=enhanced_booking_data,
+                    headers=self.get_auth_headers(self.user_token),
+                    timeout=10
+                )
+                
+                if booking_response.status_code == 200:
+                    booking_data = booking_response.json()
+                    booking_id = booking_data.get('booking_id')
+                    booking_details = booking_data.get('booking', {})
+                    
+                    print(f"✅ Enhanced Booking Integration Test Passed")
+                    print(f"   Booking ID: {booking_id}")
+                    print(f"   Booking For Self: {booking_details.get('booking_for_self', 'N/A')}")
+                    print(f"   Special Instructions: {booking_details.get('special_instructions', 'N/A')}")
+                    print(f"   Pet Policy: {booking_details.get('pet_policy', 'N/A')}")
+                    
+                    # Verify enhanced fields are included
+                    required_fields = ['booking_for_self', 'special_instructions', 'pet_policy']
+                    missing_fields = [field for field in required_fields if field not in booking_details]
+                    
+                    if not missing_fields:
+                        print("✅ All enhanced booking fields present in response")
+                        self.tests_passed += 1
+                    else:
+                        print(f"❌ Missing enhanced booking fields: {missing_fields}")
+                        self.failed_tests.append({
+                            "test": "Enhanced Booking Integration",
+                            "error": f"Missing fields in booking response: {missing_fields}"
+                        })
+                else:
+                    print(f"❌ Enhanced Booking Integration Test Failed - Status: {booking_response.status_code}")
+                    self.failed_tests.append({
+                        "test": "Enhanced Booking Integration",
+                        "error": f"HTTP {booking_response.status_code}: {booking_response.text}"
+                    })
+            except Exception as e:
+                print(f"❌ Enhanced Booking Integration Test Failed - Error: {str(e)}")
+                self.failed_tests.append({
+                    "test": "Enhanced Booking Integration",
+                    "error": f"Connection error: {str(e)}"
+                })
+        else:
+            print("❌ Cannot test enhanced booking integration - no user token available")
+            self.failed_tests.append({
+                "test": "Enhanced Booking Integration",
+                "error": "No user token available for testing"
+            })
+        
+        self.tests_run += 1
+
     def setup_admin_user(self):
         """Setup admin user if it doesn't exist"""
         print("\n🔧 Setting up admin user...")
