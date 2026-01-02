@@ -425,6 +425,44 @@ export default function DriverMeter() {
                       (includes ${finalReceipt.fare_breakdown.tip_amount.toFixed(2)} tip)
                     </div>
                   )}
+                  
+                  {/* Receipt Breakdown */}
+                  <div className="mt-4 pt-4 border-t border-green-200 text-left space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-700">Base fare</span>
+                      <span className="text-green-800">${finalReceipt.fare_breakdown?.base_fare?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-700">Distance</span>
+                      <span className="text-green-800">${finalReceipt.fare_breakdown?.distance_charge?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-700">Time</span>
+                      <span className="text-green-800">${finalReceipt.fare_breakdown?.time_charge?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-700">Waiting</span>
+                      <span className="text-green-800">${finalReceipt.fare_breakdown?.waiting_cost?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm border-t border-green-200 pt-1">
+                      <span className="text-green-700">Gov't fee</span>
+                      <span className="text-green-800">${finalReceipt.fare_breakdown?.government_fee?.toFixed(2) || '0.90'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-700">GST (5%)</span>
+                      <span className="text-green-800">${finalReceipt.fare_breakdown?.gst?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-700">QST (9.975%)</span>
+                      <span className="text-green-800">${finalReceipt.fare_breakdown?.qst?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    {finalReceipt.fare_breakdown?.tip_amount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-700">Tip</span>
+                        <span className="text-green-800">${finalReceipt.fare_breakdown.tip_amount.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
               
