@@ -322,6 +322,11 @@ export default function UserDashboard() {
   const [selectedBookingForRating, setSelectedBookingForRating] = useState(null);
   const [orderingFor, setOrderingFor] = useState(null);
   
+  // Enhanced booking fields
+  const [bookingForSelf, setBookingForSelf] = useState(true);
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  const [petPolicy, setPetPolicy] = useState("none");
+  
   // Address input states
   const [pickupText, setPickupText] = useState("");
   const [dropoffText, setDropoffText] = useState("");
@@ -330,6 +335,9 @@ export default function UserDashboard() {
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  
+  // User rating state
+  const [userRating, setUserRating] = useState(5.0);
   
   const pickupRef = useRef(null);
   const dropoffRef = useRef(null);
