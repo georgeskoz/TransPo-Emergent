@@ -657,7 +657,13 @@ async def register_json(user_data: UserCreate):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
+    # First check users collection
     user = await db.users.find_one({"email": credentials.email})
+    
+    # If not found, check drivers collection
+    if not user:
+        user = await db.drivers.find_one({"email": credentials.email})
+    
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
