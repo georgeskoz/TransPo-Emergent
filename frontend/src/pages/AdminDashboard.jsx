@@ -77,7 +77,6 @@ export default function AdminDashboard() {
   const [payoutsSummary, setPayoutsSummary] = useState({});
   const [payoutSettings, setPayoutSettings] = useState(null);
   const [refunds, setRefunds] = useState([]);
-  const [disputes, setDisputes] = useState([]);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [selectedTripForRefund, setSelectedTripForRefund] = useState(null);
   const [refundType, setRefundType] = useState('full');
