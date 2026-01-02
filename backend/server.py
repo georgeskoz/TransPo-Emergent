@@ -412,6 +412,8 @@ async def get_current_user(
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
             if expires_at > datetime.now(timezone.utc):
                 user = await db.users.find_one({"id": session["user_id"]}, {"_id": 0, "password": 0})
+                if not user:
+                    user = await db.drivers.find_one({"id": session["user_id"]}, {"_id": 0, "password": 0})
                 if user:
                     return user
     
@@ -427,7 +429,12 @@ async def get_current_user(
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Check users collection first, then drivers
         user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+        if not user:
+            user = await db.drivers.find_one({"id": user_id}, {"_id": 0, "password": 0})
+        
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
         return user
