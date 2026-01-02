@@ -12,8 +12,21 @@ import {
   CheckCircle, XCircle, MapPin, ChevronUp, Menu, User, Car,
   Hexagon, ArrowRight, LogOut, AlertCircle, X, History, Wallet,
   Gauge, Flag, Phone, UserX, AlertTriangle, Users, Wrench, MapPinOff,
-  Baby, Shield, Timer
+  Baby, Shield, Timer, Zap
 } from "lucide-react";
+import {
+  driverGoOnline,
+  driverGoOffline,
+  updateDriverLocation,
+  acceptRide,
+  declineRide,
+  onRideAlert,
+  onRideTaken,
+  onDriverConnected,
+  onRideAcceptSuccess,
+  onRideAcceptFailed,
+  disconnectSocket
+} from "../services/socket";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
