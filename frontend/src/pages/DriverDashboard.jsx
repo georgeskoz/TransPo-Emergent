@@ -122,6 +122,75 @@ export default function DriverDashboard() {
     }
   }, [activeJobs]);
 
+  // Socket.io event listeners
+  useEffect(() => {
+    // Listen for incoming ride alerts
+    const unsubRideAlert = onRideAlert((data) => {
+      console.log('🚕 New ride alert:', data);
+      setIncomingRideAlert(data);
+      setShowJobModal(true);
+      setSelectedJob({
+        id: data.bookingId,
+        pickup: data.pickup,
+        dropoff: data.dropoff,
+        fare: data.fare,
+        user_name: data.userName,
+        distance_km: data.distanceKm,
+        eta_minutes: data.estimatedPickupMinutes
+      });
+      // Play notification sound or vibrate
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    });
+
+    // Listen for ride taken by another driver
+    const unsubRideTaken = onRideTaken((data) => {
+      if (incomingRideAlert?.bookingId === data.bookingId) {
+        setShowJobModal(false);
+        setSelectedJob(null);
+        setIncomingRideAlert(null);
+        toast.info('This ride was accepted by another driver');
+      }
+    });
+
+    // Listen for socket connection confirmation
+    const unsubConnected = onDriverConnected((data) => {
+      setSocketConnected(true);
+      toast.success('Connected to ride network');
+    });
+
+    // Listen for ride accept success
+    const unsubAcceptSuccess = onRideAcceptSuccess((data) => {
+      toast.success('Ride accepted successfully!');
+      setShowJobModal(false);
+      setIncomingRideAlert(null);
+      loadJobs();
+    });
+
+    // Listen for ride accept failed
+    const unsubAcceptFailed = onRideAcceptFailed((data) => {
+      toast.error(data.message || 'Failed to accept ride');
+      setShowJobModal(false);
+      setIncomingRideAlert(null);
+    });
+
+    return () => {
+      unsubRideAlert();
+      unsubRideTaken();
+      unsubConnected();
+      unsubAcceptSuccess();
+      unsubAcceptFailed();
+    };
+  }, [incomingRideAlert]);
+
+  // Cleanup socket on unmount
+  useEffect(() => {
+    return () => {
+      if (isOnline) {
+        driverGoOffline();
+      }
+    };
+  }, [isOnline]);
+
   const loadDriverTier = async () => {
     try {
       const res = await fetch(`${API_URL}/driver/status/tier`, { headers: getAuthHeaders() });
