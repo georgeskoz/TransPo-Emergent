@@ -657,7 +657,7 @@ export default function DriverDashboard() {
         </div>
 
         {/* Go Online Button */}
-        {!isOnline && !isSuspended && (
+        {!isOnline && (
           <div className="px-6 pb-4 space-y-3">
             <Button 
               onClick={toggleOnlineStatus}
