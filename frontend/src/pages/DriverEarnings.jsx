@@ -189,9 +189,9 @@ NET EARNINGS: $${data.statement.net_earnings.toFixed(2)}
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-white border-b px-4 py-4 flex items-center gap-4">
+      <div className="bg-white border-b px-4 py-4 flex items-center gap-4 sticky top-0 z-40">
         <button onClick={() => navigate('/driver')} className="p-2 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -201,7 +201,7 @@ NET EARNINGS: $${data.statement.net_earnings.toFixed(2)}
         </button>
       </div>
 
-      <div className="p-4 space-y-4 max-w-2xl mx-auto">
+      <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto">
         {/* Stripe Connection Status */}
         {!stripeStatus?.connected ? (
           <Card className="border-orange-200 bg-orange-50">
