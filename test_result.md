@@ -227,6 +227,18 @@ backend:
         comment: "✅ TESTED: Driver Cancellation and No-Show feature working perfectly. All 4 new endpoints tested successfully: POST /api/driver/trips/{id}/update-status (arrived/in_progress status updates), POST /api/driver/trips/{id}/cancel (with penalized/no-penalty reasons), POST /api/driver/trips/{id}/no-show (priority boost activation), GET /api/driver/status/suspension (suspension status checking). Business logic verified: Penalized cancellations (car_issue, wrong_address, no_car_seat, pickup_too_far) correctly apply 5-minute suspension. No-penalty cancellations (safety_concern, too_many_passengers) apply no suspension. No-show correctly gives driver priority_boost for next ride in same area. All status transitions and validations working correctly."
 
 frontend:
+  - task: "Driver Cancellation and No-Show Feature Frontend"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/DriverDashboard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Driver Cancellation & No-Show frontend feature working perfectly. All components tested successfully: ✅ Phone icon button [data-testid='cancel-menu-btn'] next to trip status badge. ✅ Cancellation modal opens with 'Cancel Trip' header and 'Cancellation Policy' warning. ✅ All 6 cancellation reasons displayed correctly: Car Issue, Wrong Address, No Car Seat, Pickup Too Far (orange, 5 min suspension), Safety Concern, More Than 4 People (green, No penalty). ✅ 'Keep Trip' button closes modal. ✅ Suspension banner with countdown timer (0:53) and 'Time remaining' label. ✅ Go Online button correctly hidden during suspension. ✅ Active trip section with proper blue styling. ✅ Trip status badges (in_progress) and Complete Trip button. ✅ Earnings display ($15.47), menu and profile buttons working. ✅ Visual styling: red suspension banner, blue active trip card. All data-testid attributes present for robust testing. Complete frontend implementation operational."
+
   - task: "Forgot Password Page"
     implemented: true
     working: true
