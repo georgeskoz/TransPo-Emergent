@@ -1261,6 +1261,284 @@ class TranspoAPITester:
                 print(f"   Total trips: {statement_data.get('total_trips', 0)}")
                 print("✅ Statement download successful")
 
+    def test_driver_cancellation_no_show(self):
+        """Test new Driver Cancellation and No-Show feature"""
+        print("\n" + "="*50)
+        print("🚫 DRIVER CANCELLATION & NO-SHOW TESTS")
+        print("="*50)
+        
+        if not self.user_token or not self.driver_token:
+            print("❌ Skipping cancellation tests - missing user or driver token")
+            return
+        
+        # Step 1: Create a taxi booking as user
+        booking_data = {
+            "pickup_lat": 45.5017,
+            "pickup_lng": -73.5673,
+            "pickup_address": "1000 Rue de la Gauchetière, Montreal, QC",
+            "dropoff_lat": 45.5088,
+            "dropoff_lng": -73.5538,
+            "dropoff_address": "300 Rue Saint-Paul, Montreal, QC",
+            "vehicle_type": "sedan"
+        }
+        
+        success, response = self.run_test(
+            "Create Taxi Booking for Cancellation Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if not success:
+            print("❌ Failed to create booking - skipping cancellation tests")
+            return
+        
+        booking_id = response.get('booking', {}).get('id')
+        if not booking_id:
+            print("❌ No booking ID returned - skipping cancellation tests")
+            return
+        
+        print(f"   Created booking ID: {booking_id}")
+        
+        # Step 2: Accept booking as driver
+        success, response = self.run_test(
+            "Accept Booking for Cancellation Test",
+            "POST",
+            f"driver/accept/{booking_id}",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if not success:
+            print("❌ Failed to accept booking - skipping remaining tests")
+            return
+        
+        print("✅ Booking accepted by driver")
+        
+        # Step 3: Update status to "arrived"
+        status_data = {"status": "arrived"}
+        success, response = self.run_test(
+            "Update Trip Status - Arrived",
+            "POST",
+            f"driver/trips/{booking_id}/update-status",
+            200,
+            status_data,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            print(f"✅ Trip status updated to: {response.get('status', 'N/A')}")
+        
+        # Step 4: Test no-show endpoint
+        success, response = self.run_test(
+            "Mark Customer No-Show",
+            "POST",
+            f"driver/trips/{booking_id}/no-show",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            priority_boost = response.get('priority_boost_active', False)
+            print(f"   Priority boost active: {priority_boost}")
+            print(f"   Message: {response.get('message', 'N/A')}")
+            print(f"   Note: {response.get('note', 'N/A')}")
+            
+            if priority_boost:
+                print("✅ Driver correctly received priority boost for no-show")
+            else:
+                print("❌ Driver did not receive priority boost")
+        
+        # Step 5: Check suspension status - should show priority boost
+        success, response = self.run_test(
+            "Check Suspension Status - Priority Boost",
+            "GET",
+            "driver/status/suspension",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            is_suspended = response.get('is_suspended', False)
+            priority_boost = response.get('priority_boost', False)
+            print(f"   Is suspended: {is_suspended}")
+            print(f"   Priority boost: {priority_boost}")
+            print(f"   Remaining seconds: {response.get('remaining_seconds', 0)}")
+            
+            if priority_boost and not is_suspended:
+                print("✅ Priority boost correctly active, no suspension")
+            else:
+                print("❌ Unexpected suspension status after no-show")
+        
+        # Step 6: Create another booking for cancellation test
+        success, response = self.run_test(
+            "Create Second Booking for Cancellation Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        booking_id_2 = None
+        if success:
+            booking_id_2 = response.get('booking', {}).get('id')
+            print(f"   Created second booking ID: {booking_id_2}")
+            
+            # Accept second booking
+            if booking_id_2:
+                success, response = self.run_test(
+                    "Accept Second Booking",
+                    "POST",
+                    f"driver/accept/{booking_id_2}",
+                    200,
+                    headers=self.get_auth_headers(self.driver_token)
+                )
+                
+                if success:
+                    print("✅ Second booking accepted")
+        
+        # Step 7: Cancel with penalized reason (car_issue)
+        if booking_id_2:
+            cancel_data = {
+                "reason": "car_issue",
+                "notes": "Engine trouble - cannot complete trip"
+            }
+            
+            success, response = self.run_test(
+                "Cancel Trip - Penalized Reason",
+                "POST",
+                f"driver/trips/{booking_id_2}/cancel",
+                200,
+                cancel_data,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                is_penalized = response.get('is_penalized', False)
+                suspension_minutes = response.get('suspension_minutes', 0)
+                reason = response.get('reason', 'N/A')
+                
+                print(f"   Cancellation reason: {reason}")
+                print(f"   Is penalized: {is_penalized}")
+                print(f"   Suspension minutes: {suspension_minutes}")
+                
+                if is_penalized and suspension_minutes == 5:
+                    print("✅ Penalized cancellation correctly applied 5-minute suspension")
+                else:
+                    print("❌ Penalized cancellation did not apply correct suspension")
+        
+        # Step 8: Check suspension status - should be suspended
+        success, response = self.run_test(
+            "Check Suspension Status - After Penalized Cancel",
+            "GET",
+            "driver/status/suspension",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            is_suspended = response.get('is_suspended', False)
+            remaining_seconds = response.get('remaining_seconds', 0)
+            reason = response.get('reason', 'N/A')
+            
+            print(f"   Is suspended: {is_suspended}")
+            print(f"   Remaining seconds: {remaining_seconds}")
+            print(f"   Suspension reason: {reason}")
+            
+            if is_suspended and remaining_seconds > 0:
+                print("✅ Driver correctly suspended after penalized cancellation")
+            else:
+                print("❌ Driver not suspended after penalized cancellation")
+        
+        # Step 9: Create third booking for no-penalty cancellation test
+        success, response = self.run_test(
+            "Create Third Booking for No-Penalty Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        booking_id_3 = None
+        if success:
+            booking_id_3 = response.get('booking', {}).get('id')
+            print(f"   Created third booking ID: {booking_id_3}")
+            
+            # Accept third booking (should work even if suspended, for testing)
+            if booking_id_3:
+                success, response = self.run_test(
+                    "Accept Third Booking",
+                    "POST",
+                    f"driver/accept/{booking_id_3}",
+                    200,
+                    headers=self.get_auth_headers(self.driver_token)
+                )
+                
+                if success:
+                    print("✅ Third booking accepted")
+        
+        # Step 10: Cancel with no-penalty reason (safety_concern)
+        if booking_id_3:
+            cancel_data = {
+                "reason": "safety_concern",
+                "notes": "Unsafe pickup location - customer safety concern"
+            }
+            
+            success, response = self.run_test(
+                "Cancel Trip - No Penalty Reason",
+                "POST",
+                f"driver/trips/{booking_id_3}/cancel",
+                200,
+                cancel_data,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                is_penalized = response.get('is_penalized', False)
+                suspension_minutes = response.get('suspension_minutes', 0)
+                reason = response.get('reason', 'N/A')
+                
+                print(f"   Cancellation reason: {reason}")
+                print(f"   Is penalized: {is_penalized}")
+                print(f"   Suspension minutes: {suspension_minutes}")
+                
+                if not is_penalized and suspension_minutes == 0:
+                    print("✅ No-penalty cancellation correctly applied no suspension")
+                else:
+                    print("❌ No-penalty cancellation incorrectly applied suspension")
+        
+        # Step 11: Test invalid status update
+        invalid_status_data = {"status": "invalid_status"}
+        self.run_test(
+            "Update Trip Status - Invalid Status",
+            "POST",
+            f"driver/trips/{booking_id}/update-status",
+            400,
+            invalid_status_data,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        # Step 12: Test update status to in_progress
+        if booking_id:
+            in_progress_data = {"status": "in_progress"}
+            success, response = self.run_test(
+                "Update Trip Status - In Progress",
+                "POST",
+                f"driver/trips/{booking_id}/update-status",
+                200,
+                in_progress_data,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                print(f"✅ Trip status updated to: {response.get('status', 'N/A')}")
+        
+        print("\n🎯 Driver Cancellation & No-Show Feature Testing Complete")
+
     def test_admin_endpoints(self):
         """Test admin user and driver creation endpoints"""
         print("\n" + "="*50)
