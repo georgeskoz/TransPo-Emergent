@@ -89,26 +89,6 @@ export default function DriverDashboard() {
     };
   }, [arrivedTime]);
 
-  // Suspension countdown timer
-  useEffect(() => {
-    if (isSuspended && suspensionRemaining > 0) {
-      suspensionTimerRef.current = setInterval(() => {
-        setSuspensionRemaining(prev => {
-          if (prev <= 1) {
-            setIsSuspended(false);
-            clearInterval(suspensionTimerRef.current);
-            toast.success("Suspension ended! You can go online now.");
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (suspensionTimerRef.current) clearInterval(suspensionTimerRef.current);
-    };
-  }, [isSuspended, suspensionRemaining]);
-
   // Track when trip status changes to "arrived"
   useEffect(() => {
     if (activeJobs.length > 0) {
@@ -125,19 +105,17 @@ export default function DriverDashboard() {
     }
   }, [activeJobs]);
 
-  const checkSuspensionStatus = async () => {
+  const loadDriverTier = async () => {
     try {
-      const res = await fetch(`${API_URL}/driver/status/suspension`, { headers: getAuthHeaders() });
+      const res = await fetch(`${API_URL}/driver/status/tier`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
-        if (data.is_suspended) {
-          setIsSuspended(true);
-          setSuspensionRemaining(data.remaining_seconds);
-        }
+        setDriverTier(data);
       }
     } catch (e) {
-      console.log('Error checking suspension:', e);
+      console.log('Error loading tier:', e);
     }
+  };
   };
 
   const loadDriverData = async () => {
