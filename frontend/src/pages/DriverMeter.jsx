@@ -252,7 +252,7 @@ export default function DriverMeter() {
   const isNightRate = rates?.current_period === 'night';
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 pb-24 mobile-layout">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="flex items-center justify-between max-w-lg mx-auto">
