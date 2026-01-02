@@ -177,6 +177,19 @@ class DocumentVerification(BaseModel):
     status: str  # pending, approved, rejected
     rejection_reason: Optional[str] = None
 
+# Cancellation reasons that result in a 5-minute suspension
+PENALIZED_CANCELLATION_REASONS = ["car_issue", "wrong_address", "no_car_seat", "pickup_too_far"]
+# Cancellation reasons with NO penalty
+NO_PENALTY_CANCELLATION_REASONS = ["safety_concern", "too_many_passengers"]
+
+class TripCancellationRequest(BaseModel):
+    reason: str  # car_issue, wrong_address, no_car_seat, safety_concern, pickup_too_far, too_many_passengers
+    notes: Optional[str] = None
+
+class TripStatusUpdate(BaseModel):
+    status: str  # arrived, in_progress
+
+
 # ============== FARE CALCULATION (Quebec Example) ==============
 
 FARE_CONFIG = {
