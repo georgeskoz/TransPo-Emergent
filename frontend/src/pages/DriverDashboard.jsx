@@ -329,7 +329,7 @@ export default function DriverDashboard() {
                   </li>
                   <li>
                     <button 
-                      onClick={() => setShowMenu(false)}
+                      onClick={() => { navigate('/driver/trips'); setShowMenu(false); }}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
                     >
                       <History className="w-5 h-5" />
@@ -338,7 +338,7 @@ export default function DriverDashboard() {
                   </li>
                   <li>
                     <button 
-                      onClick={() => setShowMenu(false)}
+                      onClick={() => { navigate('/driver/ratings'); setShowMenu(false); }}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
                     >
                       <Star className="w-5 h-5" />
@@ -347,7 +347,7 @@ export default function DriverDashboard() {
                   </li>
                   <li>
                     <button 
-                      onClick={() => setShowMenu(false)}
+                      onClick={() => { navigate('/driver/settings'); setShowMenu(false); }}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700"
                     >
                       <Settings className="w-5 h-5" />
