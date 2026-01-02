@@ -2,6 +2,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuthStore } from "./store";
+import { MobileNav } from "./components/mobile";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -12,6 +13,8 @@ import ResetPassword from "./pages/ResetPassword";
 import ChangePassword from "./pages/ChangePassword";
 import UserDashboard from "./pages/UserDashboard";
 import UserProfile from "./pages/UserProfile";
+import UserTrips from "./pages/UserTrips";
+import UserWallet from "./pages/UserWallet";
 import DriverDashboard from "./pages/DriverDashboard";
 import DriverProfilePage from "./pages/DriverProfilePage";
 import DriverMeter from "./pages/DriverMeter";
