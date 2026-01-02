@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import {
   Home, Search, Settings, Navigation, DollarSign, Star, Clock,
   CheckCircle, XCircle, MapPin, ChevronUp, Menu, User, Car,
   Hexagon, ArrowRight, LogOut, AlertCircle, X, History, Wallet,
-  Gauge, Flag
+  Gauge, Flag, Phone, UserX, AlertTriangle, Users, Wrench, MapPinOff,
+  Baby, Shield, Timer
 } from "lucide-react";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
