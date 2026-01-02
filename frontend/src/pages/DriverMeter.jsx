@@ -357,10 +357,6 @@ export default function DriverMeter() {
                   <span className="text-gray-500">Waiting ({fare.waiting_minutes?.toFixed(1)} min)</span>
                   <span className="font-mono text-gray-900">${fare.waiting_cost?.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between border-t border-gray-200 pt-2">
-                  <span className="text-gray-500">Gov't fee</span>
-                  <span className="font-mono text-gray-900">${fare.government_fee?.toFixed(2)}</span>
-                </div>
               </div>
             )}
 
