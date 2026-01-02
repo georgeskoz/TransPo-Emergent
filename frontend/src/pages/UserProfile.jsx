@@ -216,6 +216,59 @@ export default function UserProfile() {
     }
   };
 
+  const handleSaveNotifications = async () => {
+    try {
+      const res = await fetch(`${API_URL}/user/notifications`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(notifications),
+      });
+      if (res.ok) {
+        toast.success('Notification preferences saved');
+      }
+    } catch (e) {
+      toast.error('Failed to save notifications');
+    }
+  };
+
+  const handleAddAddress = async () => {
+    if (!newAddress.address) {
+      toast.error('Please enter an address');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/user/saved-addresses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(newAddress),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSavedAddresses([...savedAddresses, data.address]);
+        setShowAddAddress(false);
+        setNewAddress({ label: "home", address: "", latitude: 0, longitude: 0 });
+        toast.success('Address saved');
+      }
+    } catch (e) {
+      toast.error('Failed to save address');
+    }
+  };
+
+  const handleDeleteAddress = async (addressId) => {
+    try {
+      const res = await fetch(`${API_URL}/user/saved-addresses/${addressId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        setSavedAddresses(savedAddresses.filter(a => a.id !== addressId));
+        toast.success('Address removed');
+      }
+    } catch (e) {
+      toast.error('Failed to remove address');
+    }
+  };
+
   const getPaymentIcon = (type) => {
     switch (type) {
       case 'apple_pay': return '🍎';
