@@ -163,7 +163,7 @@ export default function AdminDashboard() {
       loadDriverPayouts();
       loadPayoutSettings();
       loadRefunds();
-      loadDisputes();
+      loadPaymentDisputes();
     }
   }, [activeSection]);
 
