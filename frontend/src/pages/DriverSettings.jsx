@@ -362,6 +362,146 @@ export default function DriverSettings() {
         </div>
       )}
 
+      {/* Licenses Section */}
+      {activeSection === 'licenses' && (
+        <div className="p-4 space-y-4 max-w-lg mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-cyan-500" />
+                Driver's License
+              </CardTitle>
+              <CardDescription>Your government-issued driver's license</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>License Number <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={licenses.drivers_license_number}
+                    onChange={(e) => setLicenses({...licenses, drivers_license_number: e.target.value})}
+                    placeholder="DL12345678"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Expiry Date <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="date"
+                    value={licenses.drivers_license_expiry}
+                    onChange={(e) => setLicenses({...licenses, drivers_license_expiry: e.target.value})}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-cyan-500 transition-colors"
+                onClick={() => document.getElementById('drivers-license-upload').click()}
+              >
+                {licenses.drivers_license_photo ? (
+                  <div className="space-y-2">
+                    <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                      <Check className="w-8 h-8 text-green-600" />
+                    </div>
+                    <p className="text-sm text-green-600">Photo uploaded</p>
+                    <p className="text-xs text-gray-500">Click to replace</p>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                    <p className="font-medium">Upload Driver's License Photo</p>
+                    <p className="text-sm text-gray-500">Front of your license</p>
+                  </>
+                )}
+                <input
+                  id="drivers-license-upload"
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      setLicenses({...licenses, drivers_license_photo: e.target.files[0].name});
+                      toast.success('Driver\'s license photo selected');
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-yellow-500" />
+                Taxi/Permit License
+              </CardTitle>
+              <CardDescription>Your taxi permit or professional license</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>License/Permit Number <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={licenses.taxi_license_number}
+                    onChange={(e) => setLicenses({...licenses, taxi_license_number: e.target.value})}
+                    placeholder="TX12345"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Expiry Date <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="date"
+                    value={licenses.taxi_license_expiry}
+                    onChange={(e) => setLicenses({...licenses, taxi_license_expiry: e.target.value})}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-yellow-500 transition-colors"
+                onClick={() => document.getElementById('taxi-license-upload').click()}
+              >
+                {licenses.taxi_license_photo ? (
+                  <div className="space-y-2">
+                    <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                      <Check className="w-8 h-8 text-green-600" />
+                    </div>
+                    <p className="text-sm text-green-600">Photo uploaded</p>
+                    <p className="text-xs text-gray-500">Click to replace</p>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+                    <p className="font-medium">Upload Taxi License Photo</p>
+                    <p className="text-sm text-gray-500">Your taxi permit document</p>
+                  </>
+                )}
+                <input
+                  id="taxi-license-upload"
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      setLicenses({...licenses, taxi_license_photo: e.target.files[0].name});
+                      toast.success('Taxi license photo selected');
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button onClick={saveLicenses} disabled={loading} className="w-full">
+            <Save className="w-4 h-4 mr-2" />
+            Save License Information
+          </Button>
+        </div>
+      )}
+
       {/* Car Documents Section */}
       {activeSection === 'documents' && (
         <div className="p-4 space-y-4 max-w-lg mx-auto">
