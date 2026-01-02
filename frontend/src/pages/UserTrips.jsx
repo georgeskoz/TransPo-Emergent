@@ -117,7 +117,10 @@ export default function UserTrips() {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-500">
-                        {formatDate(trip.created_at)}
+                        {trip.status === 'scheduled' && trip.scheduled_time 
+                          ? `Scheduled: ${formatDate(trip.scheduled_time)}`
+                          : formatDate(trip.created_at)
+                        }
                       </span>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}>
