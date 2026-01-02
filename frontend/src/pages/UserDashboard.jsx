@@ -937,23 +937,94 @@ export default function UserDashboard() {
                         </div>
                       </div>
 
-                      {/* Booking For Toggle */}
-                      <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200">
-                        <div className="flex items-center gap-3">
-                          <UserPlus className="w-5 h-5 text-gray-600" />
-                          <div>
-                            <p className="font-medium text-gray-800">Booking for someone else?</p>
-                            <p className="text-xs text-gray-500">We&apos;ll contact them for pickup</p>
+                      {/* Booking Options - Two Columns */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Book for Someone Else */}
+                        <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                          !bookingForSelf 
+                            ? 'border-blue-500 bg-blue-50' 
+                            : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                        }`}
+                          onClick={() => {
+                            if (bookingForSelf) {
+                              setBookingForSelf(false);
+                              setShowOrderForSomeone(true);
+                            } else {
+                              setBookingForSelf(true);
+                              setOrderingFor(null);
+                            }
+                          }}
+                        >
+                          <div className="flex flex-col items-center text-center gap-2">
+                            <UserPlus className={`w-6 h-6 ${!bookingForSelf ? 'text-blue-600' : 'text-gray-500'}`} />
+                            <div>
+                              <p className={`font-medium text-sm ${!bookingForSelf ? 'text-blue-800' : 'text-gray-800'}`}>
+                                For Someone Else
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {orderingFor ? orderingFor.name : 'Add recipient'}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <Switch 
-                          checked={!bookingForSelf}
-                          onCheckedChange={(checked) => {
-                            setBookingForSelf(!checked);
-                            if (checked) setShowOrderForSomeone(true);
-                          }}
-                        />
+
+                        {/* Book for Later */}
+                        <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                          isScheduled 
+                            ? 'border-purple-500 bg-purple-50' 
+                            : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                        }`}
+                          onClick={() => setIsScheduled(!isScheduled)}
+                        >
+                          <div className="flex flex-col items-center text-center gap-2">
+                            <Clock className={`w-6 h-6 ${isScheduled ? 'text-purple-600' : 'text-gray-500'}`} />
+                            <div>
+                              <p className={`font-medium text-sm ${isScheduled ? 'text-purple-800' : 'text-gray-800'}`}>
+                                Book for Later
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {isScheduled && scheduledDate ? `${scheduledDate} ${scheduledTime}` : 'Schedule ride'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Schedule Date/Time Picker (shown when booking for later) */}
+                      {isScheduled && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="p-4 rounded-xl bg-purple-50 border border-purple-200 space-y-3"
+                        >
+                          <p className="font-medium text-purple-800 text-sm">When do you need the ride?</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs text-purple-700 mb-1 block">Date</Label>
+                              <input
+                                type="date"
+                                value={scheduledDate}
+                                onChange={(e) => setScheduledDate(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                className="w-full px-3 py-2.5 rounded-lg border border-purple-200 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-purple-700 mb-1 block">Time</Label>
+                              <input
+                                type="time"
+                                value={scheduledTime}
+                                onChange={(e) => setScheduledTime(e.target.value)}
+                                className="w-full px-3 py-2.5 rounded-lg border border-purple-200 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-purple-600">
+                            📅 Your driver will arrive at the scheduled time
+                          </p>
+                        </motion.div>
+                      )}
 
                       {/* Recipient Info (shown when booking for someone else) */}
                       {!bookingForSelf && orderingFor && (
