@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +9,7 @@ import { useAuthStore, useDriverStore } from "../store";
 import { toast } from "sonner";
 import { 
   Home, Search, Settings, Navigation, DollarSign, Star, Clock,
-  CheckCircle, XCircle, MapPin, ChevronUp, Menu, User, Car,
+  CheckCircle, XCircle, MapPin, ChevronUp, ChevronDown, Menu, User, Car,
   Hexagon, ArrowRight, LogOut, AlertCircle, X, History, Wallet,
   Gauge, Flag, Phone, UserX, AlertTriangle, Users, Wrench, MapPinOff,
   Baby, Shield, Timer, Zap, Volume2, VolumeX, Power
