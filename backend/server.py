@@ -159,6 +159,12 @@ class TaxiBookingRequest(BaseModel):
     dropoff_lng: float
     dropoff_address: str
     vehicle_type: str = "sedan"
+    # Enhanced booking fields
+    booking_for_self: bool = True  # True = for myself, False = for someone else
+    recipient_name: Optional[str] = None  # Name of recipient if booking for someone else
+    recipient_phone: Optional[str] = None  # Phone of recipient if booking for someone else
+    special_instructions: Optional[str] = None  # Gate codes, apt numbers, "wait at corner"
+    pet_policy: str = "none"  # none, small_pet, large_pet, service_animal
 
 class FareEstimateRequest(BaseModel):
     pickup_lat: float
@@ -176,6 +182,15 @@ class DocumentVerification(BaseModel):
     document_type: str  # drivers_license, taxi_license, profile_photo
     status: str  # pending, approved, rejected
     rejection_reason: Optional[str] = None
+
+# User rating configuration
+USER_RATING_CONFIG = {
+    "initial_rating": 5.0,
+    "no_show_penalty": 0.5,  # Rating deduction for no-shows
+    "late_cancel_penalty": 0.2,  # Rating deduction for canceling after 3 minutes
+    "late_cancel_threshold_minutes": 3,  # Minutes after which cancellation is penalized
+    "no_show_fee": 5.00  # Cancellation fee for no-shows
+}
 
 # Cancellation reasons and their point penalties
 CANCELLATION_POINT_PENALTIES = {
