@@ -12,7 +12,7 @@ import {
   CheckCircle, XCircle, MapPin, ChevronUp, Menu, User, Car,
   Hexagon, ArrowRight, LogOut, AlertCircle, X, History, Wallet,
   Gauge, Flag, Phone, UserX, AlertTriangle, Users, Wrench, MapPinOff,
-  Baby, Shield, Timer, Zap, Volume2, VolumeX
+  Baby, Shield, Timer, Zap, Volume2, VolumeX, Power
 } from "lucide-react";
 import {
   driverGoOnline,
