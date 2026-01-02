@@ -579,7 +579,6 @@ export default function UserDashboard() {
         setShowMenu(false);
       }
     }},
-    { icon: Settings, label: 'Settings', action: () => { navigate('/profile'); setShowMenu(false); } },
     { icon: LogOut, label: 'Sign Out', action: handleLogout, danger: true },
   ];
 
