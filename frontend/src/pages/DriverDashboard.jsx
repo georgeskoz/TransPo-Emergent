@@ -116,7 +116,6 @@ export default function DriverDashboard() {
       console.log('Error loading tier:', e);
     }
   };
-  };
 
   const loadDriverData = async () => {
     try {
