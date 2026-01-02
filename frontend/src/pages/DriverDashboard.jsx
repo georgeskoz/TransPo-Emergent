@@ -991,9 +991,9 @@ export default function DriverDashboard() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-yellow-800">Cancellation Policy</p>
+                    <p className="text-sm font-medium text-yellow-800">Points Deduction Policy</p>
                     <p className="text-xs text-yellow-700 mt-1">
-                      Some reasons result in a 5-minute suspension. Safety concerns and too many passengers do not result in penalties.
+                      Some reasons result in point deductions that affect your driver tier. Safety concerns and passenger issues have no penalty.
                     </p>
                   </div>
                 </div>
@@ -1004,26 +1004,27 @@ export default function DriverDashboard() {
                 <p className="text-sm font-medium text-gray-600 mb-3">Select a reason:</p>
                 {CANCELLATION_REASONS.map((reason) => {
                   const IconComponent = reason.icon;
+                  const hasPenalty = reason.points > 0;
                   return (
                     <button
                       key={reason.id}
                       onClick={() => handleCancelTrip(reason.id)}
                       disabled={loading}
                       className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all
-                        ${reason.penalty 
+                        ${hasPenalty 
                           ? 'border-orange-200 hover:border-orange-400 hover:bg-orange-50' 
                           : 'border-green-200 hover:border-green-400 hover:bg-green-50'
                         }
                       `}
                       data-testid={`cancel-reason-${reason.id}`}
                     >
-                      <div className={`p-2 rounded-lg ${reason.penalty ? 'bg-orange-100' : 'bg-green-100'}`}>
-                        <IconComponent className={`w-5 h-5 ${reason.penalty ? 'text-orange-600' : 'text-green-600'}`} />
+                      <div className={`p-2 rounded-lg ${hasPenalty ? 'bg-orange-100' : 'bg-green-100'}`}>
+                        <IconComponent className={`w-5 h-5 ${hasPenalty ? 'text-orange-600' : 'text-green-600'}`} />
                       </div>
                       <div className="flex-1 text-left">
                         <p className="font-medium text-gray-800">{reason.label}</p>
-                        <p className={`text-xs ${reason.penalty ? 'text-orange-600' : 'text-green-600'}`}>
-                          {reason.penalty ? '5 min suspension' : 'No penalty'}
+                        <p className={`text-xs ${hasPenalty ? 'text-orange-600' : 'text-green-600'}`}>
+                          {hasPenalty ? `-${reason.points} points` : 'No penalty'}
                         </p>
                       </div>
                       <ArrowRight className="w-5 h-5 text-gray-400" />
@@ -1040,6 +1041,69 @@ export default function DriverDashboard() {
               >
                 Keep Trip
               </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Call Customer Modal */}
+      <AnimatePresence>
+        {showCallModal && customerInfo && (
+          <motion.div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowCallModal(false)}
+          >
+            <motion.div 
+              className="w-full max-w-sm bg-white rounded-2xl p-6 mx-4"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Phone className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Contact Customer</h3>
+                <p className="text-sm text-gray-500 mt-1">{customerInfo.customer_name}</p>
+              </div>
+
+              {/* Customer Info */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <Phone className="w-5 h-5 text-gray-400" />
+                  <span className="font-medium text-gray-800">
+                    {customerInfo.customer_phone || 'No phone available'}
+                  </span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <span className="text-sm text-gray-600">{customerInfo.pickup_address}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => setShowCallModal(false)}
+                  variant="outline"
+                  className="flex-1 py-3 border-gray-300"
+                >
+                  Close
+                </Button>
+                <Button 
+                  onClick={callCustomer}
+                  className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white"
+                  disabled={!customerInfo.customer_phone || customerInfo.customer_phone === 'No phone available'}
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  Call
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}
