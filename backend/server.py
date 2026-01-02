@@ -3866,6 +3866,93 @@ async def update_withdrawal_status(
     
     return {"message": f"Withdrawal marked as {status}"}
 
+# ============== STRIPE CONFIGURATION ==============
+
+class StripeConfigUpdate(BaseModel):
+    publishable_key: str
+    secret_key: str
+    webhook_secret: Optional[str] = None
+
+@api_router.get("/admin/stripe/config")
+async def get_stripe_config(current_user: dict = Depends(get_current_user)):
+    """Get Stripe configuration status."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    config = await db.stripe_config.find_one({"type": "platform"}, {"_id": 0})
+    
+    if not config:
+        return {
+            "config": {
+                "publishable_key": "",
+                "secret_key": "",
+                "webhook_secret": ""
+            },
+            "is_configured": False
+        }
+    
+    # Mask sensitive data
+    return {
+        "config": {
+            "publishable_key": config.get("publishable_key", ""),
+            "secret_key": "••••••••" if config.get("secret_key") else "",
+            "webhook_secret": "••••••••" if config.get("webhook_secret") else ""
+        },
+        "is_configured": bool(config.get("publishable_key") and config.get("secret_key"))
+    }
+
+@api_router.put("/admin/stripe/config")
+async def update_stripe_config(
+    config: StripeConfigUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update Stripe API configuration."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super Admin access required")
+    
+    # Validate keys format
+    if not config.publishable_key.startswith(("pk_test_", "pk_live_")):
+        raise HTTPException(status_code=400, detail="Invalid publishable key format. Should start with pk_test_ or pk_live_")
+    
+    if not config.secret_key.startswith(("sk_test_", "sk_live_")):
+        raise HTTPException(status_code=400, detail="Invalid secret key format. Should start with sk_test_ or sk_live_")
+    
+    # Check if mixing test and live keys
+    is_test_publishable = config.publishable_key.startswith("pk_test_")
+    is_test_secret = config.secret_key.startswith("sk_test_")
+    if is_test_publishable != is_test_secret:
+        raise HTTPException(status_code=400, detail="Cannot mix test and live keys. Both must be test or both must be live.")
+    
+    update_data = {
+        "type": "platform",
+        "publishable_key": config.publishable_key,
+        "secret_key": config.secret_key,
+        "webhook_secret": config.webhook_secret,
+        "mode": "test" if is_test_publishable else "live",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": current_user["id"]
+    }
+    
+    await db.stripe_config.update_one(
+        {"type": "platform"},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    # Audit log
+    await create_audit_log(
+        actor_id=current_user["id"],
+        actor_role="super_admin",
+        action_type="stripe_config_updated",
+        entity_type="stripe_config",
+        entity_id="platform",
+        notes=f"Stripe {'test' if is_test_publishable else 'live'} mode configured"
+    )
+    
+    logger.info(f"[STRIPE] Configuration updated by {current_user['id']} - Mode: {'test' if is_test_publishable else 'live'}")
+    
+    return {"message": "Stripe configuration saved successfully", "mode": "test" if is_test_publishable else "live"}
+
 # ============== STRIPE PAYMENTS & TRANSACTIONS ==============
 
 # Stripe fee calculation (standard rate)
