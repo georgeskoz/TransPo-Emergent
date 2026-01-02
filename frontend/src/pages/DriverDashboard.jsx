@@ -36,32 +36,44 @@ export default function DriverDashboard() {
   
   // Cancellation and No-Show states
   const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState(null);
   const [arrivedTime, setArrivedTime] = useState(null);
   const [noShowTimerSeconds, setNoShowTimerSeconds] = useState(0);
-  const [isSuspended, setIsSuspended] = useState(false);
-  const [suspensionRemaining, setSuspensionRemaining] = useState(0);
   const noShowTimerRef = useRef(null);
-  const suspensionTimerRef = useRef(null);
   
-  // Cancellation reasons
+  // Driver tier/points state
+  const [driverTier, setDriverTier] = useState({
+    tier: 'silver',
+    points: 0,
+    next_tier: 'gold',
+    next_tier_threshold: 300,
+    progress_percent: 0
+  });
+  
+  // Cancellation reasons with point penalties
   const CANCELLATION_REASONS = [
-    { id: 'car_issue', label: 'Car Issue', icon: Wrench, penalty: true },
-    { id: 'wrong_address', label: 'Wrong Address', icon: MapPinOff, penalty: true },
-    { id: 'no_car_seat', label: 'No Car Seat', icon: Baby, penalty: true },
-    { id: 'pickup_too_far', label: 'Pickup Too Far', icon: MapPin, penalty: true },
-    { id: 'safety_concern', label: 'Safety Concern', icon: Shield, penalty: false },
-    { id: 'too_many_passengers', label: 'More Than 4 People', icon: Users, penalty: false },
+    { id: 'car_issue', label: 'Car Issue', icon: Wrench, points: 20 },
+    { id: 'wrong_address', label: 'Wrong Address', icon: MapPinOff, points: 15 },
+    { id: 'no_car_seat', label: 'No Car Seat', icon: Baby, points: 10 },
+    { id: 'pickup_too_far', label: 'Pickup Too Far', icon: MapPin, points: 15 },
+    { id: 'safety_concern', label: 'Safety Concern', icon: Shield, points: 0 },
+    { id: 'too_many_passengers', label: 'More Than 4 People', icon: Users, points: 0 },
   ];
+  
+  // Tier colors and labels
+  const TIER_CONFIG = {
+    silver: { color: 'bg-gray-400', textColor: 'text-gray-600', label: 'Silver' },
+    gold: { color: 'bg-yellow-500', textColor: 'text-yellow-600', label: 'Gold' },
+    platinum: { color: 'bg-purple-500', textColor: 'text-purple-600', label: 'Platinum' },
+    diamond: { color: 'bg-cyan-400', textColor: 'text-cyan-600', label: 'Diamond' }
+  };
 
   useEffect(() => {
     loadDriverData();
+    loadDriverTier();
     const interval = setInterval(loadJobs, 5000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Check suspension status on load
-  useEffect(() => {
-    checkSuspensionStatus();
   }, []);
 
   // No-show timer: starts when driver arrives
