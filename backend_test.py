@@ -1384,7 +1384,7 @@ class TranspoAPITester:
         
         booking_id_2 = None
         if success:
-            booking_id_2 = response.get('booking', {}).get('id')
+            booking_id_2 = response.get('booking_id')
             print(f"   Created second booking ID: {booking_id_2}")
             
             # Accept second booking
