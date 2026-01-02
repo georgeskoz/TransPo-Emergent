@@ -415,7 +415,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Driver Dashboard Tier System & Call Customer UI - TESTING COMPLETED"
+    - "User Rating & Accountability APIs - TESTING COMPLETED"
+    - "Enhanced Booking APIs - TESTING COMPLETED"
+    - "Saved Addresses APIs - TESTING COMPLETED"
+    - "Notification Preferences APIs - TESTING COMPLETED"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
