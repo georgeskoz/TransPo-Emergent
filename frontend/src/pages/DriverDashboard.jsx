@@ -33,6 +33,25 @@ export default function DriverDashboard() {
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
+  
+  // Cancellation and No-Show states
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [arrivedTime, setArrivedTime] = useState(null);
+  const [noShowTimerSeconds, setNoShowTimerSeconds] = useState(0);
+  const [isSuspended, setIsSuspended] = useState(false);
+  const [suspensionRemaining, setSuspensionRemaining] = useState(0);
+  const noShowTimerRef = useRef(null);
+  const suspensionTimerRef = useRef(null);
+  
+  // Cancellation reasons
+  const CANCELLATION_REASONS = [
+    { id: 'car_issue', label: 'Car Issue', icon: Wrench, penalty: true },
+    { id: 'wrong_address', label: 'Wrong Address', icon: MapPinOff, penalty: true },
+    { id: 'no_car_seat', label: 'No Car Seat', icon: Baby, penalty: true },
+    { id: 'pickup_too_far', label: 'Pickup Too Far', icon: MapPin, penalty: true },
+    { id: 'safety_concern', label: 'Safety Concern', icon: Shield, penalty: false },
+    { id: 'too_many_passengers', label: 'More Than 4 People', icon: Users, penalty: false },
+  ];
 
   useEffect(() => {
     loadDriverData();
