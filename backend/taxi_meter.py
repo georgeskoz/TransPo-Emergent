@@ -8,11 +8,12 @@ from typing import Dict, Optional, Tuple
 import math
 
 # ============== QUEBEC TAXI METER CONFIGURATION ==============
+# Base fares include the $0.90 government fee as per Quebec CTQ regulations
 
 QUEBEC_TAXI_RATES = {
     "day": {
         "hours": (5, 23),  # 05:00 - 22:59
-        "base_fare": 4.10,
+        "base_fare": 5.15,  # Includes $0.90 gov't fee
         "per_km_rate": 2.05,
         "waiting_per_hour": 46.20,
         "waiting_per_min": 0.77,
@@ -20,13 +21,13 @@ QUEBEC_TAXI_RATES = {
     },
     "night": {
         "hours": (23, 5),  # 23:00 - 04:59
-        "base_fare": 4.70,
+        "base_fare": 5.75,  # Includes $0.90 gov't fee
         "per_km_rate": 2.35,
         "waiting_per_hour": 53.40,
         "waiting_per_min": 0.89,
         "speed_threshold_kmh": 22.723
     },
-    "government_fee": 0.90,
+    "government_fee": 0.90,  # Already included in base_fare
     "tip_presets": [15, 20, 25],
     "gps_sample_interval_seconds": 1,
     "min_movement_meters": 3  # Ignore GPS jitter below this
