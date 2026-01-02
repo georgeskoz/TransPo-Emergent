@@ -776,10 +776,11 @@ export default function DriverDashboard() {
 
       {/* Bottom Sheet - Draggable */}
       <motion.div 
-        className="fixed bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl shadow-2xl"
+        className="fixed left-0 right-0 z-30 bg-white rounded-t-3xl shadow-2xl"
+        style={{ bottom: '64px' }}
         initial={{ y: 0 }}
         animate={{ 
-          y: bottomSheetExpanded ? 0 : 'calc(100% - 80px)'
+          y: bottomSheetExpanded ? 0 : 'calc(100% - 60px)'
         }}
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
         drag="y"
@@ -793,30 +794,30 @@ export default function DriverDashboard() {
             setBottomSheetExpanded(false);
           }
         }}
-        style={{ maxHeight: 'calc(100vh - 100px)' }}
+        data-testid="driver-bottom-sheet"
       >
         {/* Drag Handle - Always Visible */}
         <div 
-          className="flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+          className="flex flex-col items-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
           onPointerDown={(e) => dragControls.start(e)}
           onClick={() => setBottomSheetExpanded(!bottomSheetExpanded)}
         >
-          <div className="w-12 h-1.5 bg-gray-300 rounded-full mb-1" />
+          <div className="w-10 h-1 bg-gray-300 rounded-full mb-1" />
           
           {/* Mini status when collapsed */}
           {!bottomSheetExpanded && (
-            <div className="flex items-center gap-3 py-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-              <span className="text-sm font-medium text-gray-700">
-                {isOnline ? 'Online' : 'Offline'}
+            <div className="flex items-center gap-2 py-1">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-xs font-medium text-gray-600">
+                {isOnline ? 'Online - Tap to expand' : 'Offline - Tap to expand'}
               </span>
-              <ChevronUp className="w-4 h-4 text-gray-400" />
+              <ChevronUp className="w-3 h-3 text-gray-400" />
             </div>
           )}
           
           {/* Expanded hint */}
           {bottomSheetExpanded && (
-            <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
+            <div className="flex items-center gap-1 text-xs text-gray-400">
               <ChevronDown className="w-3 h-3" />
               <span>Drag down to minimize</span>
             </div>
