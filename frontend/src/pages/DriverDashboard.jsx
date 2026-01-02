@@ -686,9 +686,12 @@ export default function DriverDashboard() {
               <CardContent className="p-4">
                 {/* Header with Status and Action Buttons */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-blue-700">Active Trip</span>
                   <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-blue-700">Active Trip</span>
                     <Badge className="bg-blue-500 text-white capitalize">{activeJobs[0].status}</Badge>
+                  </div>
+                  {/* Action Buttons: Phone, Cancel, Logout */}
+                  <div className="flex items-center gap-1">
                     {/* Call Customer Button */}
                     <button 
                       onClick={getCustomerContact}
@@ -698,14 +701,22 @@ export default function DriverDashboard() {
                     >
                       <Phone className="w-4 h-4 text-white" />
                     </button>
-                    {/* Cancel Menu Button */}
+                    {/* Cancel Trip Button */}
                     <button 
                       onClick={() => setShowCancellationModal(true)}
-                      className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 transition-colors"
+                      className="p-2 rounded-full bg-red-500 shadow-sm hover:bg-red-600 transition-colors"
                       data-testid="cancel-menu-btn"
                       title="Cancel Trip"
                     >
-                      <X className="w-4 h-4 text-red-500" />
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                    {/* Logout Button */}
+                    <button 
+                      onClick={handleLogout}
+                      className="p-2 rounded-full bg-gray-200 shadow-sm hover:bg-gray-300 transition-colors"
+                      title="Logout"
+                    >
+                      <LogOut className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
                 </div>
