@@ -25,6 +25,7 @@ import {
   onDriverConnected,
   onRideAcceptSuccess,
   onRideAcceptFailed,
+  onScheduledRideAlert,
   disconnectSocket
 } from "../services/socket";
 import {
