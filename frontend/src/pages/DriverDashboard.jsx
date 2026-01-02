@@ -774,82 +774,122 @@ export default function DriverDashboard() {
         </button>
       </div>
 
-      {/* Bottom Sheet */}
+      {/* Bottom Sheet - Draggable */}
       <motion.div 
-        className="relative z-10 bottom-sheet"
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
+        className="fixed bottom-0 left-0 right-0 z-30 bg-white rounded-t-3xl shadow-2xl"
+        initial={{ y: 0 }}
+        animate={{ 
+          y: bottomSheetExpanded ? 0 : 'calc(100% - 220px)'
+        }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        drag="y"
+        dragControls={dragControls}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.2 }}
+        onDragEnd={(_, info) => {
+          if (info.offset.y < -50) {
+            setBottomSheetExpanded(true);
+          } else if (info.offset.y > 50) {
+            setBottomSheetExpanded(false);
+          }
+        }}
+        style={{ maxHeight: 'calc(100vh - 100px)' }}
       >
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
-        </div>
-
-        {/* Online/Offline Toggle */}
-        <div className="px-6 pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-              <span className="text-lg font-semibold text-gray-800">
-                {isOnline ? 'You are Online' : 'You are Offline'}
-              </span>
-            </div>
-            <button className="p-2">
-              <Menu className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
-          
-          {/* Progress bar when online */}
-          {isOnline && (
-            <motion.div 
-              className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <motion.div 
-                className="h-full bg-green-500"
-                initial={{ width: 0 }}
-                animate={{ width: '100%' }}
-                transition={{ duration: 3, repeat: Infinity }}
-              />
-            </motion.div>
-          )}
-        </div>
-
-        {/* Go Online/Offline Button - Always visible */}
-        <div className="px-6 pb-4 space-y-3">
-          <Button 
-            onClick={toggleOnlineStatus}
-            className={`w-full py-6 text-lg font-semibold rounded-xl ${
-              isOnline 
-                ? 'bg-red-500 hover:bg-red-600 text-white' 
-                : 'bg-green-500 hover:bg-green-600 text-white'
-            }`}
-            disabled={loading}
-            data-testid="go-online-btn"
-          >
-            {loading ? (
-              <div className="spinner" />
-            ) : isOnline ? (
+        {/* Drag Handle */}
+        <div 
+          className="flex flex-col items-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+          onPointerDown={(e) => dragControls.start(e)}
+        >
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full mb-2" />
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            {bottomSheetExpanded ? (
               <>
-                <Power className="w-5 h-5 mr-2" />
-                Go Offline
+                <ChevronDown className="w-3 h-3" />
+                <span>Drag down to minimize</span>
               </>
             ) : (
               <>
-                <Power className="w-5 h-5 mr-2" />
-                Go Online
+                <ChevronUp className="w-3 h-3" />
+                <span>Drag up for more</span>
               </>
             )}
-          </Button>
-          
-          {/* Street Hail Button - Only when offline */}
-          {!isOnline && (
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className={`overflow-y-auto ${bottomSheetExpanded ? 'max-h-[calc(100vh-180px)]' : 'max-h-[160px]'} transition-all duration-300`}>
+          {/* Online/Offline Toggle */}
+          <div className="px-6 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                <span className="text-lg font-semibold text-gray-800">
+                  {isOnline ? 'You are Online' : 'You are Offline'}
+                </span>
+              </div>
+              <button 
+                className="p-2"
+                onClick={() => setBottomSheetExpanded(!bottomSheetExpanded)}
+              >
+                {bottomSheetExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronUp className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+            
+            {/* Progress bar when online */}
+            {isOnline && (
+              <motion.div 
+                className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <motion.div 
+                  className="h-full bg-green-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
+              </motion.div>
+            )}
+          </div>
+
+          {/* Go Online/Offline Button - Always visible */}
+          <div className="px-6 pb-4 space-y-3">
             <Button 
-              onClick={() => navigate('/driver/meter')}
-              variant="outline"
-              className="w-full py-4 border-orange-300 text-orange-700 hover:bg-orange-50 rounded-xl"
+              onClick={toggleOnlineStatus}
+              className={`w-full py-6 text-lg font-semibold rounded-xl ${
+                isOnline 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+              }`}
+              disabled={loading}
+              data-testid="go-online-btn"
             >
+              {loading ? (
+                <div className="spinner" />
+              ) : isOnline ? (
+                <>
+                  <Power className="w-5 h-5 mr-2" />
+                  Go Offline
+                </>
+              ) : (
+                <>
+                  <Power className="w-5 h-5 mr-2" />
+                  Go Online
+                </>
+              )}
+            </Button>
+            
+            {/* Street Hail Button - Only when offline */}
+            {!isOnline && (
+              <Button 
+                onClick={() => navigate('/driver/meter')}
+                variant="outline"
+                className="w-full py-4 border-orange-300 text-orange-700 hover:bg-orange-50 rounded-xl"
+              >
               <Flag className="w-5 h-5 mr-2" />
               Street Hail / Flag Mode
             </Button>
