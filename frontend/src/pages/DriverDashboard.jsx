@@ -51,9 +51,11 @@ export default function DriverDashboard() {
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showBottomSheet, setShowBottomSheet] = useState(true);
+  const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false);
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
+  const dragControls = useDragControls();
   
   // Cancellation and No-Show states
   const [showCancellationModal, setShowCancellationModal] = useState(false);
