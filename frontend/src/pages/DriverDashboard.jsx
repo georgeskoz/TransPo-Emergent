@@ -1094,6 +1094,10 @@ export default function DriverDashboard() {
             </Button>
           </div>
         )}
+        
+        {/* Bottom padding for mobile nav */}
+        <div className="h-20" />
+        </div>
       </motion.div>
 
       {/* Job Request Modal */}
