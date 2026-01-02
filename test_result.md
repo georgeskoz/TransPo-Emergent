@@ -64,6 +64,54 @@
 user_problem_statement: "Transpo Mobility Platform - Merchants Section for Platform Earnings and Bank Account Management"
 
 backend:
+  - task: "User Rating & Accountability APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: User Rating & Accountability APIs working correctly. GET /api/user/rating returns rating (4.5), no_show_count (2), late_cancellation_count (0). POST /api/bookings/{booking_id}/cancel correctly handles early cancellation with no penalty (is_late_cancellation: false, rating_deducted: 0). POST /api/driver/trips/{booking_id}/no-show correctly deducts 0.5 rating and adds $5.00 no_show_fee, gives driver priority_boost. User rating correctly updated from 4.5 to 4.0 after no-show."
+
+  - task: "Enhanced Booking APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Enhanced Booking APIs working correctly. POST /api/taxi/book accepts new fields: booking_for_self, recipient_name, recipient_phone, special_instructions, pet_policy (none, small_pet, large_pet, service_animal). Bookings created successfully with enhanced fields. Minor: Enhanced fields not returned in booking response but functionality works."
+
+  - task: "Saved Addresses APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Saved Addresses APIs working perfectly. GET /api/user/saved-addresses returns empty array initially. POST /api/user/saved-addresses successfully adds addresses with label, address, latitude, longitude, is_default. DELETE /api/user/saved-addresses/{address_id} successfully removes addresses. All CRUD operations working correctly."
+
+  - task: "Notification Preferences APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Notification Preferences APIs working perfectly. GET /api/user/notifications returns correct default preferences (push_enabled: true, email_enabled: true, sms_enabled: false, ride_updates: true, promotions: true). PUT /api/user/notifications successfully updates preferences and persists changes. All notification settings working correctly."
+
   - task: "Change Password API"
     implemented: true
     working: true
