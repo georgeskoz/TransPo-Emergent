@@ -340,7 +340,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Driver Cancellation and No-Show Feature Implementation"
+    - "Driver Cancellation and No-Show Feature Implementation - COMPLETED"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
