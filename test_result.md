@@ -214,6 +214,18 @@ backend:
         agent: "testing"
         comment: "✅ TESTED: 8/8 Stripe Dashboard Driver Earnings APIs working perfectly (100% success rate). ✅ Stripe Connect flow working: status check → onboarding link generation → completion. ✅ Earnings summary working for all periods (daily/weekly/monthly). ✅ Payout history retrieval working. ✅ Statements listing working. ✅ All endpoints return proper data structures with commission rates, fees, and net earnings calculations. Complete Stripe integration functionality operational."
 
+  - task: "Driver Cancellation and No-Show Feature"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Driver Cancellation and No-Show feature working perfectly. All 4 new endpoints tested successfully: POST /api/driver/trips/{id}/update-status (arrived/in_progress status updates), POST /api/driver/trips/{id}/cancel (with penalized/no-penalty reasons), POST /api/driver/trips/{id}/no-show (priority boost activation), GET /api/driver/status/suspension (suspension status checking). Business logic verified: Penalized cancellations (car_issue, wrong_address, no_car_seat, pickup_too_far) correctly apply 5-minute suspension. No-penalty cancellations (safety_concern, too_many_passengers) apply no suspension. No-show correctly gives driver priority_boost for next ride in same area. All status transitions and validations working correctly."
+
 frontend:
   - task: "Forgot Password Page"
     implemented: true
