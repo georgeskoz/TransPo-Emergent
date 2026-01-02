@@ -519,8 +519,9 @@ export default function DriverSettings() {
               <CardDescription>For tax reporting purposes (Quebec)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* SIN */}
               <div>
-                <Label>Social Insurance Number (SIN)</Label>
+                <Label>Social Insurance Number (SIN) <span className="text-red-500">*</span></Label>
                 <Input
                   type="password"
                   value={taxInfo.sin_number}
@@ -531,20 +532,85 @@ export default function DriverSettings() {
                 />
                 <p className="text-xs text-gray-500 mt-1">Required for T4A tax slips</p>
               </div>
+
+              {/* Business Number */}
               <div>
                 <Label>Business Number (if applicable)</Label>
                 <Input
                   value={taxInfo.business_number}
                   onChange={(e) => setTaxInfo({...taxInfo, business_number: e.target.value})}
-                  placeholder="9 digits"
+                  placeholder="9-digit CRA business number"
                   className="mt-1"
                 />
               </div>
-              <div className="space-y-3">
+
+              {/* GST Number */}
+              <div>
+                <Label>GST Number (TPS)</Label>
+                <Input
+                  value={taxInfo.gst_number}
+                  onChange={(e) => setTaxInfo({...taxInfo, gst_number: e.target.value})}
+                  placeholder="123456789RT0001"
+                  className="mt-1 font-mono"
+                />
+                <p className="text-xs text-gray-500 mt-1">15-character GST/HST account number</p>
+              </div>
+
+              {/* QST Number */}
+              <div>
+                <Label>QST Number (TVQ)</Label>
+                <Input
+                  value={taxInfo.qst_number}
+                  onChange={(e) => setTaxInfo({...taxInfo, qst_number: e.target.value})}
+                  placeholder="1234567890TQ0001"
+                  className="mt-1 font-mono"
+                />
+                <p className="text-xs text-gray-500 mt-1">16-character QST account number</p>
+              </div>
+
+              {/* Mandatory Billing Number */}
+              <div>
+                <Label>Mandatory Billing Number</Label>
+                <Input
+                  value={taxInfo.billing_number}
+                  onChange={(e) => setTaxInfo({...taxInfo, billing_number: e.target.value})}
+                  placeholder="Enter billing number"
+                  className="mt-1 font-mono"
+                />
+              </div>
+
+              {/* SRS Authorization Code */}
+              <div>
+                <Label>SRS Authorization Code</Label>
+                <Input
+                  value={taxInfo.srs_code}
+                  onChange={(e) => setTaxInfo({...taxInfo, srs_code: e.target.value})}
+                  placeholder="Enter SRS code"
+                  className="mt-1 font-mono"
+                  disabled={!taxInfo.srs_available}
+                />
+              </div>
+
+              {/* Checkboxes */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">I have an SRS authorization code</div>
+                    <div className="text-xs text-gray-500">Enable to enter your SRS code</div>
+                  </div>
+                  <Button
+                    variant={taxInfo.srs_available ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTaxInfo({...taxInfo, srs_available: !taxInfo.srs_available, srs_code: !taxInfo.srs_available ? taxInfo.srs_code : ''})}
+                  >
+                    {taxInfo.srs_available ? 'Yes' : 'No'}
+                  </Button>
+                </div>
+
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <div className="font-medium">GST Registered</div>
-                    <div className="text-xs text-gray-500">Federal Goods and Services Tax</div>
+                    <div className="text-xs text-gray-500">Federal Goods and Services Tax (5%)</div>
                   </div>
                   <Button
                     variant={taxInfo.gst_registered ? 'default' : 'outline'}
@@ -554,10 +620,11 @@ export default function DriverSettings() {
                     {taxInfo.gst_registered ? 'Yes' : 'No'}
                   </Button>
                 </div>
+
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <div className="font-medium">QST Registered</div>
-                    <div className="text-xs text-gray-500">Quebec Sales Tax</div>
+                    <div className="text-xs text-gray-500">Quebec Sales Tax (9.975%)</div>
                   </div>
                   <Button
                     variant={taxInfo.qst_registered ? 'default' : 'outline'}
@@ -567,11 +634,41 @@ export default function DriverSettings() {
                     {taxInfo.qst_registered ? 'Yes' : 'No'}
                   </Button>
                 </div>
+
+                {/* Tax Disclaimer */}
+                <div className="flex items-start gap-3 p-3 border rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="tax-disclaimer"
+                    checked={taxInfo.tax_disclaimer_accepted}
+                    onChange={(e) => setTaxInfo({...taxInfo, tax_disclaimer_accepted: e.target.checked})}
+                    className="mt-1 rounded"
+                  />
+                  <label htmlFor="tax-disclaimer" className="text-sm text-gray-600 cursor-pointer">
+                    I confirm that I am registered for GST/QST collection, and that Transpo is not responsible for my tax obligations. I understand that I am solely responsible for collecting and remitting applicable taxes.
+                  </label>
+                </div>
               </div>
+
+              {/* Info Box */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Important Tax Information
+                </h4>
+                <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                  <li>GST (5%) and QST (9.975%) may apply to your services</li>
+                  <li>You must be registered if your revenue exceeds $30,000/year</li>
+                  <li>Keep records of all trips for tax filing purposes</li>
+                  <li>Consult a tax professional for personalized advice</li>
+                </ul>
+              </div>
+
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
                 <AlertCircle className="w-4 h-4 inline mr-1" />
-                Your tax information is used solely for issuing tax documents and is kept strictly confidential.
+                Your tax information is encrypted and kept strictly confidential.
               </div>
+
               <Button onClick={saveTaxInfo} disabled={loading} className="w-full">
                 <Save className="w-4 h-4 mr-2" />
                 Save Tax Information
