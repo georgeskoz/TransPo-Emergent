@@ -519,7 +519,7 @@ export default function AdminDashboard() {
     } catch (e) { console.log(e); }
   };
 
-  const loadDisputes = async () => {
+  const loadPaymentDisputes = async () => {
     try {
       const res = await fetch(`${API_URL}/admin/payments/disputes`, { headers: getAuthHeaders() });
       if (res.ok) {
