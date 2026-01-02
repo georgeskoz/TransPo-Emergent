@@ -503,13 +503,13 @@ export default function DriverMeter() {
       <AnimatePresence>
         {showTipModal && (
           <motion.div 
-            className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+            className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div 
-              className="w-full max-w-lg bg-white rounded-t-3xl p-6"
+              className="w-full max-w-lg bg-white rounded-t-3xl p-6 pb-28"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
