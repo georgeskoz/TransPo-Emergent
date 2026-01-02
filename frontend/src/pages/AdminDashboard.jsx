@@ -68,6 +68,24 @@ export default function AdminDashboard() {
     bank_routing_number: ''
   });
   
+  // Payments/Stripe states
+  const [paymentsTab, setPaymentsTab] = useState('transactions');
+  const [paymentTransactions, setPaymentTransactions] = useState([]);
+  const [paymentsPagination, setPaymentsPagination] = useState({ page: 1, total: 0 });
+  const [driverPayouts, setDriverPayouts] = useState([]);
+  const [payoutsSummary, setPayoutsSummary] = useState({});
+  const [payoutSettings, setPayoutSettings] = useState(null);
+  const [refunds, setRefunds] = useState([]);
+  const [disputes, setDisputes] = useState([]);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [selectedTripForRefund, setSelectedTripForRefund] = useState(null);
+  const [refundType, setRefundType] = useState('full');
+  const [refundAmount, setRefundAmount] = useState('');
+  const [excludeTip, setExcludeTip] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [showPayoutSettingsModal, setShowPayoutSettingsModal] = useState(false);
+  const [transactionFilters, setTransactionFilters] = useState({ driver_id: '', rider_id: '', start_date: '', end_date: '' });
+  
   // Modal states
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [showCreateDocModal, setShowCreateDocModal] = useState(false);
