@@ -2835,28 +2835,6 @@ export default function AdminDashboard() {
         {/* Merchants Section */}
         {activeSection === "merchants" && (
           <div className="space-y-6">
-            {/* Bank Connection Status Banner */}
-            {merchantOverview && !merchantSettings?.bank_account_number && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="font-medium text-yellow-800">Bank Account Not Connected</h4>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    Connect your bank account to withdraw platform earnings. Your funds are safe and will be available once connected.
-                  </p>
-                  {isSuperAdmin && (
-                    <Button 
-                      size="sm" 
-                      className="mt-3 bg-yellow-600 hover:bg-yellow-700"
-                      onClick={() => setShowBankSettingsModal(true)}
-                    >
-                      <Building className="w-4 h-4 mr-2" />Connect Bank Account
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
@@ -2872,10 +2850,8 @@ export default function AdminDashboard() {
                       <DollarSign className="w-6 h-6 text-green-600" />
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">All time from trips</p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
@@ -2889,235 +2865,544 @@ export default function AdminDashboard() {
                       <Percent className="w-6 h-6 text-purple-600" />
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">{merchantOverview?.commission_rate || 15}% commission rate</p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-500">Available Balance</p>
-                      <p className="text-2xl font-bold text-blue-600">
-                        ${merchantOverview?.available_balance?.toFixed(2) || '0.00'}
+                      <p className="text-sm text-gray-500">Pending Driver Payouts</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        ${merchantOverview?.pending_driver_payouts?.toFixed(2) || '0.00'}
                       </p>
                     </div>
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Wallet className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-orange-600" />
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">Ready to withdraw</p>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-500">This Month</p>
-                      <p className="text-2xl font-bold text-amber-600">
+                      <p className="text-2xl font-bold text-blue-600">
                         ${merchantOverview?.this_month_commission?.toFixed(2) || '0.00'}
                       </p>
                     </div>
-                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-amber-600" />
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                      <TrendingUp className="w-6 h-6 text-blue-600" />
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">Platform earnings</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Actions Bar */}
-            <div className="flex flex-wrap gap-4 items-center justify-between">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => { loadMerchantOverview(); loadMerchantTransactions(); loadMerchantWithdrawals(); }}>
-                  <RefreshCw className="w-4 h-4 mr-2" />Refresh
-                </Button>
-                {isSuperAdmin && (
-                  <Button variant="outline" onClick={() => setShowBankSettingsModal(true)}>
-                    <Building className="w-4 h-4 mr-2" />Bank Settings
-                  </Button>
-                )}
-              </div>
-              {isSuperAdmin && merchantSettings?.bank_account_number && (
-                <Button 
-                  onClick={() => setShowWithdrawalModal(true)}
-                  disabled={!merchantOverview?.available_balance || merchantOverview.available_balance <= 0}
+            {/* Tabs Navigation */}
+            <div className="flex gap-2 border-b pb-2 overflow-x-auto">
+              {[
+                { id: 'transactions', label: 'Transactions', icon: Receipt },
+                { id: 'payouts', label: 'Payouts', icon: Wallet },
+                { id: 'commissions', label: 'Commissions', icon: Percent },
+                { id: 'refunds', label: 'Refunds & Disputes', icon: RotateCcw }
+              ].map(tab => (
+                <Button
+                  key={tab.id}
+                  variant={paymentsTab === tab.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPaymentsTab(tab.id)}
+                  className="flex items-center gap-2"
                 >
-                  <Download className="w-4 h-4 mr-2" />Withdraw Funds
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
                 </Button>
-              )}
+              ))}
             </div>
 
-            {/* Pending Driver Payouts Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-orange-500" />
-                  Driver Payouts Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-orange-50 rounded-lg">
-                    <div className="text-sm text-orange-600 font-medium">Pending to Drivers</div>
-                    <div className="text-xl font-bold text-orange-700">
-                      ${merchantOverview?.pending_driver_payouts?.toFixed(2) || '0.00'}
+            {/* Transactions Tab */}
+            {paymentsTab === 'transactions' && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Receipt className="w-5 h-5 text-green-500" />
+                      Payment Transactions
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => loadPaymentTransactions()}>
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={exportTransactions}>
+                        <Download className="w-4 h-4 mr-2" />Export CSV
+                      </Button>
                     </div>
                   </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <div className="text-sm text-green-600 font-medium">Paid to Drivers</div>
-                    <div className="text-xl font-bold text-green-700">
-                      ${merchantOverview?.total_paid_to_drivers?.toFixed(2) || '0.00'}
+                  {/* Filters */}
+                  <div className="flex gap-4 mt-4 flex-wrap">
+                    <Input
+                      type="date"
+                      placeholder="Start Date"
+                      className="w-40"
+                      value={transactionFilters.start_date}
+                      onChange={(e) => setTransactionFilters({...transactionFilters, start_date: e.target.value})}
+                    />
+                    <Input
+                      type="date"
+                      placeholder="End Date"
+                      className="w-40"
+                      value={transactionFilters.end_date}
+                      onChange={(e) => setTransactionFilters({...transactionFilters, end_date: e.target.value})}
+                    />
+                    <Button size="sm" onClick={() => loadPaymentTransactions(1)}>Apply Filters</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setTransactionFilters({ driver_id: '', rider_id: '', start_date: '', end_date: '' }); loadPaymentTransactions(1); }}>Clear</Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {paymentTransactions.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Receipt className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>No transactions found</p>
                     </div>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-600 font-medium">Taxes Collected</div>
-                    <div className="text-xl font-bold text-gray-700">
-                      ${merchantOverview?.total_taxes_collected?.toFixed(2) || '0.00'}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Withdrawal History */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Download className="w-5 h-5 text-blue-500" />
-                  Platform Withdrawals
-                </CardTitle>
-                <CardDescription>History of withdrawals to your bank account</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {merchantWithdrawals.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Wallet className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No withdrawals yet</p>
-                    <p className="text-sm mt-1">Withdrawn funds will appear here</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Amount</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Bank Account</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Notes</th>
-                          {isSuperAdmin && <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Actions</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {merchantWithdrawals.map((withdrawal) => (
-                          <tr key={withdrawal.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4 text-sm">
-                              {new Date(withdrawal.created_at).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 px-4 font-semibold text-green-600">
-                              ${withdrawal.amount?.toFixed(2)}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {withdrawal.bank_name} {withdrawal.bank_account}
-                            </td>
-                            <td className="py-3 px-4">
-                              <Badge className={
-                                withdrawal.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                withdrawal.status === 'processing' ? 'bg-blue-100 text-blue-700' :
-                                withdrawal.status === 'failed' ? 'bg-red-100 text-red-700' :
-                                'bg-yellow-100 text-yellow-700'
-                              }>
-                                {withdrawal.status}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-500">
-                              {withdrawal.notes || '-'}
-                            </td>
-                            {isSuperAdmin && (
-                              <td className="py-3 px-4">
-                                {withdrawal.status === 'pending' && (
-                                  <div className="flex gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => updateWithdrawalStatus(withdrawal.id, 'processing')}>
-                                      Processing
-                                    </Button>
-                                    <Button size="sm" onClick={() => updateWithdrawalStatus(withdrawal.id, 'completed')}>
-                                      Complete
-                                    </Button>
-                                  </div>
-                                )}
-                                {withdrawal.status === 'processing' && (
-                                  <Button size="sm" onClick={() => updateWithdrawalStatus(withdrawal.id, 'completed')}>
-                                    Mark Complete
-                                  </Button>
-                                )}
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left py-2 px-3 font-medium">Trip ID</th>
+                            <th className="text-left py-2 px-3 font-medium">Date</th>
+                            <th className="text-left py-2 px-3 font-medium">Driver</th>
+                            <th className="text-left py-2 px-3 font-medium">Rider</th>
+                            <th className="text-right py-2 px-3 font-medium">Base</th>
+                            <th className="text-right py-2 px-3 font-medium">Distance</th>
+                            <th className="text-right py-2 px-3 font-medium">Waiting</th>
+                            <th className="text-right py-2 px-3 font-medium">Tip</th>
+                            <th className="text-right py-2 px-3 font-medium">QC Fee</th>
+                            <th className="text-right py-2 px-3 font-medium">Taxes</th>
+                            <th className="text-right py-2 px-3 font-medium">Stripe</th>
+                            <th className="text-right py-2 px-3 font-medium">Commission</th>
+                            <th className="text-right py-2 px-3 font-medium text-green-600">Net</th>
+                            <th className="text-center py-2 px-3 font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentTransactions.map((txn) => (
+                            <tr key={txn.id} className="border-b hover:bg-gray-50">
+                              <td className="py-2 px-3 font-mono text-xs">{txn.trip_id?.slice(0, 8)}...</td>
+                              <td className="py-2 px-3">{new Date(txn.date).toLocaleDateString()}</td>
+                              <td className="py-2 px-3">{txn.driver?.name || 'N/A'}</td>
+                              <td className="py-2 px-3">{txn.rider?.name || 'Street Hail'}</td>
+                              <td className="py-2 px-3 text-right">${txn.base_fare?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right">${txn.distance_fare?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right">${txn.waiting_time_fare?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right text-blue-600">${txn.tip?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right">${txn.quebec_fee?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right">${txn.total_taxes?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right text-red-500">-${txn.stripe_fee?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right text-purple-600">-${txn.platform_commission?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right font-semibold text-green-600">${txn.net_to_driver?.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-center">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => { setSelectedTripForRefund(txn); setShowRefundModal(true); }}
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                </Button>
                               </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {/* Pagination */}
+                      <div className="flex justify-between items-center mt-4">
+                        <p className="text-sm text-gray-500">
+                          Page {paymentsPagination.page} of {paymentsPagination.pages || 1} ({paymentsPagination.total} total)
+                        </p>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            disabled={paymentsPagination.page <= 1}
+                            onClick={() => loadPaymentTransactions(paymentsPagination.page - 1)}
+                          >
+                            Previous
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            disabled={paymentsPagination.page >= paymentsPagination.pages}
+                            onClick={() => loadPaymentTransactions(paymentsPagination.page + 1)}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Transaction History */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-green-500" />
-                  Commission Transactions
-                </CardTitle>
-                <CardDescription>Platform earnings from completed trips</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {merchantTransactions.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Activity className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No transactions yet</p>
-                    <p className="text-sm mt-1">Commission earnings will appear here after trips are completed</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Type</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Description</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Fare Total</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Commission</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {merchantTransactions.map((txn) => (
-                          <tr key={txn.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4 text-sm">
-                              {new Date(txn.created_at).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 px-4">
-                              <Badge variant="outline" className="capitalize">{txn.type}</Badge>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {txn.description}
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              ${txn.fare_total?.toFixed(2) || '-'}
-                            </td>
-                            <td className="py-3 px-4 font-semibold text-green-600">
-                              +${txn.amount?.toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Payouts Tab */}
+            {paymentsTab === 'payouts' && (
+              <div className="space-y-4">
+                {/* Payout Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="bg-yellow-50 border-yellow-200">
+                    <CardContent className="pt-4">
+                      <div className="text-yellow-600 text-sm font-medium">Pending</div>
+                      <div className="text-2xl font-bold text-yellow-700">{payoutsSummary.pending || 0}</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="pt-4">
+                      <div className="text-blue-600 text-sm font-medium">Processing</div>
+                      <div className="text-2xl font-bold text-blue-700">{payoutsSummary.processing || 0}</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="pt-4">
+                      <div className="text-green-600 text-sm font-medium">Completed</div>
+                      <div className="text-2xl font-bold text-green-700">{payoutsSummary.completed || 0}</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-red-50 border-red-200">
+                    <CardContent className="pt-4">
+                      <div className="text-red-600 text-sm font-medium">Failed</div>
+                      <div className="text-2xl font-bold text-red-700">{payoutsSummary.failed || 0}</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Payout Settings Card */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="w-5 h-5" />
+                        Payout Schedule Settings
+                      </CardTitle>
+                      {isSuperAdmin && (
+                        <Button size="sm" variant="outline" onClick={() => setShowPayoutSettingsModal(true)}>
+                          <Edit className="w-4 h-4 mr-2" />Edit
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-gray-500">Schedule</div>
+                        <div className="font-semibold capitalize">{payoutSettings?.schedule || 'Weekly'}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-gray-500">Early Cashout Fee</div>
+                        <div className="font-semibold">{payoutSettings?.early_cashout_fee_percent || 1.5}%</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-gray-500">Minimum Payout</div>
+                        <div className="font-semibold">${payoutSettings?.min_payout_amount || 50}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Driver Payouts Table */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Driver Payouts</CardTitle>
+                      <Button variant="outline" size="sm" onClick={loadDriverPayouts}>
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {driverPayouts.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Wallet className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>No payouts yet</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Driver</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Type</th>
+                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Gross</th>
+                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Fee</th>
+                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Net</th>
+                              <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                              <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {driverPayouts.map((payout) => (
+                              <tr key={payout.id} className="border-b hover:bg-gray-50">
+                                <td className="py-3 px-4 text-sm">{new Date(payout.created_at).toLocaleDateString()}</td>
+                                <td className="py-3 px-4">{payout.driver?.name || payout.driver_id?.slice(0,8)}</td>
+                                <td className="py-3 px-4">
+                                  <Badge variant="outline" className="capitalize">{payout.type || 'scheduled'}</Badge>
+                                </td>
+                                <td className="py-3 px-4 text-right">${payout.gross_amount?.toFixed(2) || payout.amount?.toFixed(2)}</td>
+                                <td className="py-3 px-4 text-right text-red-500">${payout.fee?.toFixed(2) || '0.00'}</td>
+                                <td className="py-3 px-4 text-right font-semibold text-green-600">${payout.net_amount?.toFixed(2) || payout.amount?.toFixed(2)}</td>
+                                <td className="py-3 px-4 text-center">
+                                  <Badge className={
+                                    payout.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                    payout.status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                                    payout.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                  }>
+                                    {payout.status}
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  {payout.status === 'failed' && (
+                                    <Button size="sm" variant="outline" onClick={() => retryPayout(payout.id)}>
+                                      <RefreshCw className="w-3 h-3 mr-1" />Retry
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Commissions Tab */}
+            {paymentsTab === 'commissions' && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Percent className="w-5 h-5 text-purple-500" />
+                      Platform Commission Settings
+                    </CardTitle>
+                    <CardDescription>Configure commission rates for different services</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Current Taxi Commission */}
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="font-semibold">Taxi Service Commission</h4>
+                          <p className="text-sm text-gray-500">Percentage taken from each taxi fare (excluding tips)</p>
+                        </div>
+                        <div className="text-3xl font-bold text-purple-600">
+                          {merchantOverview?.commission_rate || 15}%
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        To change this rate, go to <span className="font-medium">Commissions</span> section in the sidebar.
+                      </div>
+                    </div>
+
+                    {/* Future Services */}
+                    <div className="p-4 border rounded-lg bg-gray-50">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />Coming Soon - Additional Services
+                      </h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="p-3 bg-white rounded border">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Package className="w-4 h-4 text-blue-500" />
+                            <span className="font-medium">Courier Service</span>
+                          </div>
+                          <p className="text-sm text-gray-500">Flat fee per delivery + percentage</p>
+                          <div className="text-lg font-semibold text-gray-400 mt-2">Not configured</div>
+                        </div>
+                        <div className="p-3 bg-white rounded border">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Utensils className="w-4 h-4 text-orange-500" />
+                            <span className="font-medium">Food Delivery</span>
+                          </div>
+                          <p className="text-sm text-gray-500">Restaurant commission + delivery fee</p>
+                          <div className="text-lg font-semibold text-gray-400 mt-2">Not configured</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Commission Summary */}
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-semibold mb-3">Earnings Summary</h4>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="text-center p-3 bg-purple-50 rounded-lg">
+                          <div className="text-sm text-purple-600">Total Commission Earned</div>
+                          <div className="text-xl font-bold text-purple-700">
+                            ${merchantOverview?.total_commission?.toFixed(2) || '0.00'}
+                          </div>
+                        </div>
+                        <div className="text-center p-3 bg-green-50 rounded-lg">
+                          <div className="text-sm text-green-600">This Month</div>
+                          <div className="text-xl font-bold text-green-700">
+                            ${merchantOverview?.this_month_commission?.toFixed(2) || '0.00'}
+                          </div>
+                        </div>
+                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+                          <div className="text-sm text-blue-600">Taxes Collected</div>
+                          <div className="text-xl font-bold text-blue-700">
+                            ${merchantOverview?.total_taxes_collected?.toFixed(2) || '0.00'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Refunds & Disputes Tab */}
+            {paymentsTab === 'refunds' && (
+              <div className="space-y-4">
+                {/* Refunds Card */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <RotateCcw className="w-5 h-5 text-orange-500" />
+                        Refunds
+                      </CardTitle>
+                      <Button variant="outline" size="sm" onClick={loadRefunds}>
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {refunds.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <RotateCcw className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>No refunds processed</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Trip ID</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Type</th>
+                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Original</th>
+                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Refund</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Reason</th>
+                              <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                              {isSuperAdmin && <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Actions</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {refunds.map((refund) => (
+                              <tr key={refund.id} className="border-b hover:bg-gray-50">
+                                <td className="py-3 px-4 text-sm">{new Date(refund.created_at).toLocaleDateString()}</td>
+                                <td className="py-3 px-4 font-mono text-xs">{refund.trip_id?.slice(0, 8)}...</td>
+                                <td className="py-3 px-4">
+                                  <Badge variant="outline" className="capitalize">
+                                    {refund.refund_type}
+                                    {refund.tip_excluded && ' (no tip)'}
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-4 text-right">${refund.original_amount?.toFixed(2)}</td>
+                                <td className="py-3 px-4 text-right font-semibold text-orange-600">${refund.refund_amount?.toFixed(2)}</td>
+                                <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">{refund.reason || '-'}</td>
+                                <td className="py-3 px-4 text-center">
+                                  <Badge className={
+                                    refund.status === 'completed' || refund.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                    refund.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                  }>
+                                    {refund.status}
+                                  </Badge>
+                                </td>
+                                {isSuperAdmin && (
+                                  <td className="py-3 px-4 text-center">
+                                    {refund.status === 'pending' && (
+                                      <div className="flex gap-1 justify-center">
+                                        <Button size="sm" variant="outline" className="text-green-600" onClick={() => processRefund(refund.id, 'approved')}>
+                                          <Check className="w-3 h-3" />
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="text-red-600" onClick={() => processRefund(refund.id, 'rejected')}>
+                                          <X className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Disputes/Chargebacks Card */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-red-500" />
+                        Chargebacks & Disputes
+                      </CardTitle>
+                      <Button variant="outline" size="sm" onClick={loadDisputes}>
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <CardDescription>Track payment disputes and chargebacks from payment processors</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {disputes.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-300" />
+                        <p>No chargebacks or disputes</p>
+                        <p className="text-sm mt-1">Great job keeping customers happy!</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Trip ID</th>
+                              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Amount</th>
+                              <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Reason</th>
+                              <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {disputes.map((dispute) => (
+                              <tr key={dispute.id} className="border-b hover:bg-gray-50">
+                                <td className="py-3 px-4 text-sm">{new Date(dispute.created_at).toLocaleDateString()}</td>
+                                <td className="py-3 px-4 font-mono text-xs">{dispute.trip_id?.slice(0, 8)}...</td>
+                                <td className="py-3 px-4 text-right font-semibold text-red-600">${dispute.amount?.toFixed(2)}</td>
+                                <td className="py-3 px-4 text-sm">{dispute.reason || 'Not specified'}</td>
+                                <td className="py-3 px-4 text-center">
+                                  <Badge className={
+                                    dispute.status === 'won' ? 'bg-green-100 text-green-700' :
+                                    dispute.status === 'lost' ? 'bg-red-100 text-red-700' :
+                                    dispute.status === 'under_review' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                  }>
+                                    {dispute.status}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         )}
 
