@@ -628,8 +628,16 @@ export default function UserDashboard() {
                 >
                   {/* User Info */}
                   <div className="px-4 py-3 border-b border-gray-100">
-                    <div className="font-medium text-gray-900">{user?.name || 'User'}</div>
-                    <div className="text-sm text-gray-500">{user?.email}</div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900">{user?.name || 'User'}</div>
+                        <div className="text-sm text-gray-500">{user?.email}</div>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        <span className="font-medium text-yellow-700">{userRating.toFixed(1)}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Menu Items */}
