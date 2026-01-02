@@ -516,7 +516,12 @@ export default function UserDashboard() {
           dropoff_lng: dropoff.lng,
           dropoff_address: dropoff.address || dropoffText,
           vehicle_type: vehicleType,
-          ordering_for: orderingFor
+          // Enhanced booking fields
+          booking_for_self: bookingForSelf,
+          recipient_name: orderingFor?.name || null,
+          recipient_phone: orderingFor?.phone || null,
+          special_instructions: specialInstructions || null,
+          pet_policy: petPolicy
         }),
         
       });
@@ -525,12 +530,16 @@ export default function UserDashboard() {
       if (res.ok) {
         toast.success(orderingFor ? `Ride booked for ${orderingFor.name}!` : "Ride booked! Looking for drivers...");
         loadBookings();
+        // Reset form
         setPickupText("");
         setDropoffText("");
         setPickup(null);
         setDropoff(null);
         setFareEstimate(null);
         setOrderingFor(null);
+        setBookingForSelf(true);
+        setSpecialInstructions("");
+        setPetPolicy("none");
       } else {
         throw new Error(data.detail || "Booking failed");
       }
