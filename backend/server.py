@@ -1204,6 +1204,166 @@ async def complete_booking(booking_id: str, current_user: dict = Depends(get_cur
     
     return {"message": "Ride completed", "earnings": fare_total * 0.8}
 
+@api_router.post("/driver/trips/{booking_id}/update-status")
+async def update_trip_status(booking_id: str, request: TripStatusUpdate, current_user: dict = Depends(get_current_user)):
+    """Update trip status (arrived, in_progress)"""
+    if current_user["role"] != "driver":
+        raise HTTPException(status_code=403, detail="Not a driver")
+    
+    booking = await db.bookings.find_one({"id": booking_id, "driver_id": current_user["id"]})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    valid_statuses = ["arrived", "in_progress"]
+    if request.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    update_data = {
+        "status": request.status,
+        f"{request.status}_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    
+    return {"message": f"Trip status updated to {request.status}", "status": request.status}
+
+@api_router.post("/driver/trips/{booking_id}/cancel")
+async def driver_cancel_trip(booking_id: str, request: TripCancellationRequest, current_user: dict = Depends(get_current_user)):
+    """Driver cancels a trip with a reason. Certain reasons result in a 5-minute suspension."""
+    if current_user["role"] != "driver":
+        raise HTTPException(status_code=403, detail="Not a driver")
+    
+    booking = await db.bookings.find_one({"id": booking_id, "driver_id": current_user["id"]})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Cannot cancel a completed trip")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Update booking status
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "cancelled_by_driver",
+            "cancelled_at": now.isoformat(),
+            "cancellation_reason": request.reason,
+            "cancellation_notes": request.notes
+        }}
+    )
+    
+    # Make driver available again
+    driver_update = {"is_available": True}
+    
+    # Check if this reason results in a penalty (5-minute suspension)
+    is_penalized = request.reason in PENALIZED_CANCELLATION_REASONS
+    
+    if is_penalized:
+        suspended_until = now + timedelta(minutes=5)
+        driver_update["suspended_until"] = suspended_until.isoformat()
+        driver_update["suspension_reason"] = f"Trip cancellation: {request.reason}"
+    
+    await db.drivers.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": driver_update}
+    )
+    
+    return {
+        "message": "Trip cancelled",
+        "reason": request.reason,
+        "is_penalized": is_penalized,
+        "suspension_minutes": 5 if is_penalized else 0
+    }
+
+@api_router.post("/driver/trips/{booking_id}/no-show")
+async def driver_mark_no_show(booking_id: str, current_user: dict = Depends(get_current_user)):
+    """Driver marks customer as no-show. Driver gets priority boost for next ride in same area."""
+    if current_user["role"] != "driver":
+        raise HTTPException(status_code=403, detail="Not a driver")
+    
+    booking = await db.bookings.find_one({"id": booking_id, "driver_id": current_user["id"]})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Check if driver arrived (no-show only valid after arrival)
+    if booking.get("status") not in ["accepted", "arrived"]:
+        raise HTTPException(status_code=400, detail="No-show can only be marked after accepting or arriving")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Update booking status
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "no_show",
+            "no_show_at": now.isoformat()
+        }}
+    )
+    
+    # Get driver's current location for priority boost area
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    current_location = driver.get("location", {})
+    
+    # Give driver priority boost for this area (no penalty)
+    await db.drivers.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": {
+            "is_available": True,
+            "priority_boost": True,
+            "priority_boost_location": {
+                "latitude": current_location.get("latitude", booking["pickup"].get("lat")),
+                "longitude": current_location.get("longitude", booking["pickup"].get("lng"))
+            },
+            "priority_boost_since": now.isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Customer marked as no-show",
+        "priority_boost_active": True,
+        "note": "You have priority for the next ride in this area"
+    }
+
+@api_router.get("/driver/status/suspension")
+async def get_driver_suspension_status(current_user: dict = Depends(get_current_user)):
+    """Check if driver is currently suspended and when suspension ends."""
+    if current_user["role"] != "driver":
+        raise HTTPException(status_code=403, detail="Not a driver")
+    
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    suspended_until = driver.get("suspended_until")
+    is_suspended = False
+    remaining_seconds = 0
+    
+    if suspended_until:
+        suspended_until_dt = datetime.fromisoformat(suspended_until.replace('Z', '+00:00'))
+        if suspended_until_dt.tzinfo is None:
+            suspended_until_dt = suspended_until_dt.replace(tzinfo=timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        if suspended_until_dt > now:
+            is_suspended = True
+            remaining_seconds = int((suspended_until_dt - now).total_seconds())
+        else:
+            # Suspension expired, clear it
+            await db.drivers.update_one(
+                {"user_id": current_user["id"]},
+                {"$unset": {"suspended_until": "", "suspension_reason": ""}}
+            )
+    
+    return {
+        "is_suspended": is_suspended,
+        "suspended_until": suspended_until if is_suspended else None,
+        "remaining_seconds": remaining_seconds,
+        "reason": driver.get("suspension_reason") if is_suspended else None,
+        "priority_boost": driver.get("priority_boost", False)
+    }
+
+
 @api_router.get("/driver/earnings")
 async def get_driver_earnings(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "driver":
