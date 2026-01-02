@@ -85,6 +85,9 @@ export default function AdminDashboard() {
   const [refundReason, setRefundReason] = useState('');
   const [showPayoutSettingsModal, setShowPayoutSettingsModal] = useState(false);
   const [transactionFilters, setTransactionFilters] = useState({ driver_id: '', rider_id: '', start_date: '', end_date: '' });
+  const [stripeConfig, setStripeConfig] = useState({ secret_key: '', publishable_key: '', webhook_secret: '' });
+  const [showStripeConfigModal, setShowStripeConfigModal] = useState(false);
+  const [stripeConfigSaved, setStripeConfigSaved] = useState(false);
   
   // Modal states
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
