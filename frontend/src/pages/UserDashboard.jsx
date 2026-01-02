@@ -345,7 +345,21 @@ export default function UserDashboard() {
   useEffect(() => {
     loadBookings();
     loadNearbyDrivers();
+    loadUserRating();
   }, []);
+
+  // Load user rating
+  const loadUserRating = async () => {
+    try {
+      const res = await fetch(`${API_URL}/user/rating`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setUserRating(data.rating);
+      }
+    } catch (e) {
+      console.log('Error loading rating:', e);
+    }
+  };
 
   // Close menu and suggestions when clicking outside
   useEffect(() => {
