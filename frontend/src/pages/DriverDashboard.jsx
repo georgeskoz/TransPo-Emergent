@@ -66,6 +66,8 @@ export default function DriverDashboard() {
   // Real-time ride alerts from Socket.io
   const [incomingRideAlert, setIncomingRideAlert] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [isScheduledAlert, setIsScheduledAlert] = useState(false);
+  const [minutesUntilPickup, setMinutesUntilPickup] = useState(null);
   
   // Driver tier/points state
   const [driverTier, setDriverTier] = useState({
