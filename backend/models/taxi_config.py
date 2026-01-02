@@ -98,18 +98,18 @@ class TaxiConfigResponse(BaseModel):
     locked_reason: Optional[str]
 
 
-# Default Quebec taxi rates
+# Default Quebec taxi rates (base fare includes $0.90 government fee)
 DEFAULT_QUEBEC_CONFIG = {
     "name": "Quebec Standard Rates",
     "description": "CTQ-compliant taxi rates for Quebec province",
-    "day_base_fare": 4.10,
+    "day_base_fare": 5.15,  # $4.25 base + $0.90 government fee
     "day_per_km_rate": 2.05,
     "day_waiting_per_min": 0.77,
-    "night_base_fare": 4.70,
+    "night_base_fare": 5.75,  # $4.85 base + $0.90 government fee
     "night_per_km_rate": 2.35,
     "night_waiting_per_min": 0.89,
     "speed_threshold_kmh": 20.0,
-    "government_fee": 0.90,
+    "government_fee": 0.90,  # Quebec CTQ fee (included in base_fare)
     "taxes_included": True,
     "gst_rate": 5.0,
     "qst_rate": 9.975,
