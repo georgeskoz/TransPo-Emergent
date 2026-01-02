@@ -1261,6 +1261,354 @@ class TranspoAPITester:
                 print(f"   Total trips: {statement_data.get('total_trips', 0)}")
                 print("✅ Statement download successful")
 
+    def test_driver_tier_system(self):
+        """Test new Driver Tier System with point-based cancellations"""
+        print("\n" + "="*50)
+        print("🏆 DRIVER TIER SYSTEM TESTS")
+        print("="*50)
+        
+        if not self.user_token or not self.driver_token:
+            print("❌ Skipping tier system tests - missing user or driver token")
+            return
+        
+        # Step 1: Check initial driver tier status (should be Silver with 0 points)
+        success, response = self.run_test(
+            "Get Initial Driver Tier Status",
+            "GET",
+            "driver/status/tier",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            initial_points = response.get('points', 0)
+            initial_tier = response.get('tier', 'unknown')
+            next_tier = response.get('next_tier', 'N/A')
+            next_threshold = response.get('next_tier_threshold', 0)
+            progress = response.get('progress_percent', 0)
+            total_rides = response.get('total_rides', 0)
+            priority_boost = response.get('priority_boost', False)
+            
+            print(f"   Initial Points: {initial_points}")
+            print(f"   Initial Tier: {initial_tier}")
+            print(f"   Next Tier: {next_tier}")
+            print(f"   Next Tier Threshold: {next_threshold}")
+            print(f"   Progress: {progress}%")
+            print(f"   Total Rides: {total_rides}")
+            print(f"   Priority Boost: {priority_boost}")
+            
+            if initial_tier == "silver":
+                print("✅ Driver starts with Silver tier as expected")
+            else:
+                print(f"❌ Expected Silver tier, got {initial_tier}")
+        
+        # Step 2: Create a booking to complete for points
+        booking_data = {
+            "pickup_lat": 45.5017,
+            "pickup_lng": -73.5673,
+            "pickup_address": "1000 Rue de la Gauchetière, Montreal, QC",
+            "dropoff_lat": 45.5088,
+            "dropoff_lng": -73.5538,
+            "dropoff_address": "300 Rue Saint-Paul, Montreal, QC",
+            "vehicle_type": "sedan"
+        }
+        
+        success, response = self.run_test(
+            "Create Booking for Points Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if not success:
+            print("❌ Failed to create booking - skipping tier tests")
+            return
+        
+        booking_id = response.get('booking_id')
+        if not booking_id:
+            print("❌ No booking ID returned - skipping tier tests")
+            return
+        
+        print(f"   Created booking ID: {booking_id}")
+        
+        # Step 3: Accept and complete booking to earn points
+        success, response = self.run_test(
+            "Accept Booking for Points",
+            "POST",
+            f"driver/accept/{booking_id}",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            print("✅ Booking accepted by driver")
+            
+            # Complete the booking to earn +10 points
+            success, response = self.run_test(
+                "Complete Booking for Points",
+                "POST",
+                f"driver/complete/{booking_id}",
+                200,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                points_earned = response.get('points_earned', 0)
+                total_points = response.get('total_points', 0)
+                tier = response.get('tier', 'unknown')
+                
+                print(f"   Points Earned: +{points_earned}")
+                print(f"   Total Points: {total_points}")
+                print(f"   Current Tier: {tier}")
+                
+                if points_earned == 10:
+                    print("✅ Correctly earned +10 points for completed trip")
+                else:
+                    print(f"❌ Expected +10 points, got +{points_earned}")
+        
+        # Step 4: Check tier status after earning points
+        success, response = self.run_test(
+            "Get Tier Status After Points",
+            "GET",
+            "driver/status/tier",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            current_points = response.get('points', 0)
+            current_tier = response.get('tier', 'unknown')
+            progress = response.get('progress_percent', 0)
+            
+            print(f"   Current Points: {current_points}")
+            print(f"   Current Tier: {current_tier}")
+            print(f"   Progress to Next Tier: {progress}%")
+            
+            if current_points >= 10:
+                print("✅ Points correctly updated after trip completion")
+            else:
+                print(f"❌ Expected at least 10 points, got {current_points}")
+        
+        # Step 5: Create another booking to test cancellation with point deduction
+        success, response = self.run_test(
+            "Create Booking for Cancellation Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        booking_id_2 = None
+        if success:
+            booking_id_2 = response.get('booking_id')
+            print(f"   Created second booking ID: {booking_id_2}")
+            
+            # Accept the booking
+            if booking_id_2:
+                success, response = self.run_test(
+                    "Accept Booking for Cancellation",
+                    "POST",
+                    f"driver/accept/{booking_id_2}",
+                    200,
+                    headers=self.get_auth_headers(self.driver_token)
+                )
+                
+                if success:
+                    print("✅ Second booking accepted")
+        
+        # Step 6: Test cancellation with penalized reason (car_issue = -20 points)
+        if booking_id_2:
+            cancel_data = {
+                "reason": "car_issue",
+                "notes": "Engine trouble - cannot complete trip"
+            }
+            
+            success, response = self.run_test(
+                "Cancel Trip - Car Issue (-20 points)",
+                "POST",
+                f"driver/trips/{booking_id_2}/cancel",
+                200,
+                cancel_data,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                reason = response.get('reason', 'N/A')
+                points_deducted = response.get('points_deducted', 0)
+                new_points = response.get('new_points', 0)
+                tier = response.get('tier', 'unknown')
+                tier_progress = response.get('tier_progress', 0)
+                
+                print(f"   Cancellation Reason: {reason}")
+                print(f"   Points Deducted: -{points_deducted}")
+                print(f"   New Points: {new_points}")
+                print(f"   Current Tier: {tier}")
+                print(f"   Tier Progress: {tier_progress}%")
+                
+                if points_deducted == 20:
+                    print("✅ Correctly deducted 20 points for car_issue cancellation")
+                else:
+                    print(f"❌ Expected -20 points, got -{points_deducted}")
+                
+                # Points should not go below 0
+                if new_points >= 0:
+                    print("✅ Points correctly prevented from going negative")
+                else:
+                    print(f"❌ Points went negative: {new_points}")
+        
+        # Step 7: Create another booking to test no-penalty cancellation
+        success, response = self.run_test(
+            "Create Booking for No-Penalty Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        booking_id_3 = None
+        if success:
+            booking_id_3 = response.get('booking_id')
+            print(f"   Created third booking ID: {booking_id_3}")
+            
+            # Accept the booking
+            if booking_id_3:
+                success, response = self.run_test(
+                    "Accept Booking for No-Penalty Test",
+                    "POST",
+                    f"driver/accept/{booking_id_3}",
+                    200,
+                    headers=self.get_auth_headers(self.driver_token)
+                )
+                
+                if success:
+                    print("✅ Third booking accepted")
+        
+        # Step 8: Test cancellation with no-penalty reason (safety_concern = 0 points)
+        if booking_id_3:
+            cancel_data = {
+                "reason": "safety_concern",
+                "notes": "Unsafe pickup location - customer safety concern"
+            }
+            
+            success, response = self.run_test(
+                "Cancel Trip - Safety Concern (0 points)",
+                "POST",
+                f"driver/trips/{booking_id_3}/cancel",
+                200,
+                cancel_data,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                reason = response.get('reason', 'N/A')
+                points_deducted = response.get('points_deducted', 0)
+                new_points = response.get('new_points', 0)
+                tier = response.get('tier', 'unknown')
+                tier_progress = response.get('tier_progress', 0)
+                
+                print(f"   Cancellation Reason: {reason}")
+                print(f"   Points Deducted: -{points_deducted}")
+                print(f"   New Points: {new_points}")
+                print(f"   Current Tier: {tier}")
+                print(f"   Tier Progress: {tier_progress}%")
+                
+                if points_deducted == 0:
+                    print("✅ Correctly deducted 0 points for safety_concern cancellation")
+                else:
+                    print(f"❌ Expected 0 points deducted, got -{points_deducted}")
+        
+        # Step 9: Test customer contact endpoint for active booking
+        # Create one more booking to test customer contact
+        success, response = self.run_test(
+            "Create Booking for Customer Contact Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        booking_id_4 = None
+        if success:
+            booking_id_4 = response.get('booking_id')
+            print(f"   Created fourth booking ID: {booking_id_4}")
+            
+            # Accept the booking
+            if booking_id_4:
+                success, response = self.run_test(
+                    "Accept Booking for Customer Contact Test",
+                    "POST",
+                    f"driver/accept/{booking_id_4}",
+                    200,
+                    headers=self.get_auth_headers(self.driver_token)
+                )
+                
+                if success:
+                    print("✅ Fourth booking accepted")
+                    
+                    # Test get customer contact info
+                    success, response = self.run_test(
+                        "Get Customer Contact Info",
+                        "GET",
+                        f"driver/booking/{booking_id_4}/customer",
+                        200,
+                        headers=self.get_auth_headers(self.driver_token)
+                    )
+                    
+                    if success:
+                        customer_name = response.get('customer_name', 'N/A')
+                        customer_phone = response.get('customer_phone', 'N/A')
+                        pickup_address = response.get('pickup_address', 'N/A')
+                        
+                        print(f"   Customer Name: {customer_name}")
+                        print(f"   Customer Phone: {customer_phone}")
+                        print(f"   Pickup Address: {pickup_address}")
+                        
+                        if customer_name != 'N/A' and pickup_address != 'N/A':
+                            print("✅ Customer contact info retrieved successfully")
+                        else:
+                            print("❌ Customer contact info incomplete")
+        
+        # Step 10: Final tier status check
+        success, response = self.run_test(
+            "Final Tier Status Check",
+            "GET",
+            "driver/status/tier",
+            200,
+            headers=self.get_auth_headers(self.driver_token)
+        )
+        
+        if success:
+            final_points = response.get('points', 0)
+            final_tier = response.get('tier', 'unknown')
+            next_tier = response.get('next_tier', 'N/A')
+            progress = response.get('progress_percent', 0)
+            total_rides = response.get('total_rides', 0)
+            
+            print(f"   Final Points: {final_points}")
+            print(f"   Final Tier: {final_tier}")
+            print(f"   Next Tier: {next_tier}")
+            print(f"   Progress: {progress}%")
+            print(f"   Total Rides: {total_rides}")
+            
+            # Verify tier logic
+            if final_points < 300 and final_tier == "silver":
+                print("✅ Tier system working correctly - Silver tier for < 300 points")
+            elif 300 <= final_points < 600 and final_tier == "gold":
+                print("✅ Tier system working correctly - Gold tier for 300-599 points")
+            elif 600 <= final_points < 1000 and final_tier == "platinum":
+                print("✅ Tier system working correctly - Platinum tier for 600-999 points")
+            elif final_points >= 1000 and final_tier == "diamond":
+                print("✅ Tier system working correctly - Diamond tier for 1000+ points")
+            else:
+                print(f"❌ Tier system logic error - {final_points} points should not be {final_tier} tier")
+        
+        print("\n🎯 Driver Tier System Testing Complete")
+
     def test_driver_cancellation_no_show(self):
         """Test new Driver Cancellation and No-Show feature"""
         print("\n" + "="*50)
