@@ -5487,6 +5487,100 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Stripe Configuration Modal */}
+      <AnimatePresence>
+        {showStripeConfigModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-lg bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-purple-500" />
+                  Stripe API Configuration
+                </h2>
+                <button onClick={() => setShowStripeConfigModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                  <AlertCircle className="w-4 h-4 inline mr-1" />
+                  Keep your API keys secure. Never share your Secret Key publicly.
+                </div>
+
+                <div>
+                  <Label>Publishable Key <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="text"
+                    value={stripeConfig.publishable_key || ''}
+                    onChange={(e) => setStripeConfig({...stripeConfig, publishable_key: e.target.value})}
+                    placeholder="pk_test_... or pk_live_..."
+                    className="mt-1 font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Used for frontend payment forms</p>
+                </div>
+
+                <div>
+                  <Label>Secret Key <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="password"
+                    value={stripeConfig.secret_key || ''}
+                    onChange={(e) => setStripeConfig({...stripeConfig, secret_key: e.target.value})}
+                    placeholder="sk_test_... or sk_live_..."
+                    className="mt-1 font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Used for backend API calls (kept secure)</p>
+                </div>
+
+                <div>
+                  <Label>Webhook Secret (Optional)</Label>
+                  <Input
+                    type="password"
+                    value={stripeConfig.webhook_secret || ''}
+                    onChange={(e) => setStripeConfig({...stripeConfig, webhook_secret: e.target.value})}
+                    placeholder="whsec_..."
+                    className="mt-1 font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">For verifying webhook signatures</p>
+                </div>
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  <strong>Get your keys:</strong> Go to <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="underline">Stripe Dashboard → Developers → API Keys</a>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setShowStripeConfigModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                    onClick={saveStripeConfig}
+                    disabled={!stripeConfig.publishable_key || !stripeConfig.secret_key}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Configuration
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
