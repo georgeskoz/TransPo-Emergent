@@ -6,13 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useAuthStore, useBookingStore, useMapStore } from "../store";
 import { toast } from "sonner";
 import { 
   Car, Package, UtensilsCrossed, MapPin, Clock, LogOut, User,
   Zap, History, CreditCard, Navigation, Star, ChevronRight,
   Crosshair, Search, X, Loader2, Menu, Gift, UserPlus, ThumbsUp,
-  Settings, ChevronDown, Wallet, StarIcon, MessageSquare
+  Settings, ChevronDown, Wallet, StarIcon, MessageSquare, PawPrint,
+  FileText, AlertCircle
 } from "lucide-react";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
