@@ -15,8 +15,15 @@ import {
   Zap, History, CreditCard, Navigation, Star, ChevronRight,
   Crosshair, Search, X, Loader2, Menu, Gift, UserPlus, ThumbsUp,
   Settings, ChevronDown, Wallet, StarIcon, MessageSquare, PawPrint,
-  FileText, AlertCircle
+  FileText, AlertCircle, Radio
 } from "lucide-react";
+import {
+  requestRide,
+  onRideAccepted,
+  onDriversNotified,
+  onNoDrivers,
+  disconnectSocket
+} from "../services/socket";
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
