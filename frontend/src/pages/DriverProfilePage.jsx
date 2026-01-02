@@ -205,7 +205,7 @@ export default function DriverProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-noir-700">
+    <div className="min-h-screen bg-noir-700 pb-24">
       {/* Header */}
       <header className="glass-strong sticky top-0 z-50 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
