@@ -680,43 +680,33 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* Suspension Banner */}
-        {isSuspended && (
-          <div className="px-6 pb-4">
-            <Card className="bg-red-50 border-red-200">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <Timer className="w-6 h-6 text-red-500" />
-                  <div>
-                    <h3 className="font-semibold text-red-700">Temporarily Suspended</h3>
-                    <p className="text-sm text-red-600">You cannot go online until the suspension ends</p>
-                  </div>
-                </div>
-                <div className="text-center mt-3">
-                  <span className="text-3xl font-bold text-red-600">{formatTime(suspensionRemaining)}</span>
-                  <p className="text-xs text-red-500 mt-1">Time remaining</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Active Trip */}
         {isOnline && activeJobs.length > 0 && (
           <div className="px-6 pb-4">
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-4">
-                {/* Header with Status and Phone Icon */}
+                {/* Header with Status and Action Buttons */}
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-medium text-blue-700">Active Trip</span>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-blue-500 text-white capitalize">{activeJobs[0].status}</Badge>
+                    {/* Call Customer Button */}
+                    <button 
+                      onClick={getCustomerContact}
+                      className="p-2 rounded-full bg-green-500 shadow-sm hover:bg-green-600 transition-colors"
+                      data-testid="call-customer-btn"
+                      title="Call Customer"
+                    >
+                      <Phone className="w-4 h-4 text-white" />
+                    </button>
+                    {/* Cancel Menu Button */}
                     <button 
                       onClick={() => setShowCancellationModal(true)}
                       className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 transition-colors"
                       data-testid="cancel-menu-btn"
+                      title="Cancel Trip"
                     >
-                      <Phone className="w-4 h-4 text-gray-600" />
+                      <X className="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 </div>
