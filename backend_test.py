@@ -1452,6 +1452,8 @@ class TranspoAPITester:
             self.test_admin_taxes()
             self.test_admin_contracts()
             self.test_admin_merchants()  # New merchants section tests
+            self.test_stripe_dashboard_admin_payments()  # NEW: Stripe Dashboard Admin Payment APIs
+            self.test_stripe_dashboard_driver_earnings()  # NEW: Stripe Dashboard Driver Earnings APIs
             self.test_admin_endpoints()
             self.test_admin_payouts()
             self.test_fare_estimation()
