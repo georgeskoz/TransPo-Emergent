@@ -239,7 +239,7 @@ export default function DriverSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
       <div className="bg-white border-b px-4 py-4 flex items-center gap-4">
         <button onClick={() => activeSection ? setActiveSection(null) : navigate('/driver')} className="p-2 rounded-lg hover:bg-gray-100">
