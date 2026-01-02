@@ -284,6 +284,36 @@ export default function DriverDashboard() {
     }
   };
 
+  // Get customer contact info for calling
+  const getCustomerContact = async () => {
+    if (!activeJobs.length) return;
+    const bookingId = activeJobs[0].id;
+    
+    try {
+      const res = await fetch(`${API_URL}/driver/booking/${bookingId}/customer`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomerInfo(data);
+        setShowCallModal(true);
+      } else {
+        toast.error('Unable to get customer contact');
+      }
+    } catch (e) {
+      toast.error('Error getting customer info');
+    }
+  };
+
+  // Initiate call to customer
+  const callCustomer = () => {
+    if (customerInfo?.customer_phone && customerInfo.customer_phone !== 'No phone available') {
+      window.location.href = `tel:${customerInfo.customer_phone}`;
+    } else {
+      toast.error('Customer phone number not available');
+    }
+  };
+
   // Handle trip cancellation
   const handleCancelTrip = async (reason) => {
     if (!activeJobs.length) return;
@@ -302,13 +332,13 @@ export default function DriverDashboard() {
         setArrivedTime(null);
         setNoShowTimerSeconds(0);
         
-        if (data.is_penalized) {
-          setIsSuspended(true);
-          setSuspensionRemaining(data.suspension_minutes * 60);
-          toast.warning(`Trip cancelled. You are suspended for ${data.suspension_minutes} minutes.`);
+        if (data.points_deducted > 0) {
+          toast.warning(`Trip cancelled. -${data.points_deducted} points (${data.new_points} total)`);
         } else {
           toast.success('Trip cancelled successfully');
         }
+        // Reload tier info
+        loadDriverTier();
         loadJobs();
       } else {
         const data = await res.json();
