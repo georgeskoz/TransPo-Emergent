@@ -664,9 +664,9 @@ export default function UserDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 px-4 py-3">
+    <div className="min-h-screen bg-gray-50 mobile-layout">
+      {/* Header - Mobile Optimized */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 px-4 py-3 safe-area-top">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center">
@@ -682,13 +682,13 @@ export default function UserDashboard() {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors min-h-[44px]"
               data-testid="menu-btn"
             >
               <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
                 <User className="w-4 h-4 text-gray-600" />
               </div>
-              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showMenu ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform hidden sm:block ${showMenu ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
@@ -720,7 +720,7 @@ export default function UserDashboard() {
                       <button
                         key={index}
                         onClick={item.action}
-                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors min-h-[48px] ${
                           item.danger ? 'text-red-600' : 'text-gray-700'
                         }`}
                         data-testid={`menu-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
