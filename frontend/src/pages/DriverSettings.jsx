@@ -52,6 +52,16 @@ export default function DriverSettings() {
   // Background Check State
   const [backgroundCheck, setBackgroundCheck] = useState(null);
   
+  // Licenses State
+  const [licenses, setLicenses] = useState({
+    drivers_license_number: '',
+    drivers_license_expiry: '',
+    drivers_license_photo: null,
+    taxi_license_number: '',
+    taxi_license_expiry: '',
+    taxi_license_photo: null
+  });
+  
   // Tax Info State
   const [taxInfo, setTaxInfo] = useState({
     sin_number: '',
