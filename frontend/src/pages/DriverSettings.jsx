@@ -56,8 +56,14 @@ export default function DriverSettings() {
   const [taxInfo, setTaxInfo] = useState({
     sin_number: '',
     business_number: '',
+    gst_number: '',
+    qst_number: '',
+    billing_number: '',
+    srs_code: '',
+    srs_available: false,
     gst_registered: false,
-    qst_registered: false
+    qst_registered: false,
+    tax_disclaimer_accepted: false
   });
 
   useEffect(() => {
