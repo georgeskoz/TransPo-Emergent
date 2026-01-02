@@ -1295,7 +1295,7 @@ class TranspoAPITester:
             print("❌ Failed to create booking - skipping cancellation tests")
             return
         
-        booking_id = response.get('booking', {}).get('id')
+        booking_id = response.get('booking_id')
         if not booking_id:
             print("❌ No booking ID returned - skipping cancellation tests")
             return
