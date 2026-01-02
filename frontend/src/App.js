@@ -78,6 +78,16 @@ function AppRouter() {
           <UserProfile />
         </ProtectedRoute>
       } />
+      <Route path="/trips" element={
+        <ProtectedRoute allowedRoles={['user']}>
+          <UserTrips />
+        </ProtectedRoute>
+      } />
+      <Route path="/wallet" element={
+        <ProtectedRoute allowedRoles={['user']}>
+          <UserWallet />
+        </ProtectedRoute>
+      } />
       <Route path="/book" element={
         <ProtectedRoute allowedRoles={['user']}>
           <BookingPage />
