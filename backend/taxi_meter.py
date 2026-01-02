@@ -194,10 +194,11 @@ class TaxiMeter:
     def get_fare_breakdown(self) -> Dict:
         """
         Get current fare breakdown.
+        Quebec base fare already includes the $0.90 government fee.
         Quebec taxes are INCLUDED in the fare (not added on top).
         """
-        base_fare = self.rates["base_fare"]
-        government_fee = self.rates["government_fee"]
+        base_fare = self.rates["base_fare"]  # Already includes $0.90 gov't fee
+        government_fee = self.rates["government_fee"]  # For display purposes only
         
         # Calculate real-time waiting if meter is still running
         current_waiting_minutes = self.total_waiting_minutes
@@ -211,8 +212,8 @@ class TaxiMeter:
                 current_waiting_minutes += time_since_last_update / 60
                 current_waiting_cost = current_waiting_minutes * self.rates["waiting_per_min"]
         
-        subtotal = base_fare + self.distance_cost + current_waiting_cost
-        total_before_tip = subtotal + government_fee
+        # Base fare already includes government fee, so no need to add it again
+        total_before_tip = base_fare + self.distance_cost + current_waiting_cost
         
         return {
             "rate_period": self.rates["period"],
