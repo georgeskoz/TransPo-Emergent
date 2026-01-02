@@ -112,12 +112,12 @@ export default function DriverMeter() {
         })
       });
 
+      const data = await res.json();
+      
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to start meter');
+        throw new Error(data.detail || 'Failed to start meter');
       }
 
-      const data = await res.json();
       setMeterId(data.meter_id);
       setMeterStatus("running");
       setStartLocation(data.start_location);
