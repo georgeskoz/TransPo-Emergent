@@ -746,7 +746,7 @@ export default function DriverDashboard() {
                       data-testid="arrived-btn"
                     >
                       <MapPin className="w-4 h-4 mr-2" />
-                      I've Arrived
+                      I&apos;ve Arrived
                     </Button>
                   )}
 
