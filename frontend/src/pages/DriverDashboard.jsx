@@ -261,7 +261,17 @@ export default function DriverDashboard() {
         toast.success(newStatus === 'online' ? "You're now online! Finding trips..." : "You're offline");
         
         if (newStatus === 'online') {
+          // Get current location and connect to Socket.io
+          const lat = 45.5017 + (Math.random() - 0.5) * 0.02;
+          const lng = -73.5673 + (Math.random() - 0.5) * 0.02;
+          
+          // Connect to Socket.io and register as online driver
+          driverGoOnline(profile?.id, user?.id, { latitude: lat, longitude: lng });
           updateLocation();
+        } else {
+          // Disconnect from Socket.io
+          driverGoOffline();
+          setSocketConnected(false);
         }
       }
     } catch (e) {
