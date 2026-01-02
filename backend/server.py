@@ -1413,9 +1413,9 @@ async def driver_mark_no_show(booking_id: str, current_user: dict = Depends(get_
         "note": "You have priority for the next ride in this area"
     }
 
-@api_router.get("/driver/status/suspension")
-async def get_driver_suspension_status(current_user: dict = Depends(get_current_user)):
-    """Check if driver is currently suspended and when suspension ends."""
+@api_router.get("/driver/status/tier")
+async def get_driver_tier_status(current_user: dict = Depends(get_current_user)):
+    """Get driver tier, points, and progress toward next tier."""
     if current_user["role"] != "driver":
         raise HTTPException(status_code=403, detail="Not a driver")
     
@@ -1423,32 +1423,42 @@ async def get_driver_suspension_status(current_user: dict = Depends(get_current_
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     
-    suspended_until = driver.get("suspended_until")
-    is_suspended = False
-    remaining_seconds = 0
-    
-    if suspended_until:
-        suspended_until_dt = datetime.fromisoformat(suspended_until.replace('Z', '+00:00'))
-        if suspended_until_dt.tzinfo is None:
-            suspended_until_dt = suspended_until_dt.replace(tzinfo=timezone.utc)
-        
-        now = datetime.now(timezone.utc)
-        if suspended_until_dt > now:
-            is_suspended = True
-            remaining_seconds = int((suspended_until_dt - now).total_seconds())
-        else:
-            # Suspension expired, clear it
-            await db.drivers.update_one(
-                {"user_id": current_user["id"]},
-                {"$unset": {"suspended_until": "", "suspension_reason": ""}}
-            )
+    points = driver.get("points", 0)
+    tier_info = get_driver_tier(points)
     
     return {
-        "is_suspended": is_suspended,
-        "suspended_until": suspended_until if is_suspended else None,
-        "remaining_seconds": remaining_seconds,
-        "reason": driver.get("suspension_reason") if is_suspended else None,
-        "priority_boost": driver.get("priority_boost", False)
+        "points": points,
+        "tier": tier_info["tier"],
+        "next_tier": tier_info["next_tier"],
+        "next_tier_threshold": tier_info["next_tier_threshold"],
+        "progress_percent": tier_info["progress_percent"],
+        "priority_boost": driver.get("priority_boost", False),
+        "total_rides": driver.get("total_rides", 0)
+    }
+
+
+@api_router.get("/driver/booking/{booking_id}/customer")
+async def get_customer_contact(booking_id: str, current_user: dict = Depends(get_current_user)):
+    """Get customer contact info for an active booking (for driver to call customer)."""
+    if current_user["role"] != "driver":
+        raise HTTPException(status_code=403, detail="Not a driver")
+    
+    booking = await db.bookings.find_one(
+        {"id": booking_id, "driver_id": current_user["id"], "status": {"$in": ["accepted", "arrived", "in_progress"]}},
+        {"_id": 0}
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Active booking not found")
+    
+    # Get customer info
+    user = await db.users.find_one({"id": booking["user_id"]}, {"_id": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    return {
+        "customer_name": booking.get("user_name", user.get("name", "Customer")),
+        "customer_phone": user.get("phone", "No phone available"),
+        "pickup_address": booking.get("pickup", {}).get("address", "")
     }
 
 
