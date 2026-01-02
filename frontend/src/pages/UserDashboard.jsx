@@ -337,6 +337,11 @@ export default function UserDashboard() {
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [petPolicy, setPetPolicy] = useState("none");
   
+  // Schedule ride fields
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  
   // Address input states
   const [pickupText, setPickupText] = useState("");
   const [dropoffText, setDropoffText] = useState("");
