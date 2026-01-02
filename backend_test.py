@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 class TranspoAPITester:
-    def __init__(self, base_url="https://mobility-app-10.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://fleetshift-1.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.user_token = None
         self.driver_token = None
