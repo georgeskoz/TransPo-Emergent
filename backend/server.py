@@ -165,6 +165,9 @@ class TaxiBookingRequest(BaseModel):
     recipient_phone: Optional[str] = None  # Phone of recipient if booking for someone else
     special_instructions: Optional[str] = None  # Gate codes, apt numbers, "wait at corner"
     pet_policy: str = "none"  # none, small_pet, large_pet, service_animal
+    # Scheduled ride fields
+    is_scheduled: bool = False  # True = book for later, False = book now
+    scheduled_time: Optional[str] = None  # ISO datetime string for scheduled pickup
 
 class FareEstimateRequest(BaseModel):
     pickup_lat: float
