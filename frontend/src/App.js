@@ -15,6 +15,7 @@ import UserProfile from "./pages/UserProfile";
 import DriverDashboard from "./pages/DriverDashboard";
 import DriverProfilePage from "./pages/DriverProfilePage";
 import DriverMeter from "./pages/DriverMeter";
+import DriverEarnings from "./pages/DriverEarnings";
 import AdminDashboard from "./pages/AdminDashboard";
 import BookingPage from "./pages/BookingPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
