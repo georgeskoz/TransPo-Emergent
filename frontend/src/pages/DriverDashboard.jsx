@@ -268,6 +268,107 @@ export default function DriverDashboard() {
     toast.success('Logged out');
   };
 
+  // Update trip status (arrived, in_progress)
+  const updateTripStatus = async (bookingId, newStatus) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/driver/trips/${bookingId}/update-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        toast.success(`Status updated to ${newStatus}`);
+        if (newStatus === 'arrived') {
+          setArrivedTime(Date.now());
+        }
+        loadJobs();
+      } else {
+        const data = await res.json();
+        toast.error(data.detail || 'Failed to update status');
+      }
+    } catch (e) {
+      toast.error('Error updating trip status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle trip cancellation
+  const handleCancelTrip = async (reason) => {
+    if (!activeJobs.length) return;
+    const bookingId = activeJobs[0].id;
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/driver/trips/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ reason })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShowCancellationModal(false);
+        setArrivedTime(null);
+        setNoShowTimerSeconds(0);
+        
+        if (data.is_penalized) {
+          setIsSuspended(true);
+          setSuspensionRemaining(data.suspension_minutes * 60);
+          toast.warning(`Trip cancelled. You are suspended for ${data.suspension_minutes} minutes.`);
+        } else {
+          toast.success('Trip cancelled successfully');
+        }
+        loadJobs();
+      } else {
+        const data = await res.json();
+        toast.error(data.detail || 'Failed to cancel trip');
+      }
+    } catch (e) {
+      toast.error('Error cancelling trip');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle no-show
+  const handleNoShow = async () => {
+    if (!activeJobs.length) return;
+    const bookingId = activeJobs[0].id;
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/driver/trips/${bookingId}/no-show`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setArrivedTime(null);
+        setNoShowTimerSeconds(0);
+        toast.success(data.note || 'Customer marked as no-show. You have priority for next ride!');
+        loadJobs();
+      } else {
+        const resData = await res.json();
+        toast.error(resData.detail || 'Failed to mark no-show');
+      }
+    } catch (e) {
+      toast.error('Error marking no-show');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format time for display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Check if no-show button should be enabled (5 minutes after arrival)
+  const canMarkNoShow = noShowTimerSeconds >= 300; // 5 minutes = 300 seconds
+
   // Calculate points progress (mock data)
   const currentPoints = 174;
   const targetPoints = 600;
