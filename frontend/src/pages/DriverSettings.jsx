@@ -93,8 +93,30 @@ export default function DriverSettings() {
         if (data.car_info) setCarInfo(data.car_info);
         if (data.background_check) setBackgroundCheck(data.background_check);
         if (data.tax_info) setTaxInfo(data.tax_info);
+        if (data.licenses) setLicenses(data.licenses);
       }
     } catch (e) { console.log(e); }
+  };
+
+  const saveLicenses = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/driver/settings/licenses`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(licenses)
+      });
+      if (res.ok) {
+        toast.success('License information saved');
+        setActiveSection(null);
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to save');
+      }
+    } catch (e) {
+      toast.error('Failed to save license information');
+    }
+    setLoading(false);
   };
 
   const saveBankInfo = async () => {
