@@ -3351,7 +3351,7 @@ export default function AdminDashboard() {
                         <AlertTriangle className="w-5 h-5 text-red-500" />
                         Chargebacks & Disputes
                       </CardTitle>
-                      <Button variant="outline" size="sm" onClick={loadDisputes}>
+                      <Button variant="outline" size="sm" onClick={loadPaymentDisputes}>
                         <RefreshCw className="w-4 h-4" />
                       </Button>
                     </div>
