@@ -1261,6 +1261,477 @@ class TranspoAPITester:
                 print(f"   Total trips: {statement_data.get('total_trips', 0)}")
                 print("✅ Statement download successful")
 
+    def test_user_rating_accountability(self):
+        """Test new User Rating & Accountability APIs"""
+        print("\n" + "="*50)
+        print("⭐ USER RATING & ACCOUNTABILITY TESTS")
+        print("="*50)
+        
+        if not self.user_token or not self.driver_token:
+            print("❌ Skipping user rating tests - missing user or driver token")
+            return
+        
+        # Test 1: Get initial user rating
+        success, response = self.run_test(
+            "Get User Rating - Initial",
+            "GET",
+            "user/rating",
+            200,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        initial_rating = 5.0
+        initial_no_show_count = 0
+        initial_late_cancel_count = 0
+        
+        if success:
+            initial_rating = response.get('rating', 5.0)
+            initial_no_show_count = response.get('no_show_count', 0)
+            initial_late_cancel_count = response.get('late_cancellation_count', 0)
+            total_bookings = response.get('total_bookings', 0)
+            
+            print(f"   Initial Rating: {initial_rating}")
+            print(f"   No-Show Count: {initial_no_show_count}")
+            print(f"   Late Cancellation Count: {initial_late_cancel_count}")
+            print(f"   Total Bookings: {total_bookings}")
+            
+            if initial_rating == 5.0:
+                print("✅ User starts with 5.0 rating as expected")
+            else:
+                print(f"❌ Expected 5.0 initial rating, got {initial_rating}")
+        
+        # Test 2: Create booking for cancellation tests
+        booking_data = {
+            "pickup_lat": 45.5017,
+            "pickup_lng": -73.5673,
+            "pickup_address": "1000 Rue de la Gauchetière, Montreal, QC",
+            "dropoff_lat": 45.5088,
+            "dropoff_lng": -73.5538,
+            "dropoff_address": "300 Rue Saint-Paul, Montreal, QC",
+            "vehicle_type": "sedan",
+            "booking_for_self": True,
+            "special_instructions": "Please wait at main entrance",
+            "pet_policy": "none"
+        }
+        
+        success, response = self.run_test(
+            "Create Booking for Cancellation Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        booking_id_1 = None
+        if success:
+            booking_id_1 = response.get('booking_id')
+            print(f"   Created booking ID: {booking_id_1}")
+        
+        # Test 3: Cancel booking within 3 minutes (no penalty)
+        if booking_id_1:
+            success, response = self.run_test(
+                "Cancel Booking - Within 3 Minutes (No Penalty)",
+                "POST",
+                f"bookings/{booking_id_1}/cancel",
+                200,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if success:
+                is_late_cancellation = response.get('is_late_cancellation', True)
+                rating_deducted = response.get('rating_deducted', 0)
+                minutes_since_booking = response.get('minutes_since_booking', 0)
+                
+                print(f"   Is Late Cancellation: {is_late_cancellation}")
+                print(f"   Rating Deducted: {rating_deducted}")
+                print(f"   Minutes Since Booking: {minutes_since_booking}")
+                
+                if not is_late_cancellation and rating_deducted == 0:
+                    print("✅ Early cancellation correctly applied no penalty")
+                else:
+                    print(f"❌ Expected no penalty for early cancellation")
+        
+        # Test 4: Create booking for no-show test
+        success, response = self.run_test(
+            "Create Booking for No-Show Test",
+            "POST",
+            "taxi/book",
+            200,
+            booking_data,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        booking_id_3 = None
+        if success:
+            booking_id_3 = response.get('booking_id')
+            print(f"   Created booking for no-show test ID: {booking_id_3}")
+            
+            # Accept booking as driver
+            success, response = self.run_test(
+                "Accept Booking for No-Show Test",
+                "POST",
+                f"driver/accept/{booking_id_3}",
+                200,
+                headers=self.get_auth_headers(self.driver_token)
+            )
+            
+            if success:
+                print("✅ Booking accepted by driver")
+                
+                # Mark as no-show (driver endpoint)
+                success, response = self.run_test(
+                    "Mark Customer No-Show",
+                    "POST",
+                    f"driver/trips/{booking_id_3}/no-show",
+                    200,
+                    headers=self.get_auth_headers(self.driver_token)
+                )
+                
+                if success:
+                    priority_boost_active = response.get('priority_boost_active', False)
+                    user_rating_deducted = response.get('user_rating_deducted', 0)
+                    no_show_fee = response.get('no_show_fee', 0)
+                    note = response.get('note', '')
+                    
+                    print(f"   Priority Boost Active: {priority_boost_active}")
+                    print(f"   User Rating Deducted: {user_rating_deducted}")
+                    print(f"   No-Show Fee: ${no_show_fee}")
+                    print(f"   Note: {note}")
+                    
+                    if user_rating_deducted == 0.5 and no_show_fee == 5.0:
+                        print("✅ No-show correctly deducted 0.5 rating and $5.00 fee")
+                    else:
+                        print(f"❌ Expected 0.5 rating deduction and $5.00 fee")
+                    
+                    if priority_boost_active:
+                        print("✅ Driver correctly received priority boost")
+        
+        # Test 5: Check final user rating after no-show
+        success, response = self.run_test(
+            "Get User Rating - After No-Show",
+            "GET",
+            "user/rating",
+            200,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if success:
+            final_rating = response.get('rating', 5.0)
+            final_no_show_count = response.get('no_show_count', 0)
+            final_late_cancel_count = response.get('late_cancellation_count', 0)
+            total_bookings = response.get('total_bookings', 0)
+            
+            print(f"   Final Rating: {final_rating}")
+            print(f"   Final No-Show Count: {final_no_show_count}")
+            print(f"   Final Late Cancellation Count: {final_late_cancel_count}")
+            print(f"   Total Bookings: {total_bookings}")
+            
+            # Verify rating was deducted for no-show
+            expected_rating = initial_rating - 0.5  # 0.5 deduction for no-show
+            if abs(final_rating - expected_rating) < 0.01:
+                print("✅ User rating correctly deducted for no-show")
+            else:
+                print(f"❌ Expected rating {expected_rating}, got {final_rating}")
+            
+            if final_no_show_count > initial_no_show_count:
+                print("✅ No-show count correctly incremented")
+            else:
+                print("❌ No-show count not incremented")
+
+    def test_enhanced_booking_apis(self):
+        """Test Enhanced Booking APIs with new fields"""
+        print("\n" + "="*50)
+        print("📋 ENHANCED BOOKING APIS TESTS")
+        print("="*50)
+        
+        if not self.user_token:
+            print("❌ Skipping enhanced booking tests - no user token")
+            return
+        
+        # Test 1: Enhanced booking for self with special instructions and pet policy
+        enhanced_booking_self = {
+            "pickup_lat": 45.5017,
+            "pickup_lng": -73.5673,
+            "pickup_address": "1000 Rue de la Gauchetière, Montreal, QC",
+            "dropoff_lat": 45.5088,
+            "dropoff_lng": -73.5538,
+            "dropoff_address": "300 Rue Saint-Paul, Montreal, QC",
+            "vehicle_type": "sedan",
+            "booking_for_self": True,
+            "special_instructions": "Please wait at main entrance, gate code 1234",
+            "pet_policy": "small_pet"
+        }
+        
+        success, response = self.run_test(
+            "Enhanced Booking - For Self with Pet",
+            "POST",
+            "taxi/book",
+            200,
+            enhanced_booking_self,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if success:
+            booking_id = response.get('booking_id')
+            booking_details = response.get('booking', {})
+            
+            print(f"   Booking ID: {booking_id}")
+            print(f"   Booking For Self: {booking_details.get('booking_for_self', 'N/A')}")
+            print(f"   Special Instructions: {booking_details.get('special_instructions', 'N/A')}")
+            print(f"   Pet Policy: {booking_details.get('pet_policy', 'N/A')}")
+            
+            # Verify enhanced fields are saved
+            if booking_details.get('booking_for_self') == True:
+                print("✅ booking_for_self field correctly set to True")
+            
+            if booking_details.get('special_instructions') == "Please wait at main entrance, gate code 1234":
+                print("✅ Special instructions correctly saved")
+            
+            if booking_details.get('pet_policy') == "small_pet":
+                print("✅ Pet policy correctly set to small_pet")
+        
+        # Test 2: Enhanced booking for someone else
+        enhanced_booking_other = {
+            "pickup_lat": 45.5017,
+            "pickup_lng": -73.5673,
+            "pickup_address": "1000 Rue de la Gauchetière, Montreal, QC",
+            "dropoff_lat": 45.5088,
+            "dropoff_lng": -73.5538,
+            "dropoff_address": "300 Rue Saint-Paul, Montreal, QC",
+            "vehicle_type": "sedan",
+            "booking_for_self": False,
+            "recipient_name": "John Smith",
+            "recipient_phone": "+1-514-555-0123",
+            "special_instructions": "Apartment 4B, buzz #4",
+            "pet_policy": "service_animal"
+        }
+        
+        success, response = self.run_test(
+            "Enhanced Booking - For Someone Else",
+            "POST",
+            "taxi/book",
+            200,
+            enhanced_booking_other,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if success:
+            booking_id = response.get('booking_id')
+            booking_details = response.get('booking', {})
+            
+            print(f"   Booking ID: {booking_id}")
+            print(f"   Booking For Self: {booking_details.get('booking_for_self', 'N/A')}")
+            print(f"   Recipient Name: {booking_details.get('recipient_name', 'N/A')}")
+            print(f"   Recipient Phone: {booking_details.get('recipient_phone', 'N/A')}")
+            print(f"   Special Instructions: {booking_details.get('special_instructions', 'N/A')}")
+            print(f"   Pet Policy: {booking_details.get('pet_policy', 'N/A')}")
+            
+            # Verify enhanced fields for third-party booking
+            if booking_details.get('booking_for_self') == False:
+                print("✅ booking_for_self field correctly set to False")
+            
+            if booking_details.get('recipient_name') == "John Smith":
+                print("✅ Recipient name correctly saved")
+            
+            if booking_details.get('recipient_phone') == "+1-514-555-0123":
+                print("✅ Recipient phone correctly saved")
+            
+            if booking_details.get('pet_policy') == "service_animal":
+                print("✅ Pet policy correctly set to service_animal")
+
+    def test_saved_addresses_apis(self):
+        """Test Saved Addresses APIs"""
+        print("\n" + "="*50)
+        print("🏠 SAVED ADDRESSES APIS TESTS")
+        print("="*50)
+        
+        if not self.user_token:
+            print("❌ Skipping saved addresses tests - no user token")
+            return
+        
+        # Test 1: Get initial saved addresses
+        success, response = self.run_test(
+            "Get Saved Addresses - Initial",
+            "GET",
+            "user/saved-addresses",
+            200,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        initial_addresses = []
+        if success:
+            initial_addresses = response.get('addresses', [])
+            print(f"   Initial saved addresses: {len(initial_addresses)}")
+        
+        # Test 2: Add home address
+        home_address = {
+            "label": "Home",
+            "address": "123 Main Street, Montreal, QC H3A 1A1",
+            "latitude": 45.5017,
+            "longitude": -73.5673,
+            "is_default": True
+        }
+        
+        success, response = self.run_test(
+            "Add Saved Address - Home",
+            "POST",
+            "user/saved-addresses",
+            200,
+            home_address,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        home_address_id = None
+        if success:
+            address_data = response.get('address', {})
+            home_address_id = address_data.get('id')
+            
+            print(f"   Added address ID: {home_address_id}")
+            print(f"   Label: {address_data.get('label', 'N/A')}")
+            print(f"   Address: {address_data.get('address', 'N/A')}")
+            print(f"   Is Default: {address_data.get('is_default', False)}")
+            
+            if address_data.get('label') == "Home" and address_data.get('is_default') == True:
+                print("✅ Home address correctly added as default")
+        
+        # Test 3: Add work address
+        work_address = {
+            "label": "Work",
+            "address": "456 Business Ave, Montreal, QC H3B 2B2",
+            "latitude": 45.5088,
+            "longitude": -73.5538,
+            "is_default": False
+        }
+        
+        success, response = self.run_test(
+            "Add Saved Address - Work",
+            "POST",
+            "user/saved-addresses",
+            200,
+            work_address,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        work_address_id = None
+        if success:
+            address_data = response.get('address', {})
+            work_address_id = address_data.get('id')
+            
+            if address_data.get('label') == "Work":
+                print("✅ Work address correctly added")
+        
+        # Test 4: Get all saved addresses
+        success, response = self.run_test(
+            "Get All Saved Addresses",
+            "GET",
+            "user/saved-addresses",
+            200,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if success:
+            addresses = response.get('addresses', [])
+            print(f"   Total saved addresses: {len(addresses)}")
+            
+            if len(addresses) >= 2:
+                print("✅ Addresses correctly saved")
+                
+                # Verify address details
+                labels = [addr.get('label') for addr in addresses]
+                if 'Home' in labels and 'Work' in labels:
+                    print("✅ Address labels correctly saved")
+        
+        # Test 5: Delete work address
+        if work_address_id:
+            success, response = self.run_test(
+                "Delete Saved Address - Work",
+                "DELETE",
+                f"user/saved-addresses/{work_address_id}",
+                200,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if success:
+                print("✅ Work address deleted successfully")
+
+    def test_notification_preferences_apis(self):
+        """Test Notification Preferences APIs"""
+        print("\n" + "="*50)
+        print("🔔 NOTIFICATION PREFERENCES APIS TESTS")
+        print("="*50)
+        
+        if not self.user_token:
+            print("❌ Skipping notification preferences tests - no user token")
+            return
+        
+        # Test 1: Get initial notification preferences
+        success, response = self.run_test(
+            "Get Notification Preferences - Initial",
+            "GET",
+            "user/notifications",
+            200,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        initial_prefs = {}
+        if success:
+            initial_prefs = response
+            print(f"   Push Enabled: {initial_prefs.get('push_enabled', 'N/A')}")
+            print(f"   Email Enabled: {initial_prefs.get('email_enabled', 'N/A')}")
+            print(f"   SMS Enabled: {initial_prefs.get('sms_enabled', 'N/A')}")
+            print(f"   Ride Updates: {initial_prefs.get('ride_updates', 'N/A')}")
+            print(f"   Promotions: {initial_prefs.get('promotions', 'N/A')}")
+            
+            # Verify default preferences
+            expected_defaults = {
+                'push_enabled': True,
+                'email_enabled': True,
+                'sms_enabled': False,
+                'ride_updates': True,
+                'promotions': True
+            }
+            
+            all_defaults_correct = True
+            for key, expected_value in expected_defaults.items():
+                if initial_prefs.get(key) != expected_value:
+                    print(f"❌ Default {key} should be {expected_value}, got {initial_prefs.get(key)}")
+                    all_defaults_correct = False
+            
+            if all_defaults_correct:
+                print("✅ All default notification preferences correct")
+        
+        # Test 2: Update notification preferences
+        updated_prefs = {
+            "push_enabled": True,
+            "email_enabled": True,
+            "sms_enabled": True,  # Enable SMS
+            "ride_updates": True,
+            "promotions": False   # Disable promotions
+        }
+        
+        success, response = self.run_test(
+            "Update Notification Preferences",
+            "PUT",
+            "user/notifications",
+            200,
+            updated_prefs,
+            headers=self.get_auth_headers(self.user_token)
+        )
+        
+        if success:
+            message = response.get('message', '')
+            notifications = response.get('notifications', {})
+            
+            print(f"   Update message: {message}")
+            print(f"   SMS Enabled: {notifications.get('sms_enabled', 'N/A')}")
+            print(f"   Promotions: {notifications.get('promotions', 'N/A')}")
+            
+            if notifications.get('sms_enabled') == True and notifications.get('promotions') == False:
+                print("✅ Notification preferences updated correctly")
+            else:
+                print("❌ Notification preferences not updated correctly")
+
     def test_driver_tier_system(self):
         """Test new Driver Tier System with point-based cancellations"""
         print("\n" + "="*50)
