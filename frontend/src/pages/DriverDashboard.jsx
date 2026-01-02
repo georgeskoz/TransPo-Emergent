@@ -145,13 +145,16 @@ export default function DriverDashboard() {
         distance_km: data.distanceKm,
         eta_minutes: data.estimatedPickupMinutes
       });
-      // Play notification sound or vibrate
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      // Play looping notification sound
+      playRideAlert();
     });
 
     // Listen for ride taken by another driver
     const unsubRideTaken = onRideTaken((data) => {
       if (incomingRideAlert?.bookingId === data.bookingId) {
+        // Stop the alert sound and play "taken" sound
+        stopRideAlert();
+        playRideTakenSound();
         setShowJobModal(false);
         setSelectedJob(null);
         setIncomingRideAlert(null);
@@ -167,6 +170,9 @@ export default function DriverDashboard() {
 
     // Listen for ride accept success
     const unsubAcceptSuccess = onRideAcceptSuccess((data) => {
+      // Stop alert sound and play success sound
+      stopRideAlert();
+      playSuccessSound();
       toast.success('Ride accepted successfully!');
       setShowJobModal(false);
       setIncomingRideAlert(null);
@@ -175,12 +181,15 @@ export default function DriverDashboard() {
 
     // Listen for ride accept failed
     const unsubAcceptFailed = onRideAcceptFailed((data) => {
+      stopRideAlert();
       toast.error(data.message || 'Failed to accept ride');
       setShowJobModal(false);
       setIncomingRideAlert(null);
     });
 
     return () => {
+      // Stop any playing sounds on cleanup
+      stopRideAlert();
       unsubRideAlert();
       unsubRideTaken();
       unsubConnected();
