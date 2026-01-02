@@ -5485,6 +5485,87 @@ async def get_user_bookings(current_user: dict = Depends(get_current_user)):
     ).sort("created_at", -1).to_list(50)
     return {"bookings": bookings}
 
+
+class UserCancellationRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+@api_router.post("/bookings/{booking_id}/cancel")
+async def user_cancel_booking(booking_id: str, request: UserCancellationRequest = None, current_user: dict = Depends(get_current_user)):
+    """User cancels their own booking. Late cancellations (after 3 min) incur a rating penalty."""
+    booking = await db.bookings.find_one({"id": booking_id, "user_id": current_user["id"]})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.get("status") in ["completed", "cancelled", "cancelled_by_driver", "no_show"]:
+        raise HTTPException(status_code=400, detail="Booking cannot be cancelled")
+    
+    now = datetime.now(timezone.utc)
+    created_at = datetime.fromisoformat(booking["created_at"].replace('Z', '+00:00'))
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    
+    minutes_since_booking = (now - created_at).total_seconds() / 60
+    is_late_cancellation = minutes_since_booking > USER_RATING_CONFIG["late_cancel_threshold_minutes"]
+    
+    # Update booking status
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "cancelled",
+            "cancelled_at": now.isoformat(),
+            "cancelled_by": "user",
+            "cancellation_reason": request.reason if request else None,
+            "is_late_cancellation": is_late_cancellation
+        }}
+    )
+    
+    # If driver was assigned, make them available again
+    if booking.get("driver_id"):
+        await db.drivers.update_one(
+            {"user_id": booking["driver_id"]},
+            {"$set": {"is_available": True}}
+        )
+    
+    rating_deducted = 0
+    # Apply late cancellation penalty
+    if is_late_cancellation:
+        user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+        current_rating = user.get("rating", USER_RATING_CONFIG["initial_rating"])
+        new_rating = max(1.0, current_rating - USER_RATING_CONFIG["late_cancel_penalty"])
+        rating_deducted = USER_RATING_CONFIG["late_cancel_penalty"]
+        
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {
+                "$set": {"rating": new_rating},
+                "$inc": {"late_cancellation_count": 1}
+            }
+        )
+    
+    return {
+        "message": "Booking cancelled",
+        "is_late_cancellation": is_late_cancellation,
+        "rating_deducted": rating_deducted,
+        "minutes_since_booking": round(minutes_since_booking, 1)
+    }
+
+
+@api_router.get("/user/rating")
+async def get_user_rating(current_user: dict = Depends(get_current_user)):
+    """Get user's rating and accountability stats."""
+    user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "rating": user.get("rating", USER_RATING_CONFIG["initial_rating"]),
+        "no_show_count": user.get("no_show_count", 0),
+        "late_cancellation_count": user.get("late_cancellation_count", 0),
+        "total_bookings": user.get("total_bookings", 0)
+    }
+
+
 # ============== MAP/LOCATION ROUTES ==============
 
 @api_router.get("/map/drivers")
