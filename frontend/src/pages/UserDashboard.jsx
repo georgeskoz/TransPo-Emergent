@@ -555,6 +555,10 @@ export default function UserDashboard() {
     }
 
     setLoading(true);
+    setRideStatus('searching');
+    setDriversNotified(0);
+    setAcceptedDriver(null);
+    
     try {
       const res = await fetch(`${API_URL}/taxi/book`, {
         method: 'POST',
@@ -580,6 +584,26 @@ export default function UserDashboard() {
       
       if (res.ok) {
         toast.success(orderingFor ? `Ride booked for ${orderingFor.name}!` : "Ride booked! Looking for drivers...");
+        
+        // Emit ride request via Socket.io for real-time driver alerts
+        requestRide({
+          userId: user.id,
+          userName: user.name || user.email,
+          pickup: {
+            lat: pickup.lat,
+            lng: pickup.lng,
+            address: pickup.address || pickupText
+          },
+          dropoff: {
+            lat: dropoff.lat,
+            lng: dropoff.lng,
+            address: dropoff.address || dropoffText
+          },
+          vehicleType: vehicleType,
+          fare: fareEstimate || data.fare,
+          bookingId: data.booking_id
+        });
+        
         loadBookings();
         // Reset form
         setPickupText("");
@@ -592,9 +616,11 @@ export default function UserDashboard() {
         setSpecialInstructions("");
         setPetPolicy("none");
       } else {
+        setRideStatus(null);
         throw new Error(data.detail || "Booking failed");
       }
     } catch (e) {
+      setRideStatus(null);
       toast.error(e.message);
     } finally {
       setLoading(false);
@@ -603,6 +629,7 @@ export default function UserDashboard() {
 
   const handleLogout = () => {
     logout();
+    disconnectSocket();
     navigate('/');
     toast.success("Logged out successfully");
   };
