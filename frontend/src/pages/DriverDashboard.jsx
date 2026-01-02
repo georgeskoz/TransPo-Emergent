@@ -826,10 +826,11 @@ export default function DriverDashboard() {
 
         {/* Content - Only visible when expanded */}
         <motion.div 
-          className={`overflow-y-auto transition-all duration-300`}
+          className="overflow-y-auto transition-all duration-300"
           style={{ 
-            maxHeight: bottomSheetExpanded ? 'calc(100vh - 180px)' : '0px',
-            opacity: bottomSheetExpanded ? 1 : 0
+            maxHeight: bottomSheetExpanded ? 'calc(100vh - 200px)' : '0px',
+            opacity: bottomSheetExpanded ? 1 : 0,
+            overflow: bottomSheetExpanded ? 'auto' : 'hidden'
           }}
         >
           {/* Online/Offline Toggle */}
