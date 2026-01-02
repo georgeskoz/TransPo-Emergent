@@ -3866,6 +3866,808 @@ async def update_withdrawal_status(
     
     return {"message": f"Withdrawal marked as {status}"}
 
+# ============== STRIPE PAYMENTS & TRANSACTIONS ==============
+
+# Stripe fee calculation (standard rate)
+STRIPE_FEE_PERCENT = 2.9
+STRIPE_FEE_FIXED = 0.30  # $0.30 per transaction
+
+def calculate_stripe_fee(amount: float) -> float:
+    """Calculate Stripe processing fee."""
+    return round((amount * STRIPE_FEE_PERCENT / 100) + STRIPE_FEE_FIXED, 2)
+
+class RefundRequest(BaseModel):
+    trip_id: str
+    refund_type: str = "full"  # full, partial
+    amount: Optional[float] = None
+    exclude_tip: bool = False
+    reason: str = ""
+
+class PayoutScheduleUpdate(BaseModel):
+    schedule: str = "weekly"  # daily, weekly
+    early_cashout_fee_percent: float = 1.5
+    min_payout_amount: float = 50.0
+
+@api_router.get("/admin/payments/transactions")
+async def get_payment_transactions(
+    page: int = 1,
+    limit: int = 50,
+    driver_id: Optional[str] = None,
+    rider_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get detailed payment transactions with full fare breakdown."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Build query
+    query = {"status": "completed"}
+    if driver_id:
+        query["driver_id"] = driver_id
+    if rider_id:
+        query["user_id"] = rider_id
+    if start_date:
+        query["end_time"] = {"$gte": start_date}
+    if end_date:
+        if "end_time" in query:
+            query["end_time"]["$lte"] = end_date
+        else:
+            query["end_time"] = {"$lte": end_date}
+    
+    skip = (page - 1) * limit
+    
+    # Get trips with full fare details
+    trips = await db.meter_trips.find(
+        query, {"_id": 0}
+    ).sort("end_time", -1).skip(skip).limit(limit).to_list(limit)
+    
+    total = await db.meter_trips.count_documents(query)
+    
+    # Get commission rate
+    commission_config = await db.commission_configs.find_one({"is_active": True}, {"_id": 0})
+    commission_rate = commission_config.get("rate", 15) / 100 if commission_config else 0.15
+    
+    # Enrich with driver/rider info and calculate fees
+    transactions = []
+    for trip in trips:
+        fare = trip.get("final_fare", {})
+        total_amount = fare.get("total_final", 0)
+        tip = fare.get("tip", 0)
+        
+        # Calculate fees
+        stripe_fee = calculate_stripe_fee(total_amount)
+        platform_commission = round((total_amount - tip) * commission_rate, 2)
+        net_amount = round(total_amount - stripe_fee - platform_commission, 2)
+        
+        # Get driver info
+        driver = await db.drivers.find_one({"user_id": trip.get("driver_id")}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
+        
+        # Get rider info if exists
+        rider = None
+        if trip.get("user_id"):
+            rider = await db.users.find_one({"id": trip.get("user_id")}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
+        
+        transactions.append({
+            "id": trip.get("id"),
+            "trip_id": trip.get("id"),
+            "date": trip.get("end_time"),
+            "driver": driver,
+            "rider": rider if rider else {"name": "Street Hail", "email": None},
+            "mode": trip.get("mode", "app"),
+            # Fare breakdown
+            "base_fare": fare.get("base_fare", 0),
+            "distance_fare": fare.get("distance_cost", 0),
+            "waiting_time_fare": fare.get("waiting_cost", 0),
+            "tip": tip,
+            "quebec_fee": fare.get("government_fee", 0.90),
+            "gst": fare.get("gst", 0),
+            "qst": fare.get("qst", 0),
+            "total_taxes": round(fare.get("gst", 0) + fare.get("qst", 0), 2),
+            "gross_amount": total_amount,
+            # Deductions
+            "stripe_fee": stripe_fee,
+            "platform_commission": platform_commission,
+            "commission_rate": commission_rate * 100,
+            # Net
+            "net_to_driver": net_amount,
+            "payment_status": trip.get("payment_status", "completed"),
+            "payment_method": trip.get("payment_method", "card")
+        })
+    
+    return {
+        "transactions": transactions,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": (total + limit - 1) // limit
+        },
+        "summary": {
+            "total_transactions": total,
+            "commission_rate": commission_rate * 100
+        }
+    }
+
+@api_router.get("/admin/payments/transactions/export")
+async def export_payment_transactions(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    format: str = "csv",
+    current_user: dict = Depends(get_current_user)
+):
+    """Export transactions for accounting/reporting."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get all transactions for the date range
+    query = {"status": "completed"}
+    if start_date:
+        query["end_time"] = {"$gte": start_date}
+    if end_date:
+        if "end_time" in query:
+            query["end_time"]["$lte"] = end_date
+        else:
+            query["end_time"] = {"$lte": end_date}
+    
+    trips = await db.meter_trips.find(query, {"_id": 0}).sort("end_time", -1).to_list(10000)
+    
+    # Get commission rate
+    commission_config = await db.commission_configs.find_one({"is_active": True}, {"_id": 0})
+    commission_rate = commission_config.get("rate", 15) / 100 if commission_config else 0.15
+    
+    export_data = []
+    for trip in trips:
+        fare = trip.get("final_fare", {})
+        total_amount = fare.get("total_final", 0)
+        tip = fare.get("tip", 0)
+        stripe_fee = calculate_stripe_fee(total_amount)
+        platform_commission = round((total_amount - tip) * commission_rate, 2)
+        
+        export_data.append({
+            "trip_id": trip.get("id"),
+            "date": trip.get("end_time"),
+            "driver_id": trip.get("driver_id"),
+            "base_fare": fare.get("base_fare", 0),
+            "distance_fare": fare.get("distance_cost", 0),
+            "waiting_fare": fare.get("waiting_cost", 0),
+            "tip": tip,
+            "quebec_fee": fare.get("government_fee", 0.90),
+            "gst": fare.get("gst", 0),
+            "qst": fare.get("qst", 0),
+            "gross_total": total_amount,
+            "stripe_fee": stripe_fee,
+            "platform_commission": platform_commission,
+            "net_to_driver": round(total_amount - stripe_fee - platform_commission, 2)
+        })
+    
+    return {
+        "data": export_data,
+        "count": len(export_data),
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.get("/admin/payments/payout-settings")
+async def get_payout_settings(current_user: dict = Depends(get_current_user)):
+    """Get driver payout schedule settings."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    settings = await db.payout_settings.find_one({"type": "global"}, {"_id": 0})
+    
+    if not settings:
+        settings = {
+            "id": str(uuid.uuid4()),
+            "type": "global",
+            "schedule": "weekly",  # weekly or daily
+            "payout_day": "friday",  # for weekly
+            "early_cashout_enabled": True,
+            "early_cashout_fee_percent": 1.5,
+            "min_payout_amount": 50.0,
+            "auto_payout_enabled": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.payout_settings.insert_one(settings)
+        settings.pop("_id", None)
+    
+    return {"settings": settings}
+
+@api_router.put("/admin/payments/payout-settings")
+async def update_payout_settings(
+    updates: PayoutScheduleUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update driver payout schedule settings."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super Admin access required")
+    
+    update_data = updates.dict()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = current_user["id"]
+    
+    await db.payout_settings.update_one(
+        {"type": "global"},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    return {"message": "Payout settings updated"}
+
+@api_router.get("/admin/payments/driver-payouts")
+async def get_driver_payouts(
+    status: Optional[str] = None,
+    driver_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get driver payouts with detailed status."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    if driver_id:
+        query["driver_id"] = driver_id
+    
+    payouts = await db.driver_payouts.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    
+    # Enrich with driver info
+    for payout in payouts:
+        driver = await db.drivers.find_one(
+            {"user_id": payout.get("driver_id")}, 
+            {"_id": 0, "name": 1, "email": 1, "stripe_account_id": 1}
+        )
+        payout["driver"] = driver
+    
+    # Get summary counts
+    pending_count = await db.driver_payouts.count_documents({"status": "pending"})
+    processing_count = await db.driver_payouts.count_documents({"status": "processing"})
+    completed_count = await db.driver_payouts.count_documents({"status": "completed"})
+    failed_count = await db.driver_payouts.count_documents({"status": "failed"})
+    
+    return {
+        "payouts": payouts,
+        "summary": {
+            "pending": pending_count,
+            "processing": processing_count,
+            "completed": completed_count,
+            "failed": failed_count
+        }
+    }
+
+@api_router.post("/admin/payments/driver-payouts/{payout_id}/retry")
+async def retry_failed_payout(
+    payout_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Retry a failed payout."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super Admin access required")
+    
+    payout = await db.driver_payouts.find_one({"id": payout_id})
+    if not payout:
+        raise HTTPException(status_code=404, detail="Payout not found")
+    
+    if payout.get("status") != "failed":
+        raise HTTPException(status_code=400, detail="Can only retry failed payouts")
+    
+    # Reset to pending for retry
+    await db.driver_payouts.update_one(
+        {"id": payout_id},
+        {"$set": {
+            "status": "pending",
+            "retry_count": payout.get("retry_count", 0) + 1,
+            "last_retry_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Payout queued for retry"}
+
+@api_router.post("/admin/payments/refunds")
+async def create_refund(
+    refund_request: RefundRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a refund for a trip."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get the trip
+    trip = await db.meter_trips.find_one({"id": refund_request.trip_id}, {"_id": 0})
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    fare = trip.get("final_fare", {})
+    total_amount = fare.get("total_final", 0)
+    tip = fare.get("tip", 0)
+    
+    # Calculate refund amount
+    if refund_request.refund_type == "full":
+        if refund_request.exclude_tip:
+            refund_amount = total_amount - tip
+        else:
+            refund_amount = total_amount
+    else:
+        if not refund_request.amount:
+            raise HTTPException(status_code=400, detail="Amount required for partial refund")
+        refund_amount = min(refund_request.amount, total_amount)
+    
+    # Create refund record
+    refund = {
+        "id": str(uuid.uuid4()),
+        "trip_id": refund_request.trip_id,
+        "driver_id": trip.get("driver_id"),
+        "user_id": trip.get("user_id"),
+        "original_amount": total_amount,
+        "refund_amount": round(refund_amount, 2),
+        "refund_type": refund_request.refund_type,
+        "tip_excluded": refund_request.exclude_tip,
+        "reason": refund_request.reason,
+        "status": "pending",
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.refunds.insert_one(refund)
+    
+    # Update trip status
+    await db.meter_trips.update_one(
+        {"id": refund_request.trip_id},
+        {"$set": {"refund_status": "pending", "refund_id": refund["id"]}}
+    )
+    
+    refund.pop("_id", None)
+    return {"message": "Refund created", "refund": refund}
+
+@api_router.get("/admin/payments/refunds")
+async def get_refunds(
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all refunds."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    refunds = await db.refunds.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    
+    return {"refunds": refunds}
+
+@api_router.put("/admin/payments/refunds/{refund_id}/process")
+async def process_refund(
+    refund_id: str,
+    status: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Process a refund (approve/reject)."""
+    if current_user.get("admin_role") != "super_admin":
+        raise HTTPException(status_code=403, detail="Super Admin access required")
+    
+    if status not in ["approved", "rejected", "completed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    refund = await db.refunds.find_one({"id": refund_id})
+    if not refund:
+        raise HTTPException(status_code=404, detail="Refund not found")
+    
+    await db.refunds.update_one(
+        {"id": refund_id},
+        {"$set": {
+            "status": status,
+            "processed_by": current_user["id"],
+            "processed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update trip refund status
+    await db.meter_trips.update_one(
+        {"id": refund["trip_id"]},
+        {"$set": {"refund_status": status}}
+    )
+    
+    return {"message": f"Refund {status}"}
+
+@api_router.get("/admin/payments/disputes")
+async def get_payment_disputes(
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get payment disputes (chargebacks)."""
+    if current_user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {"type": "chargeback"}
+    if status:
+        query["status"] = status
+    
+    disputes = await db.payment_disputes.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Count by status
+    open_count = await db.payment_disputes.count_documents({"type": "chargeback", "status": "open"})
+    under_review = await db.payment_disputes.count_documents({"type": "chargeback", "status": "under_review"})
+    won = await db.payment_disputes.count_documents({"type": "chargeback", "status": "won"})
+    lost = await db.payment_disputes.count_documents({"type": "chargeback", "status": "lost"})
+    
+    return {
+        "disputes": disputes,
+        "summary": {
+            "open": open_count,
+            "under_review": under_review,
+            "won": won,
+            "lost": lost
+        }
+    }
+
+# ============== DRIVER STRIPE CONNECT ==============
+
+@api_router.get("/driver/stripe/status")
+async def get_driver_stripe_status(current_user: dict = Depends(get_current_user)):
+    """Get driver's Stripe Connect account status."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    stripe_connected = driver.get("stripe_account_id") is not None
+    stripe_status = driver.get("stripe_account_status", "not_connected")
+    
+    return {
+        "connected": stripe_connected,
+        "status": stripe_status,
+        "account_id": driver.get("stripe_account_id"),
+        "payouts_enabled": driver.get("stripe_payouts_enabled", False),
+        "charges_enabled": driver.get("stripe_charges_enabled", False)
+    }
+
+@api_router.post("/driver/stripe/connect")
+async def create_stripe_connect_link(
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate Stripe Connect onboarding link for driver."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    # For now, create a mock onboarding link (real Stripe Connect requires account creation)
+    # In production, this would use stripe.Account.create() and stripe.AccountLink.create()
+    
+    base_url = str(request.base_url).rstrip('/')
+    onboarding_id = str(uuid.uuid4())
+    
+    # Store onboarding session
+    await db.stripe_onboarding.insert_one({
+        "id": onboarding_id,
+        "driver_id": current_user["id"],
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Mock onboarding URL (in production, this comes from Stripe)
+    # For demo purposes, we'll simulate the flow
+    onboarding_url = f"{base_url}/driver/stripe-onboarding?session={onboarding_id}"
+    
+    logger.info(f"[STRIPE CONNECT] Onboarding link created for driver {current_user['id']}")
+    
+    return {
+        "url": onboarding_url,
+        "session_id": onboarding_id,
+        "message": "Redirect driver to complete Stripe onboarding"
+    }
+
+@api_router.post("/driver/stripe/complete-onboarding")
+async def complete_stripe_onboarding(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Complete Stripe Connect onboarding (mock for demo)."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    # Verify session
+    session = await db.stripe_onboarding.find_one({"id": session_id, "driver_id": current_user["id"]})
+    if not session:
+        raise HTTPException(status_code=404, detail="Onboarding session not found")
+    
+    # Generate mock Stripe account ID
+    mock_stripe_account = f"acct_mock_{str(uuid.uuid4())[:8]}"
+    
+    # Update driver with Stripe info
+    await db.drivers.update_one(
+        {"user_id": current_user["id"]},
+        {"$set": {
+            "stripe_account_id": mock_stripe_account,
+            "stripe_account_status": "active",
+            "stripe_payouts_enabled": True,
+            "stripe_charges_enabled": True,
+            "stripe_connected_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update onboarding session
+    await db.stripe_onboarding.update_one(
+        {"id": session_id},
+        {"$set": {"status": "completed", "completed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    logger.info(f"[STRIPE CONNECT] Driver {current_user['id']} completed onboarding")
+    
+    return {"message": "Stripe account connected successfully", "account_id": mock_stripe_account}
+
+@api_router.get("/driver/earnings/summary")
+async def get_driver_earnings_summary(
+    period: str = "weekly",
+    current_user: dict = Depends(get_current_user)
+):
+    """Get driver earnings summary (daily/weekly/monthly)."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Calculate date range based on period
+    if period == "daily":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "weekly":
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "monthly":
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        start_date = now - timedelta(days=7)
+    
+    # Get completed trips in period
+    trips = await db.meter_trips.find({
+        "driver_id": current_user["id"],
+        "status": "completed",
+        "end_time": {"$gte": start_date.isoformat()}
+    }, {"_id": 0}).to_list(1000)
+    
+    # Get commission rate
+    commission_config = await db.commission_configs.find_one({"is_active": True}, {"_id": 0})
+    commission_rate = commission_config.get("rate", 15) / 100 if commission_config else 0.15
+    
+    # Calculate earnings
+    total_fares = 0
+    total_tips = 0
+    total_trips = len(trips)
+    
+    for trip in trips:
+        fare = trip.get("final_fare", {})
+        total_fares += fare.get("total_final", 0)
+        total_tips += fare.get("tip", 0)
+    
+    # Calculate net after commission
+    platform_commission = round((total_fares - total_tips) * commission_rate, 2)
+    stripe_fees = round(calculate_stripe_fee(total_fares) * total_trips if total_trips > 0 else 0, 2)
+    net_earnings = round(total_fares - platform_commission - stripe_fees, 2)
+    
+    return {
+        "period": period,
+        "start_date": start_date.isoformat(),
+        "end_date": now.isoformat(),
+        "total_trips": total_trips,
+        "gross_earnings": round(total_fares, 2),
+        "tips": round(total_tips, 2),
+        "platform_commission": platform_commission,
+        "stripe_fees": stripe_fees,
+        "net_earnings": net_earnings,
+        "commission_rate": commission_rate * 100
+    }
+
+@api_router.get("/driver/payouts")
+async def get_driver_payouts(current_user: dict = Depends(get_current_user)):
+    """Get driver's payout history."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    payouts = await db.driver_payouts.find(
+        {"driver_id": current_user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    # Get pending balance
+    pending_balance = 0
+    pending_trips = await db.meter_trips.find({
+        "driver_id": current_user["id"],
+        "status": "completed",
+        "payout_status": {"$ne": "paid"}
+    }, {"_id": 0, "final_fare": 1}).to_list(1000)
+    
+    commission_config = await db.commission_configs.find_one({"is_active": True}, {"_id": 0})
+    commission_rate = commission_config.get("rate", 15) / 100 if commission_config else 0.15
+    
+    for trip in pending_trips:
+        fare = trip.get("final_fare", {})
+        total = fare.get("total_final", 0)
+        tip = fare.get("tip", 0)
+        net = total - ((total - tip) * commission_rate) - calculate_stripe_fee(total)
+        pending_balance += net
+    
+    return {
+        "payouts": payouts,
+        "pending_balance": round(pending_balance, 2),
+        "next_payout_date": "Friday"  # Simplified - would be calculated based on settings
+    }
+
+@api_router.post("/driver/payouts/early-cashout")
+async def request_early_cashout(
+    amount: float,
+    current_user: dict = Depends(get_current_user)
+):
+    """Request early cashout with fee."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    # Check driver has Stripe connected
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not driver or not driver.get("stripe_account_id"):
+        raise HTTPException(status_code=400, detail="Please connect your Stripe account first")
+    
+    # Get payout settings
+    settings = await db.payout_settings.find_one({"type": "global"}, {"_id": 0})
+    early_fee_percent = settings.get("early_cashout_fee_percent", 1.5) if settings else 1.5
+    min_amount = settings.get("min_payout_amount", 50) if settings else 50
+    
+    if amount < min_amount:
+        raise HTTPException(status_code=400, detail=f"Minimum cashout amount is ${min_amount}")
+    
+    # Calculate fee
+    fee = round(amount * early_fee_percent / 100, 2)
+    net_amount = round(amount - fee, 2)
+    
+    # Create payout record
+    payout = {
+        "id": str(uuid.uuid4()),
+        "driver_id": current_user["id"],
+        "type": "early_cashout",
+        "gross_amount": amount,
+        "fee": fee,
+        "fee_percent": early_fee_percent,
+        "net_amount": net_amount,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.driver_payouts.insert_one(payout)
+    payout.pop("_id", None)
+    
+    return {
+        "message": "Early cashout requested",
+        "payout": payout,
+        "fee_applied": f"{early_fee_percent}%"
+    }
+
+@api_router.get("/driver/statements")
+async def get_driver_statements(current_user: dict = Depends(get_current_user)):
+    """Get available statements for download."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    # Generate monthly statement list
+    now = datetime.now(timezone.utc)
+    statements = []
+    
+    for i in range(6):  # Last 6 months
+        month_date = now - timedelta(days=30 * i)
+        month_name = month_date.strftime("%B %Y")
+        
+        # Check if there are trips for this month
+        month_start = month_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if month_date.month == 12:
+            month_end = month_date.replace(year=month_date.year + 1, month=1, day=1)
+        else:
+            month_end = month_date.replace(month=month_date.month + 1, day=1)
+        
+        trip_count = await db.meter_trips.count_documents({
+            "driver_id": current_user["id"],
+            "status": "completed",
+            "end_time": {"$gte": month_start.isoformat(), "$lt": month_end.isoformat()}
+        })
+        
+        if trip_count > 0:
+            statements.append({
+                "id": f"stmt_{month_date.strftime('%Y%m')}",
+                "month": month_name,
+                "period_start": month_start.isoformat(),
+                "period_end": month_end.isoformat(),
+                "trip_count": trip_count,
+                "available": True
+            })
+    
+    return {"statements": statements}
+
+@api_router.get("/driver/statements/{statement_id}/download")
+async def download_driver_statement(
+    statement_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate and return statement data (would be PDF in production)."""
+    if current_user.get("role") != "driver":
+        raise HTTPException(status_code=403, detail="Driver access required")
+    
+    # Parse statement ID to get month
+    try:
+        year_month = statement_id.replace("stmt_", "")
+        year = int(year_month[:4])
+        month = int(year_month[4:])
+    except:
+        raise HTTPException(status_code=400, detail="Invalid statement ID")
+    
+    start_date = datetime(year, month, 1, tzinfo=timezone.utc)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        end_date = datetime(year, month + 1, 1, tzinfo=timezone.utc)
+    
+    # Get trips for the month
+    trips = await db.meter_trips.find({
+        "driver_id": current_user["id"],
+        "status": "completed",
+        "end_time": {"$gte": start_date.isoformat(), "$lt": end_date.isoformat()}
+    }, {"_id": 0}).to_list(1000)
+    
+    # Get driver info
+    driver = await db.drivers.find_one({"user_id": current_user["id"]}, {"_id": 0, "name": 1, "email": 1})
+    
+    # Calculate totals
+    commission_config = await db.commission_configs.find_one({"is_active": True}, {"_id": 0})
+    commission_rate = commission_config.get("rate", 15) / 100 if commission_config else 0.15
+    
+    total_fares = 0
+    total_tips = 0
+    total_gov_fees = 0
+    total_gst = 0
+    total_qst = 0
+    
+    trip_details = []
+    for trip in trips:
+        fare = trip.get("final_fare", {})
+        total_fares += fare.get("total_final", 0)
+        total_tips += fare.get("tip", 0)
+        total_gov_fees += fare.get("government_fee", 0.90)
+        total_gst += fare.get("gst", 0)
+        total_qst += fare.get("qst", 0)
+        
+        trip_details.append({
+            "date": trip.get("end_time"),
+            "fare": fare.get("total_final", 0),
+            "tip": fare.get("tip", 0)
+        })
+    
+    platform_commission = round((total_fares - total_tips) * commission_rate, 2)
+    net_earnings = round(total_fares - platform_commission, 2)
+    
+    return {
+        "statement": {
+            "driver": driver,
+            "period": f"{start_date.strftime('%B %Y')}",
+            "period_start": start_date.isoformat(),
+            "period_end": end_date.isoformat(),
+            "total_trips": len(trips),
+            "gross_earnings": round(total_fares, 2),
+            "tips": round(total_tips, 2),
+            "government_fees": round(total_gov_fees, 2),
+            "gst_collected": round(total_gst, 2),
+            "qst_collected": round(total_qst, 2),
+            "platform_commission": platform_commission,
+            "commission_rate": f"{commission_rate * 100}%",
+            "net_earnings": net_earnings,
+            "trip_details": trip_details
+        },
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
 # ============== DRIVER CONTRACTS ==============
 
 @api_router.get("/admin/contracts/template")
