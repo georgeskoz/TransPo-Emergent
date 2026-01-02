@@ -627,6 +627,38 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadStripeConfig = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/stripe/config`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setStripeConfig(data.config || {});
+        setStripeConfigSaved(data.is_configured || false);
+      }
+    } catch (e) { console.log(e); }
+  };
+
+  const saveStripeConfig = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/stripe/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(stripeConfig)
+      });
+      if (res.ok) {
+        toast.success('Stripe configuration saved');
+        setShowStripeConfigModal(false);
+        setStripeConfigSaved(true);
+        loadStripeConfig();
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to save Stripe configuration');
+      }
+    } catch (e) {
+      toast.error('Failed to save configuration');
+    }
+  };
+
   const updateSettings = async (updates) => {
     try {
       const res = await fetch(`${API_URL}/admin/settings`, {
