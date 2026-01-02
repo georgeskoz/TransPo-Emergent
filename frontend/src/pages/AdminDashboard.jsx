@@ -5105,6 +5105,249 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Refund Modal */}
+      <AnimatePresence>
+        {showRefundModal && selectedTripForRefund && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-md bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-orange-500" />
+                  Create Refund
+                </h2>
+                <button onClick={() => { setShowRefundModal(false); setSelectedTripForRefund(null); }}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="text-sm text-gray-500">Trip ID</div>
+                  <div className="font-mono text-sm">{selectedTripForRefund.trip_id}</div>
+                </div>
+
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-blue-600">Original Amount</div>
+                  <div className="text-xl font-bold text-blue-700">
+                    ${selectedTripForRefund.gross_amount?.toFixed(2)}
+                  </div>
+                  {selectedTripForRefund.tip > 0 && (
+                    <div className="text-sm text-blue-600 mt-1">
+                      (includes ${selectedTripForRefund.tip?.toFixed(2)} tip)
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Refund Type</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant={refundType === 'full' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRefundType('full')}
+                    >
+                      Full Refund
+                    </Button>
+                    <Button
+                      variant={refundType === 'partial' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRefundType('partial')}
+                    >
+                      Partial Refund
+                    </Button>
+                  </div>
+                </div>
+
+                {refundType === 'partial' && (
+                  <div>
+                    <Label>Refund Amount ($)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={selectedTripForRefund.gross_amount}
+                      value={refundAmount}
+                      onChange={(e) => setRefundAmount(e.target.value)}
+                      placeholder="Enter amount"
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+
+                {refundType === 'full' && selectedTripForRefund.tip > 0 && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="excludeTip"
+                      checked={excludeTip}
+                      onChange={(e) => setExcludeTip(e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="excludeTip" className="cursor-pointer">
+                      Exclude tip from refund (refund ${(selectedTripForRefund.gross_amount - selectedTripForRefund.tip)?.toFixed(2)})
+                    </Label>
+                  </div>
+                )}
+
+                <div>
+                  <Label>Reason</Label>
+                  <Textarea
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    placeholder="Enter reason for refund..."
+                    className="mt-1"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => { setShowRefundModal(false); setSelectedTripForRefund(null); }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="flex-1 bg-orange-600 hover:bg-orange-700"
+                    onClick={createRefund}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Create Refund
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Payout Settings Modal */}
+      <AnimatePresence>
+        {showPayoutSettingsModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="w-full max-w-md bg-white rounded-xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Payout Schedule Settings
+                </h2>
+                <button onClick={() => setShowPayoutSettingsModal(false)}>
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label>Payout Schedule</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant={payoutSettings?.schedule === 'daily' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPayoutSettings({...payoutSettings, schedule: 'daily'})}
+                    >
+                      Daily
+                    </Button>
+                    <Button
+                      variant={payoutSettings?.schedule === 'weekly' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setPayoutSettings({...payoutSettings, schedule: 'weekly'})}
+                    >
+                      Weekly
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Early Cashout Fee (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                    value={payoutSettings?.early_cashout_fee_percent || 1.5}
+                    onChange={(e) => setPayoutSettings({...payoutSettings, early_cashout_fee_percent: parseFloat(e.target.value)})}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Fee charged for early/instant cashout</p>
+                </div>
+
+                <div>
+                  <Label>Minimum Payout Amount ($)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={payoutSettings?.min_payout_amount || 50}
+                    onChange={(e) => setPayoutSettings({...payoutSettings, min_payout_amount: parseFloat(e.target.value)})}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => setShowPayoutSettingsModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`${API_URL}/admin/payments/payout-settings`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                          body: JSON.stringify({
+                            schedule: payoutSettings?.schedule || 'weekly',
+                            early_cashout_fee_percent: payoutSettings?.early_cashout_fee_percent || 1.5,
+                            min_payout_amount: payoutSettings?.min_payout_amount || 50
+                          })
+                        });
+                        if (res.ok) {
+                          toast.success('Payout settings updated');
+                          setShowPayoutSettingsModal(false);
+                          loadPayoutSettings();
+                        } else {
+                          const err = await res.json();
+                          toast.error(err.detail || 'Failed to update');
+                        }
+                      } catch (e) {
+                        toast.error('Failed to update settings');
+                      }
+                    }}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Settings
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
