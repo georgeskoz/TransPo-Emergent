@@ -559,10 +559,25 @@ export default function UserDashboard() {
       return;
     }
 
+    // Validate scheduled time if booking for later
+    if (isScheduled) {
+      if (!scheduledDate || !scheduledTime) {
+        toast.error("Please select date and time for your scheduled ride");
+        return;
+      }
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+      if (scheduledDateTime <= new Date()) {
+        toast.error("Scheduled time must be in the future");
+        return;
+      }
+    }
+
     setLoading(true);
-    setRideStatus('searching');
-    setDriversNotified(0);
-    setAcceptedDriver(null);
+    if (!isScheduled) {
+      setRideStatus('searching');
+      setDriversNotified(0);
+      setAcceptedDriver(null);
+    }
     
     try {
       const res = await fetch(`${API_URL}/taxi/book`, {
@@ -581,33 +596,40 @@ export default function UserDashboard() {
           recipient_name: orderingFor?.name || null,
           recipient_phone: orderingFor?.phone || null,
           special_instructions: specialInstructions || null,
-          pet_policy: petPolicy
+          pet_policy: petPolicy,
+          // Scheduled ride fields
+          is_scheduled: isScheduled,
+          scheduled_time: isScheduled ? `${scheduledDate}T${scheduledTime}:00` : null
         }),
         
       });
       const data = await res.json();
       
       if (res.ok) {
-        toast.success(orderingFor ? `Ride booked for ${orderingFor.name}!` : "Ride booked! Looking for drivers...");
-        
-        // Emit ride request via Socket.io for real-time driver alerts
-        requestRide({
-          userId: user.id,
-          userName: user.name || user.email,
-          pickup: {
-            lat: pickup.lat,
-            lng: pickup.lng,
-            address: pickup.address || pickupText
-          },
-          dropoff: {
-            lat: dropoff.lat,
-            lng: dropoff.lng,
-            address: dropoff.address || dropoffText
-          },
-          vehicleType: vehicleType,
-          fare: fareEstimate || data.fare,
-          bookingId: data.booking_id
-        });
+        if (isScheduled) {
+          toast.success(`Ride scheduled for ${scheduledDate} at ${scheduledTime}!`);
+        } else {
+          toast.success(orderingFor ? `Ride booked for ${orderingFor.name}!` : "Ride booked! Looking for drivers...");
+          
+          // Emit ride request via Socket.io for real-time driver alerts (only for immediate rides)
+          requestRide({
+            userId: user.id,
+            userName: user.name || user.email,
+            pickup: {
+              lat: pickup.lat,
+              lng: pickup.lng,
+              address: pickup.address || pickupText
+            },
+            dropoff: {
+              lat: dropoff.lat,
+              lng: dropoff.lng,
+              address: dropoff.address || dropoffText
+            },
+            vehicleType: vehicleType,
+            fare: fareEstimate || data.fare,
+            bookingId: data.booking_id
+          });
+        }
         
         loadBookings();
         // Reset form
@@ -618,6 +640,9 @@ export default function UserDashboard() {
         setFareEstimate(null);
         setOrderingFor(null);
         setBookingForSelf(true);
+        setIsScheduled(false);
+        setScheduledDate("");
+        setScheduledTime("");
         setSpecialInstructions("");
         setPetPolicy("none");
       } else {
