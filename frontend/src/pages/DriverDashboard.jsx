@@ -1014,28 +1014,19 @@ export default function DriverDashboard() {
                 <p className="text-sm font-medium text-gray-600 mb-3">Select a reason:</p>
                 {CANCELLATION_REASONS.map((reason) => {
                   const IconComponent = reason.icon;
-                  const hasPenalty = reason.points > 0;
                   return (
                     <button
                       key={reason.id}
                       onClick={() => handleCancelTrip(reason.id)}
                       disabled={loading}
-                      className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all
-                        ${hasPenalty 
-                          ? 'border-orange-200 hover:border-orange-400 hover:bg-orange-50' 
-                          : 'border-green-200 hover:border-green-400 hover:bg-green-50'
-                        }
-                      `}
+                      className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all"
                       data-testid={`cancel-reason-${reason.id}`}
                     >
-                      <div className={`p-2 rounded-lg ${hasPenalty ? 'bg-orange-100' : 'bg-green-100'}`}>
-                        <IconComponent className={`w-5 h-5 ${hasPenalty ? 'text-orange-600' : 'text-green-600'}`} />
+                      <div className="p-2 rounded-lg bg-gray-100">
+                        <IconComponent className="w-5 h-5 text-gray-600" />
                       </div>
                       <div className="flex-1 text-left">
                         <p className="font-medium text-gray-800">{reason.label}</p>
-                        <p className={`text-xs ${hasPenalty ? 'text-orange-600' : 'text-green-600'}`}>
-                          {hasPenalty ? `-${reason.points} points` : 'No penalty'}
-                        </p>
                       </div>
                       <ArrowRight className="w-5 h-5 text-gray-400" />
                     </button>
