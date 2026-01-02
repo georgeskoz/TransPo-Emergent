@@ -59,6 +59,75 @@ export default function DriverDashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // Check suspension status on load
+  useEffect(() => {
+    checkSuspensionStatus();
+  }, []);
+
+  // No-show timer: starts when driver arrives
+  useEffect(() => {
+    if (arrivedTime) {
+      noShowTimerRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - arrivedTime) / 1000);
+        setNoShowTimerSeconds(elapsed);
+      }, 1000);
+    }
+    return () => {
+      if (noShowTimerRef.current) clearInterval(noShowTimerRef.current);
+    };
+  }, [arrivedTime]);
+
+  // Suspension countdown timer
+  useEffect(() => {
+    if (isSuspended && suspensionRemaining > 0) {
+      suspensionTimerRef.current = setInterval(() => {
+        setSuspensionRemaining(prev => {
+          if (prev <= 1) {
+            setIsSuspended(false);
+            clearInterval(suspensionTimerRef.current);
+            toast.success("Suspension ended! You can go online now.");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (suspensionTimerRef.current) clearInterval(suspensionTimerRef.current);
+    };
+  }, [isSuspended, suspensionRemaining]);
+
+  // Track when trip status changes to "arrived"
+  useEffect(() => {
+    if (activeJobs.length > 0) {
+      const currentJob = activeJobs[0];
+      if (currentJob.status === 'arrived' && !arrivedTime) {
+        setArrivedTime(Date.now());
+      } else if (currentJob.status !== 'arrived') {
+        setArrivedTime(null);
+        setNoShowTimerSeconds(0);
+      }
+    } else {
+      setArrivedTime(null);
+      setNoShowTimerSeconds(0);
+    }
+  }, [activeJobs]);
+
+  const checkSuspensionStatus = async () => {
+    try {
+      const res = await fetch(`${API_URL}/driver/status/suspension`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.is_suspended) {
+          setIsSuspended(true);
+          setSuspensionRemaining(data.remaining_seconds);
+        }
+      }
+    } catch (e) {
+      console.log('Error checking suspension:', e);
+    }
+  };
+
   const loadDriverData = async () => {
     try {
       const [profileRes, earningsRes] = await Promise.all([
