@@ -1174,12 +1174,21 @@ export default function UserDashboard() {
 
                           <Button 
                             onClick={bookRide}
-                            className="w-full py-6 bg-gray-900 hover:bg-gray-800 text-white font-semibold text-lg"
-                            disabled={isLoading}
+                            className={`w-full py-6 font-semibold text-lg ${
+                              isScheduled 
+                                ? 'bg-purple-600 hover:bg-purple-700' 
+                                : 'bg-gray-900 hover:bg-gray-800'
+                            } text-white`}
+                            disabled={isLoading || (isScheduled && (!scheduledDate || !scheduledTime))}
                             data-testid="book-ride-btn"
                           >
                             {isLoading ? (
                               <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : isScheduled ? (
+                              <>
+                                <Clock className="w-5 h-5 mr-2" />
+                                Schedule Ride - ${fareEstimate.our_fare.total.toFixed(2)}
+                              </>
                             ) : (
                               `Book Ride - $${fareEstimate.our_fare.total.toFixed(2)}`
                             )}
