@@ -812,21 +812,55 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* Rewards Progress */}
+        {/* Tier Progress Section */}
         <div className="px-6 pb-6 border-t border-gray-100 pt-4">
-          <div className="flex items-center justify-between">
+          {/* Current Tier Badge */}
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div className={`w-8 h-8 rounded-lg ${currentTierConfig.color} flex items-center justify-center`}>
+                <Hexagon className="w-5 h-5 text-white fill-white" />
+              </div>
               <div>
-                <span className="font-semibold text-gray-800">Unlock Platinum</span>
-                <span className="text-gray-400 ml-2 text-sm">0%</span>
+                <span className={`font-bold ${currentTierConfig.textColor}`}>{currentTierConfig.label}</span>
+                <span className="text-gray-500 text-sm ml-2">Driver</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Hexagon className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-              <span className="font-semibold text-gray-800">{currentPoints} / {targetPoints} pts</span>
+            <div className="text-right">
+              <span className="font-bold text-gray-800">{driverTier.points}</span>
+              <span className="text-gray-400 text-sm"> pts</span>
             </div>
           </div>
+          
+          {/* Progress to Next Tier */}
+          {driverTier.next_tier && (
+            <div>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-gray-500">
+                  Unlock <span className={`font-semibold ${nextTierConfig?.textColor}`}>{nextTierConfig?.label}</span>
+                </span>
+                <span className="text-gray-600 font-medium">{Math.round(driverTier.progress_percent)}%</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div 
+                  className={`h-full ${nextTierConfig?.color || 'bg-blue-500'}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${driverTier.progress_percent}%` }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <span>{driverTier.points} pts</span>
+                <span>{driverTier.next_tier_threshold} pts</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Diamond tier - no next tier */}
+          {!driverTier.next_tier && (
+            <div className="text-center py-2">
+              <span className="text-cyan-600 font-semibold">🏆 Max Tier Reached!</span>
+            </div>
+          )}
         </div>
 
         {/* Go Offline when online */}
