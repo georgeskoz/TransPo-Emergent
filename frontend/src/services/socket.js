@@ -228,6 +228,16 @@ export const onRideAcceptFailed = (callback) => {
   return () => s.off('ride:accept_failed', callback);
 };
 
+/**
+ * Subscribe to scheduled ride alerts (for drivers)
+ * These are rides booked in advance, alerting 30 min before pickup
+ */
+export const onScheduledRideAlert = (callback) => {
+  const s = getSocket();
+  s.on('ride:scheduled-alert', callback);
+  return () => s.off('ride:scheduled-alert', callback);
+};
+
 export default {
   initSocket,
   getSocket,
@@ -246,5 +256,6 @@ export default {
   onNoDrivers,
   onDriverConnected,
   onRideAcceptSuccess,
-  onRideAcceptFailed
+  onRideAcceptFailed,
+  onScheduledRideAlert
 };
