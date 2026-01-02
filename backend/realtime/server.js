@@ -454,6 +454,169 @@ app.post('/test/ride-request', async (req, res) => {
   }
 });
 
+// ============== SCHEDULED RIDES NOTIFICATION SYSTEM ==============
+
+// Booking schema for scheduled rides
+const bookingSchema = new mongoose.Schema({
+  id: String,
+  user_id: String,
+  user_name: String,
+  status: String,
+  pickup: {
+    latitude: Number,
+    longitude: Number,
+    address: String
+  },
+  dropoff: {
+    latitude: Number,
+    longitude: Number,
+    address: String
+  },
+  vehicle_type: String,
+  fare: Object,
+  is_scheduled: Boolean,
+  scheduled_time: String,
+  notification_sent: { type: Boolean, default: false },
+  driver_id: String
+}, { collection: 'bookings' });
+
+const Booking = mongoose.model('Booking', bookingSchema);
+
+/**
+ * Check for scheduled rides approaching pickup time (30 min before)
+ * and notify nearby drivers
+ */
+async function checkScheduledRides() {
+  try {
+    const now = new Date();
+    const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
+    const twentyNineMinutesFromNow = new Date(now.getTime() + 29 * 60 * 1000);
+    
+    // Find scheduled rides that:
+    // 1. Are scheduled (is_scheduled = true)
+    // 2. Haven't been notified yet (notification_sent = false or doesn't exist)
+    // 3. Are within the 30-minute notification window
+    // 4. Haven't been assigned a driver yet
+    const scheduledRides = await Booking.find({
+      is_scheduled: true,
+      status: 'scheduled',
+      notification_sent: { $ne: true },
+      driver_id: null
+    });
+    
+    for (const ride of scheduledRides) {
+      if (!ride.scheduled_time) continue;
+      
+      const scheduledTime = new Date(ride.scheduled_time);
+      const timeDiff = scheduledTime.getTime() - now.getTime();
+      const minutesUntilPickup = timeDiff / (1000 * 60);
+      
+      // Notify if within 30-31 minutes of pickup (to avoid duplicate notifications)
+      if (minutesUntilPickup <= 31 && minutesUntilPickup >= 29) {
+        console.log(`📅 Notifying drivers for scheduled ride ${ride.id} (${Math.round(minutesUntilPickup)} min until pickup)`);
+        
+        // Find nearby online drivers
+        const nearbyDrivers = await Driver.find({
+          status: 'online',
+          is_available: true,
+          location: {
+            $near: {
+              $geometry: {
+                type: 'Point',
+                coordinates: [ride.pickup.longitude, ride.pickup.latitude]
+              },
+              $maxDistance: 10000 // 10km radius
+            }
+          }
+        }).limit(10);
+        
+        if (nearbyDrivers.length > 0) {
+          // Broadcast to nearby drivers
+          const notifiedDriverIds = [];
+          
+          for (const driver of nearbyDrivers) {
+            if (driver.socket_id && connectedDrivers.has(driver.id)) {
+              const socketId = connectedDrivers.get(driver.id);
+              
+              io.to(socketId).emit('ride:scheduled-alert', {
+                bookingId: ride.id,
+                userId: ride.user_id,
+                userName: ride.user_name,
+                pickup: ride.pickup,
+                dropoff: ride.dropoff,
+                vehicleType: ride.vehicle_type,
+                fare: ride.fare,
+                scheduledTime: ride.scheduled_time,
+                minutesUntilPickup: Math.round(minutesUntilPickup),
+                isScheduled: true
+              });
+              
+              notifiedDriverIds.push(driver.id);
+            }
+          }
+          
+          // Mark as notification sent
+          await Booking.findOneAndUpdate(
+            { id: ride.id },
+            { 
+              notification_sent: true,
+              matched_drivers: notifiedDriverIds
+            }
+          );
+          
+          console.log(`✅ Notified ${notifiedDriverIds.length} drivers for scheduled ride ${ride.id}`);
+        } else {
+          console.log(`⚠️ No online drivers found for scheduled ride ${ride.id}`);
+          // Still mark as notified to prevent spam
+          await Booking.findOneAndUpdate(
+            { id: ride.id },
+            { notification_sent: true }
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking scheduled rides:', error);
+  }
+}
+
+// Run scheduled ride checker every minute
+setInterval(checkScheduledRides, 60 * 1000);
+console.log('📅 Scheduled ride notification checker started (runs every minute)');
+
+// API endpoint to manually check scheduled rides (for testing)
+app.post('/scheduled/check', async (req, res) => {
+  try {
+    await checkScheduledRides();
+    res.json({ success: true, message: 'Scheduled rides check completed' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get pending scheduled rides
+app.get('/scheduled/pending', async (req, res) => {
+  try {
+    const scheduledRides = await Booking.find({
+      is_scheduled: true,
+      status: 'scheduled'
+    }).sort({ scheduled_time: 1 });
+    
+    res.json({ 
+      count: scheduledRides.length,
+      rides: scheduledRides.map(r => ({
+        id: r.id,
+        scheduledTime: r.scheduled_time,
+        pickup: r.pickup?.address,
+        dropoff: r.dropoff?.address,
+        notificationSent: r.notification_sent
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============== START SERVER ==============
 
 const PORT = process.env.PORT || 8002;
